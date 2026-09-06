@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="/assets/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/global.css" />
   <link rel="stylesheet" href="/css/admin.css" />
 </head>
@@ -23,7 +23,7 @@
   <!-- Navbar -->
   <nav class="navbar" role="navigation" aria-label="Navigasi utama">
     <div class="navbar__brand">
-      <span aria-hidden="true">🏫</span>
+      <div class="navbar__brand-icon" aria-hidden="true">🏫</div>
       <span id="nav-school-name">Buku Tamu</span>
     </div>
     <div class="navbar__right">
@@ -34,7 +34,6 @@
       <button
         class="btn btn--ghost btn--sm"
         id="btn-logout"
-        style="color:rgba(255,255,255,0.85)"
         aria-label="Keluar"
       >
         🚪 Keluar
@@ -94,9 +93,10 @@
       role="tabpanel"
       aria-labelledby="tab-ringkasan"
     >
-      <div class="page-header">
-        <h1 class="page-header__title">Ringkasan</h1>
-        <p class="page-header__subtitle" id="ringkasan-date">—</p>
+      <!-- Ringkasan Header -->
+      <div class="ringkasan-header">
+        <h1 class="ringkasan-header__title">Ringkasan</h1>
+        <div class="ringkasan-header__date" id="ringkasan-date">—</div>
       </div>
 
       <!-- Stat Cards Grid -->
@@ -139,18 +139,24 @@
       <div class="charts-grid">
         <!-- Breakdown per jenis tamu -->
         <div class="chart-card">
-          <div class="chart-card__title">Jenis Tamu</div>
+          <div class="chart-card__header">
+            <div class="chart-card__title">Jenis Tamu</div>
+            <div class="chart-card__total" id="chart-jenis-total">—</div>
+          </div>
           <div class="bar-chart" id="chart-jenis">
-            <div class="skeleton skeleton--text" style="height:10px;margin-bottom:12px;"></div>
-            <div class="skeleton skeleton--text" style="height:10px;margin-bottom:12px;width:80%;"></div>
-            <div class="skeleton skeleton--text" style="height:10px;margin-bottom:12px;width:60%;"></div>
-            <div class="skeleton skeleton--text" style="height:10px;margin-bottom:12px;width:40%;"></div>
+            <div class="skeleton skeleton--text" style="height:8px;margin-bottom:14px;"></div>
+            <div class="skeleton skeleton--text" style="height:8px;margin-bottom:14px;width:80%;"></div>
+            <div class="skeleton skeleton--text" style="height:8px;margin-bottom:14px;width:60%;"></div>
+            <div class="skeleton skeleton--text" style="height:8px;width:40%;"></div>
           </div>
         </div>
 
         <!-- Tren 7 hari -->
         <div class="chart-card">
-          <div class="chart-card__title">Tren 7 Hari Terakhir</div>
+          <div class="chart-card__header">
+            <div class="chart-card__title">Tren 7 Hari</div>
+            <div class="chart-card__total" id="chart-trend-total">—</div>
+          </div>
           <div class="trend-chart" id="trend-chart">
             <!-- Diisi JS -->
           </div>
