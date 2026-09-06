@@ -1,17 +1,24 @@
 /* ============================================================
-   login.css — Halaman Login v2 (Mobile First)
+   login.css — Halaman Login v3 (Mobile First)
    ============================================================ */
 
+/* ── Page Root ────────────────────────────────────────────── */
 .login-page {
-  min-height: 100vh;
   display: flex;
-  background: var(--clr-gray-50);
+  min-height: 100vh;
+  /* FIX L13: gunakan dvh agar tidak terpotong keyboard virtual di mobile */
+  min-height: 100dvh;
+  background: var(--clr-white);
+  overflow-x: hidden; /* cegah horizontal overflow */
 }
 
-/* ── Split Layout (tablet+) ───────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   PANEL KIRI — Branding (tablet+)
+   ═══════════════════════════════════════════════════════════ */
 .login-panel-left {
-  display: none;
+  display: none; /* hidden di mobile */
   flex: 1;
+  min-width: 0; /* cegah flex item overflow */
   background: linear-gradient(160deg,
     var(--clr-primary-deeper) 0%,
     var(--clr-primary)        55%,
@@ -21,10 +28,10 @@
   overflow: hidden;
   align-items: center;
   justify-content: center;
-  padding: var(--space-12);
+  padding: var(--space-12) var(--space-10);
 }
 
-/* Dekorasi blur circles */
+/* Dekorasi lingkaran blur */
 .login-panel-left::before,
 .login-panel-left::after {
   content: '';
@@ -49,11 +56,13 @@
   left: -60px;
 }
 
+/* Brand content */
 .login-brand {
   position: relative;
   z-index: 1;
   color: var(--clr-white);
   text-align: center;
+  max-width: 360px;
 }
 
 .login-brand__logo {
@@ -61,6 +70,7 @@
   height: 80px;
   background: rgba(255,255,255,0.15);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 2px solid rgba(255,255,255,0.25);
   border-radius: var(--radius-2xl);
   display: flex;
@@ -69,6 +79,7 @@
   font-size: 2.5rem;
   margin: 0 auto var(--space-6);
   box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+  overflow: hidden; /* cegah emoji overflow */
 }
 
 .login-brand__title {
@@ -77,14 +88,14 @@
   color: var(--clr-white);
   letter-spacing: -0.03em;
   margin-bottom: var(--space-3);
+  word-break: break-word;
 }
 
 .login-brand__sub {
   font-size: var(--font-size-base);
   color: rgba(255,255,255,0.70);
-  max-width: 280px;
-  margin: 0 auto;
   line-height: 1.6;
+  word-break: break-word;
 }
 
 .login-brand__features {
@@ -93,6 +104,8 @@
   flex-direction: column;
   gap: var(--space-4);
   text-align: left;
+  list-style: none;
+  padding: 0;
 }
 
 .login-feature {
@@ -107,35 +120,44 @@
 .login-feature__icon {
   width: 36px;
   height: 36px;
+  min-width: 36px; /* cegah shrink */
   background: rgba(255,255,255,0.15);
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1rem;
-  flex-shrink: 0;
 }
 
 @media (min-width: 768px) {
   .login-panel-left { display: flex; }
 }
 
-/* ── Right Panel ──────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   PANEL KANAN — Form Login
+   ═══════════════════════════════════════════════════════════ */
 .login-panel-right {
+  /* FIX L8: width 100% eksplisit di mobile, flex di tablet+ */
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  padding: var(--space-6) var(--space-4);
-  min-height: 100vh;
+  padding: var(--space-6) var(--space-5);
   background: var(--clr-white);
+  /* FIX L13: jangan min-height 100vh agar tidak konflik dengan keyboard virtual */
+  min-height: 100vh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 @media (min-width: 768px) {
   .login-panel-right {
+    /* Di tablet+: panel kanan hanya mengambil porsi tertentu */
+    flex: 0 0 480px;
     max-width: 480px;
-    padding: var(--space-8);
-    min-height: 0;
+    padding: var(--space-8) var(--space-10);
+    min-height: 0; /* biarkan flex container yang menentukan tinggi */
   }
 }
 
@@ -146,7 +168,9 @@
   animation: slideUp 0.4s var(--transition-spring);
 }
 
-/* ── Mobile logo (hanya tampil di mobile) ─────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   MOBILE LOGO (hanya tampil di mobile)
+   ═══════════════════════════════════════════════════════════ */
 .login-logo-mobile {
   text-align: center;
   margin-bottom: var(--space-8);
@@ -164,6 +188,7 @@
   font-size: 1.8rem;
   color: var(--clr-white);
   box-shadow: var(--shadow-primary);
+  overflow: hidden;
 }
 
 .login-logo-mobile__title {
@@ -172,6 +197,7 @@
   color: var(--clr-gray-900);
   letter-spacing: -0.02em;
   margin-bottom: var(--space-1);
+  word-break: break-word;
 }
 
 .login-logo-mobile__sub {
@@ -214,32 +240,79 @@
   font-size: var(--font-size-sm);
   margin-bottom: var(--space-5);
   font-weight: 500;
-  animation: slideUp 0.2s ease;
+  word-break: break-word;
+  /* Animasi didefinisikan di sini, re-trigger lewat JS */
 }
 
-.login-error.visible { display: flex; }
+.login-error.visible {
+  display: flex;
+  animation: loginErrorIn 0.25s ease;
+}
 
-.login-error__icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+@keyframes loginErrorIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-error__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+  line-height: 1.4;
+}
 
 /* ── Form ─────────────────────────────────────────────────── */
-.login-form { display: flex; flex-direction: column; gap: var(--space-4); }
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
 
 .login-form .form-group { margin-bottom: 0; }
 
-/* Label dengan icon ── */
 .login-form .form-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--clr-gray-700);
   font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--clr-gray-700);
+  margin-bottom: var(--space-2);
+  display: block;
 }
 
-/* Password wrapper ── */
-.password-wrapper { position: relative; }
+/* ── Username Input (dengan icon kiri) ────────────────────── */
+/* Menggunakan .input-icon-wrap dari global.css */
+.login-form .input-icon-wrap .form-control {
+  /* Icon kiri sudah diatur oleh global.css .input-icon-wrap__icon */
+}
 
-.password-wrapper .form-control { padding-right: 48px; }
+/* ── Password Input (icon kiri + toggle kanan) ─────────────  */
+/* FIX L6: class khusus untuk password field, tidak campur dengan input-icon-wrap */
+.login-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
 
+.login-password-wrap__icon {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--clr-gray-400);
+  pointer-events: none;
+  font-size: 1rem;
+  line-height: 1;
+  z-index: 1;
+}
+
+/* FIX L7: hapus inline style — padding diset di sini */
+.login-password-input {
+  width: 100%;
+  /* icon kiri + gap + icon kanan */
+  padding-left: calc(var(--space-4) + 1.4rem + var(--space-2));
+  padding-right: 48px;
+}
+
+/* ── Password Toggle Button ───────────────────────────────── */
 .password-toggle {
   position: absolute;
   right: 0;
@@ -251,15 +324,25 @@
   align-items: center;
   justify-content: center;
   color: var(--clr-gray-400);
-  font-size: 1rem;
-  transition: color var(--transition);
+  font-size: 1.1rem;
+  transition: color var(--transition), background var(--transition);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: var(--clr-gray-700);
+  background: var(--clr-gray-50);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: -2px;
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 
-.password-toggle:hover { color: var(--clr-gray-700); }
-
-/* Submit ── */
-.login-form .btn--primary {
+/* ── Submit Button ────────────────────────────────────────── */
+.login-submit-btn {
   height: 52px;
   font-size: var(--font-size-md);
   border-radius: var(--radius-xl);
@@ -267,49 +350,100 @@
   letter-spacing: -0.01em;
 }
 
-/* ── Divider ──────────────────────────────────────────────── */
-.login-divider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: var(--space-2) 0;
-  color: var(--clr-gray-300);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.login-divider::before,
-.login-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--clr-gray-200);
-}
-
 /* ── Footer ───────────────────────────────────────────────── */
 .login-footer {
   margin-top: var(--space-7);
   padding-top: var(--space-5);
   border-top: 1px solid var(--clr-gray-100);
-  font-size: var(--font-size-xs);
-  color: var(--clr-gray-400);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   align-items: center;
+  gap: var(--space-2);
   text-align: center;
-  line-height: 1.6;
 }
 
-.login-footer a {
+.login-footer__back {
   color: var(--clr-primary);
   font-weight: 600;
   font-size: var(--font-size-sm);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   transition: color var(--transition);
+  padding: var(--space-1) 0;
+  /* Touch target */
+  min-height: var(--touch-target);
 }
 
-.login-footer a:hover { color: var(--clr-primary-dark); text-decoration: none; }
+.login-footer__back:hover {
+  color: var(--clr-primary-dark);
+  text-decoration: none;
+}
+
+.login-footer__copy {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE — Landscape mobile & kecil
+   ═══════════════════════════════════════════════════════════ */
+
+/* Landscape mobile: kurangi padding agar form muat di layar */
+@media (max-height: 600px) and (orientation: landscape) {
+  .login-panel-right {
+    align-items: flex-start;
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-4);
+  }
+
+  .login-logo-mobile {
+    margin-bottom: var(--space-4);
+  }
+
+  .login-logo-mobile__icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.4rem;
+  }
+
+  .login-heading {
+    margin-bottom: var(--space-4);
+  }
+
+  .login-heading__title {
+    font-size: var(--font-size-xl);
+  }
+}
+
+/* Layar sangat kecil (< 360px) */
+@media (max-width: 359px) {
+  .login-panel-right {
+    padding: var(--space-4) var(--space-4);
+  }
+
+  .login-heading__title {
+    font-size: var(--font-size-xl);
+  }
+
+  .login-submit-btn {
+    height: 48px;
+  }
+}
+
+/* Tablet landscape: panel kanan lebih lebar */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .login-panel-right {
+    flex: 0 0 420px;
+    max-width: 420px;
+  }
+}
+
+/* Desktop: panel kanan lebar tetap */
+@media (min-width: 1024px) {
+  .login-panel-right {
+    flex: 0 0 520px;
+    max-width: 520px;
+    padding: var(--space-12) var(--space-12);
+  }
+}
