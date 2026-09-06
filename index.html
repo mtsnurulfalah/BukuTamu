@@ -228,6 +228,15 @@
             >
               <option value="">— Pilih staf yang dituju —</option>
             </select>
+            <!-- Retry jika staf gagal dimuat -->
+            <div id="staf-retry-wrap" style="display:none;margin-top:var(--space-2);">
+              <button type="button" class="btn btn--soft btn--sm" id="btn-retry-staf">
+                🔄 Coba Lagi
+              </button>
+              <span style="font-size:var(--font-size-xs);color:var(--clr-gray-400);margin-left:var(--space-2);">
+                Gagal memuat daftar staf
+              </span>
+            </div>
             <span class="form-error" id="error-bertemu" role="alert">
               ⚠️ Pilih staf yang akan ditemui
             </span>
