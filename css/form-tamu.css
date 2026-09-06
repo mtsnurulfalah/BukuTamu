@@ -109,14 +109,20 @@
   font-size: 2.2rem;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 0 4px rgba(255,255,255,0.08);
   transition: transform var(--transition-spring);
+  /* FIX B11: overflow hidden agar gambar tidak meluber di luar border-radius */
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .school-header__logo:hover { transform: scale(1.04); }
 
 .school-header__logo img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  border-radius: calc(var(--radius-2xl) - 2px);
+  border-radius: inherit;
   object-fit: cover;
 }
 
@@ -157,18 +163,24 @@
 }
 
 /* ── Wave Separator ───────────────────────────────────────── */
+/* FIX B12: wave tidak lagi absolute agar tidak menyebabkan gap di mobile */
 .school-header__wave {
   position: absolute;
-  bottom: -1px;
+  bottom: 0;
   left: 0;
   right: 0;
   line-height: 0;
+  z-index: 1;
+  /* Pastikan wave tidak ditimpa konten header */
+  pointer-events: none;
 }
 
 .school-header__wave svg {
   width: 100%;
   height: auto;
   display: block;
+  /* Minimal tinggi wave agar gap tidak terlalu besar di layar lebar */
+  min-height: 28px;
 }
 
 /* ── Form Container ───────────────────────────────────────── */
@@ -575,9 +587,20 @@
 }
 
 /* ── Form Grid ────────────────────────────────────────────── */
+/* FIX B13: mobile single-column dengan gap konsisten */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.form-grid-2 .form-group {
+  /* Pastikan margin-bottom konsisten di semua breakpoint */
+  margin-bottom: var(--space-5);
+}
+
 @media (min-width: 640px) {
   .form-grid-2 {
-    display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0 var(--space-5);
   }
@@ -606,4 +629,119 @@
   font-size: var(--font-size-sm);
   color: var(--clr-gray-400);
   font-weight: 500;
+}
+
+/* ── No Horizontal Overflow ───────────────────────────────── */
+/* Pastikan tidak ada elemen yang meluber secara horizontal */
+.form-page,
+.form-tamu-container,
+.form-section,
+.pill-selector {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Pill selector: batas lebar agar tidak overflow di layar sempit */
+.pill-selector {
+  overflow-x: visible;
+  row-gap: var(--space-2);
+}
+
+.pill-selector__item {
+  /* Cegah pill terlalu panjang di mobile */
+  max-width: 100%;
+  word-break: break-word;
+  white-space: normal;
+  text-align: center;
+}
+
+/* ── Signature canvas: pastikan tidak overflow ────────────── */
+.signature-container {
+  /* Touch action hanya none pada canvas, bukan container */
+  max-width: 100%;
+}
+
+#signature-canvas {
+  max-width: 100%;
+  display: block;
+  /* height diatur via CSS; touch-action none penting di mobile */
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ── Staf retry wrap ──────────────────────────────────────── */
+#staf-retry-wrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--clr-warning-light);
+  border: 1px solid var(--clr-warning-mid);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-2);
+}
+
+#staf-retry-wrap span {
+  font-size: var(--font-size-xs);
+  color: var(--clr-warning);
+  font-weight: 500;
+}
+
+/* ── Form error text: pastikan tidak overflow ─────────────── */
+.form-error {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* ── Auto fields: responsif di layar sangat kecil ─────────── */
+@media (max-width: 359px) {
+  .auto-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .auto-field__value {
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* ── Header date: pastikan text wrap di mobile ────────────── */
+.school-header__date {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  /* Tampilkan sebagai block di mobile agar tidak overflow */
+  display: block;
+  text-align: center;
+}
+
+@media (min-width: 480px) {
+  .school-header__date {
+    display: inline-flex;
+  }
+}
+
+/* ── Success screen: pastikan tidak overflow di mobile ──────  */
+.success-screen__wrap {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* ── submit section: sticky di mobile untuk UX lebih baik ─── */
+@media (max-width: 639px) {
+  .submit-section {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      var(--clr-gray-50) 30%
+    );
+    padding: var(--space-5) var(--space-4) var(--space-5);
+    margin-left: calc(-1 * var(--space-5));
+    margin-right: calc(-1 * var(--space-5));
+    margin-bottom: 0;
+    z-index: 10;
+  }
 }
