@@ -445,3 +445,331 @@
   border-radius: var(--radius-full);
   font-weight: 500;
 }
+
+/* ============================================================
+   Pengaturan Sekolah — Settings Tab
+   ============================================================ */
+
+/* ── Settings Card ────────────────────────────────────────── */
+.settings-card {
+  background: var(--clr-white);
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-5);
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+}
+
+.settings-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.settings-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--clr-gray-100);
+}
+
+.settings-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-xl);
+  background: var(--clr-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.settings-card__title {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--clr-gray-900);
+  letter-spacing: -0.01em;
+}
+
+.settings-card__sub {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.settings-card__body {
+  padding: var(--space-5);
+}
+
+/* ── Settings Form Grid ───────────────────────────────────── */
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 var(--space-5);
+}
+
+.settings-full-col {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 640px) {
+  .settings-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Settings Actions ─────────────────────────────────────── */
+.settings-actions {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--clr-gray-100);
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.settings-saved-indicator {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--clr-success);
+  font-weight: 600;
+  animation: fadeIn 0.3s ease;
+}
+
+.settings-saved-indicator.visible {
+  display: flex;
+}
+
+/* ── Logo Settings Layout ─────────────────────────────────── */
+.logo-settings-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+@media (min-width: 640px) {
+  .logo-settings-wrap {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-6);
+  }
+}
+
+/* ── Logo Preview Box ─────────────────────────────────────── */
+.logo-preview-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.logo-preview-box__label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--clr-gray-400);
+}
+
+.logo-preview-box__img {
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius-2xl);
+  background: var(--clr-gray-100);
+  border: 2px dashed var(--clr-gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  overflow: hidden;
+  transition: all var(--transition);
+  position: relative;
+}
+
+.logo-preview-box__img.has-image {
+  border-style: solid;
+  border-color: var(--clr-success-mid);
+  background: var(--clr-white);
+  box-shadow: var(--shadow-md);
+}
+
+.logo-preview-box__img.error {
+  border-color: var(--clr-danger-mid);
+  background: var(--clr-danger-light);
+}
+
+.logo-preview-box__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: calc(var(--radius-2xl) - 2px);
+}
+
+.logo-preview-box__img--sm {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-xl);
+  font-size: 2rem;
+}
+
+.logo-preview-box__img--sm img {
+  border-radius: calc(var(--radius-xl) - 2px);
+}
+
+.logo-preview-box__desc {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+  text-align: center;
+  font-weight: 500;
+  max-width: 110px;
+}
+
+.logo-preview-box__desc.success { color: var(--clr-success); }
+.logo-preview-box__desc.error   { color: var(--clr-danger); }
+
+/* ── Logo Form Side ───────────────────────────────────────── */
+.logo-form-side {
+  flex: 1;
+  min-width: 0;
+}
+
+.logo-form-side .form-group {
+  margin-bottom: var(--space-4);
+}
+
+.logo-form-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+/* ── Logo Guide ───────────────────────────────────────────── */
+.logo-guide {
+  margin-top: var(--space-5);
+  background: var(--clr-gray-50);
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.logo-guide__title {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--clr-gray-700);
+  margin-bottom: var(--space-3);
+}
+
+.logo-guide__steps {
+  list-style: decimal;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.logo-guide__steps li {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-600);
+  line-height: 1.6;
+}
+
+.logo-guide__steps code {
+  background: var(--clr-white);
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  font-size: var(--font-size-xs);
+  color: var(--clr-primary-dark);
+  font-family: 'Courier New', Courier, monospace;
+  word-break: break-all;
+}
+
+/* ── Live Preview Header ──────────────────────────────────── */
+.settings-preview-header {
+  background: linear-gradient(160deg,
+    var(--clr-primary-deeper) 0%,
+    var(--clr-primary)        50%,
+    #3b82f6                   100%
+  );
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-preview-header::before,
+.settings-preview-header::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.settings-preview-header::before {
+  width: 180px; height: 180px;
+  background: rgba(255,255,255,0.05);
+  top: -60px; right: -40px;
+}
+
+.settings-preview-header::after {
+  width: 120px; height: 120px;
+  background: rgba(255,255,255,0.04);
+  bottom: -40px; left: -30px;
+}
+
+.settings-preview-header__logo {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-xl);
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-3);
+  font-size: 1.75rem;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.settings-preview-header__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--radius-xl) - 2px);
+}
+
+.settings-preview-header__name {
+  font-size: var(--font-size-lg);
+  font-weight: 800;
+  color: var(--clr-white);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-1);
+  position: relative;
+  z-index: 1;
+}
+
+.settings-preview-header__addr {
+  font-size: var(--font-size-xs);
+  color: rgba(255,255,255,0.70);
+  max-width: 280px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Navbar Logo Preview ──────────────────────────────────── */
+.navbar__brand-logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
