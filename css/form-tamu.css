@@ -1,154 +1,294 @@
 /* ============================================================
-   form-tamu.css — Halaman Form Tamu (Mobile First)
+   form-tamu.css — Halaman Form Tamu v2 (Mobile First)
    ============================================================ */
 
-/* ── Page Layout ──────────────────────────────────────────── */
+/* ── Page ─────────────────────────────────────────────────── */
 .form-page {
   min-height: 100vh;
   background: var(--clr-gray-50);
 }
 
-/* ── Header Sekolah ───────────────────────────────────────── */
+/* ── Hero Header ──────────────────────────────────────────── */
 .school-header {
-  background: linear-gradient(135deg, var(--clr-primary) 0%, var(--clr-primary-dark) 100%);
+  position: relative;
+  background: linear-gradient(160deg,
+    var(--clr-primary-deeper) 0%,
+    var(--clr-primary)        50%,
+    #3b82f6                   100%
+  );
   color: var(--clr-white);
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-8) var(--space-5) var(--space-10);
   text-align: center;
-  position: relative; /* untuk posisi tombol login */
+  overflow: hidden;
+  isolation: isolate;
 }
 
-/* ── Tombol Login Petugas ──────────────────────────────────── */
+/* Dekorasi lingkaran blur di belakang */
+.school-header::before,
+.school-header::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.school-header::before {
+  width: 320px;
+  height: 320px;
+  background: rgba(255,255,255,0.06);
+  top: -80px;
+  right: -60px;
+}
+
+.school-header::after {
+  width: 200px;
+  height: 200px;
+  background: rgba(255,255,255,0.05);
+  bottom: -60px;
+  left: -40px;
+}
+
+/* ── Tombol Login ─────────────────────────────────────────── */
 .school-header__login-wrap {
   position: absolute;
-  top: var(--space-3);
+  top: var(--space-4);
   right: var(--space-4);
+  z-index: 2;
 }
 
 .school-header__login-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
+  gap: 6px;
+  padding: 8px 14px;
   font-size: var(--font-size-xs);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: rgba(255,255,255,0.9);
+  border: 1.5px solid rgba(255,255,255,0.3);
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(4px);
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transition: all var(--transition);
   text-decoration: none;
   min-height: var(--touch-target);
-  white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 .school-header__login-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.6);
   color: var(--clr-white);
   text-decoration: none;
+  transform: translateY(-1px);
 }
 
 .school-header__login-btn:focus-visible {
-  outline: 2px solid var(--clr-white);
-  outline-offset: 2px;
+  outline: 2px solid rgba(255,255,255,0.8);
+  outline-offset: 3px;
 }
 
 @media (min-width: 640px) {
-  .school-header__login-wrap {
-    top: var(--space-4);
-    right: var(--space-6);
-  }
-
-  .school-header__login-btn {
-    font-size: var(--font-size-sm);
-    padding: var(--space-2) var(--space-4);
-  }
+  .school-header__login-wrap { top: var(--space-5); right: var(--space-6); }
+  .school-header__login-btn  { font-size: var(--font-size-sm); padding: 8px 18px; }
 }
 
+/* ── Logo Sekolah ─────────────────────────────────────────── */
 .school-header__logo {
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-lg);
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-2xl);
   margin: 0 auto var(--space-4);
-  object-fit: cover;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(255,255,255,0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 2.2rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 0 4px rgba(255,255,255,0.08);
+  transition: transform var(--transition-spring);
 }
+
+.school-header__logo:hover { transform: scale(1.04); }
 
 .school-header__logo img {
   width: 100%;
   height: 100%;
-  border-radius: var(--radius-lg);
+  border-radius: calc(var(--radius-2xl) - 2px);
   object-fit: cover;
 }
 
 .school-header__title {
   font-size: var(--font-size-xl);
-  font-weight: 700;
+  font-weight: 800;
   color: var(--clr-white);
   margin-bottom: var(--space-1);
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
 .school-header__subtitle {
   font-size: var(--font-size-sm);
-  opacity: 0.85;
-  color: var(--clr-white);
+  color: rgba(255,255,255,0.80);
+  max-width: 320px;
+  margin: 0 auto;
+  line-height: 1.5;
 }
 
 .school-header__date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-size-xs);
-  opacity: 0.75;
-  color: var(--clr-white);
-  margin-top: var(--space-2);
+  color: rgba(255,255,255,0.65);
+  margin-top: var(--space-3);
+  background: rgba(255,255,255,0.10);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.01em;
 }
 
 @media (min-width: 640px) {
-  .school-header {
-    padding: var(--space-8) var(--space-6);
-  }
-  .school-header__title {
-    font-size: var(--font-size-2xl);
-  }
-  .school-header__logo {
-    width: 88px;
-    height: 88px;
-  }
+  .school-header { padding: var(--space-10) var(--space-6) var(--space-12); }
+  .school-header__logo  { width: 96px; height: 96px; }
+  .school-header__title { font-size: var(--font-size-2xl); }
+}
+
+/* ── Wave Separator ───────────────────────────────────────── */
+.school-header__wave {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  line-height: 0;
+}
+
+.school-header__wave svg {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 /* ── Form Container ───────────────────────────────────────── */
 .form-tamu-container {
-  padding: var(--space-5) var(--space-4);
-  max-width: 680px;
+  padding: var(--space-6) var(--space-4) var(--space-12);
+  max-width: 700px;
   margin: 0 auto;
 }
 
 @media (min-width: 640px) {
-  .form-tamu-container {
-    padding: var(--space-8) var(--space-6);
-  }
+  .form-tamu-container { padding: var(--space-8) var(--space-6) var(--space-16); }
 }
 
-/* ── Section Divider ──────────────────────────────────────── */
+/* ── Progress Steps (visual only) ────────────────────────── */
+.form-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: var(--space-7);
+  padding: 0 var(--space-2);
+}
+
+.form-progress__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+}
+
+.form-progress__step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: calc(50% + 14px);
+  right: calc(-50% + 14px);
+  height: 2px;
+  background: var(--clr-gray-200);
+  z-index: 0;
+}
+
+.form-progress__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--clr-gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--clr-gray-400);
+  position: relative;
+  z-index: 1;
+  transition: all var(--transition-slow);
+}
+
+.form-progress__step.active  .form-progress__dot {
+  background: var(--clr-primary);
+  color: var(--clr-white);
+  box-shadow: 0 0 0 4px var(--clr-primary-mid);
+}
+
+.form-progress__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--clr-gray-400);
+  text-align: center;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.form-progress__step.active .form-progress__label { color: var(--clr-primary); }
+
+/* ── Form Section ─────────────────────────────────────────── */
 .form-section {
-  margin-bottom: var(--space-6);
+  background: var(--clr-white);
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition);
+}
+
+.form-section:focus-within {
+  box-shadow: var(--shadow-md);
+  border-color: var(--clr-primary-mid);
 }
 
 .form-section__title {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--clr-primary);
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 2px solid var(--clr-primary-light);
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--clr-primary);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--clr-gray-100);
+}
+
+.form-section__title-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--clr-primary-light);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .form-section { padding: var(--space-6); }
 }
 
 /* ── Pill Selector (Jenis Tamu) ───────────────────────────── */
@@ -159,8 +299,8 @@
 }
 
 .pill-selector__item {
-  padding: var(--space-2) var(--space-4);
-  border: 1.5px solid var(--clr-gray-300);
+  padding: 8px 16px;
+  border: 1.5px solid var(--clr-gray-200);
   border-radius: var(--radius-full);
   font-size: var(--font-size-sm);
   font-weight: 500;
@@ -172,12 +312,16 @@
   display: flex;
   align-items: center;
   user-select: none;
+  box-shadow: var(--shadow-xs);
+  letter-spacing: -0.01em;
 }
 
 .pill-selector__item:hover {
-  border-color: var(--clr-primary);
+  border-color: var(--clr-primary-mid);
   color: var(--clr-primary);
   background: var(--clr-primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .pill-selector__item.selected {
@@ -185,54 +329,70 @@
   border-color: var(--clr-primary);
   color: var(--clr-white);
   font-weight: 600;
+  box-shadow: var(--shadow-primary);
+  transform: translateY(-1px);
 }
 
-/* ── Auto Fields ──────────────────────────────────────────── */
+/* ── Waktu Otomatis ───────────────────────────────────────── */
 .auto-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .auto-field {
-  background: var(--clr-gray-100);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  border: 1.5px solid var(--clr-gray-200);
+  background: var(--clr-primary-light);
+  border-radius: var(--radius-xl);
+  padding: var(--space-4);
+  border: 1.5px solid var(--clr-primary-mid);
+  text-align: center;
 }
 
 .auto-field__label {
   font-size: var(--font-size-xs);
-  color: var(--clr-gray-500);
-  font-weight: 600;
+  color: var(--clr-primary);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.07em;
   margin-bottom: var(--space-1);
+  opacity: 0.75;
 }
 
 .auto-field__value {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--clr-gray-800);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--clr-primary-dark);
+  letter-spacing: -0.01em;
 }
 
 /* ── Signature Canvas ─────────────────────────────────────── */
 .signature-container {
-  border: 1.5px solid var(--clr-gray-300);
-  border-radius: var(--radius-md);
-  background: var(--clr-white);
+  border: 2px dashed var(--clr-gray-300);
+  border-radius: var(--radius-xl);
+  background: var(--clr-gray-50);
   overflow: hidden;
   position: relative;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition: all var(--transition);
+  cursor: crosshair;
+}
+
+.signature-container:hover {
+  border-color: var(--clr-primary-mid);
+  background: var(--clr-primary-light);
 }
 
 .signature-container.active {
+  border-style: solid;
   border-color: var(--clr-primary);
-  box-shadow: 0 0 0 3px var(--clr-primary-light);
+  background: var(--clr-white);
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.08);
 }
 
 .signature-container.has-signature {
+  border-style: solid;
   border-color: var(--clr-success);
+  background: var(--clr-white);
+  box-shadow: 0 0 0 4px rgba(5,150,105,0.08);
 }
 
 .signature-placeholder {
@@ -241,22 +401,29 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--clr-gray-400);
-  font-size: var(--font-size-sm);
-  pointer-events: none;
   flex-direction: column;
   gap: var(--space-2);
+  pointer-events: none;
   transition: opacity var(--transition);
 }
 
 .signature-placeholder__icon {
-  font-size: 2rem;
-  opacity: 0.5;
+  font-size: 2.5rem;
+  opacity: 0.3;
 }
 
-.signature-placeholder.hidden {
-  opacity: 0;
+.signature-placeholder__text {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-400);
+  font-weight: 500;
 }
+
+.signature-placeholder__sub {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-300);
+}
+
+.signature-placeholder.hidden { opacity: 0; }
 
 #signature-canvas {
   display: block;
@@ -265,114 +432,178 @@
   touch-action: none;
 }
 
-.signature-actions {
+.signature-footer {
   display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+
+.signature-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+  font-weight: 500;
+}
+
+.signature-status.signed {
+  color: var(--clr-success);
+}
+
+.signature-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--clr-gray-300);
+  flex-shrink: 0;
+}
+
+.signature-status.signed .signature-status__dot {
+  background: var(--clr-success);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(5,150,105,0.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(5,150,105,0); }
 }
 
 .signature-hint {
   font-size: var(--font-size-xs);
-  color: var(--clr-gray-500);
-  margin-top: var(--space-2);
+  color: var(--clr-gray-400);
   display: flex;
   align-items: center;
   gap: var(--space-1);
 }
 
+@media (min-width: 640px) {
+  #signature-canvas { height: 180px; }
+}
+
 /* ── Submit Section ───────────────────────────────────────── */
 .submit-section {
-  margin-top: var(--space-8);
-  padding-top: var(--space-6);
-  border-top: 1px solid var(--clr-gray-200);
+  margin-top: var(--space-6);
+}
+
+.submit-section .btn--primary {
+  height: 52px;
+  font-size: var(--font-size-md);
+  border-radius: var(--radius-xl);
+  letter-spacing: -0.01em;
 }
 
 .submit-note {
   font-size: var(--font-size-xs);
-  color: var(--clr-gray-500);
+  color: var(--clr-gray-400);
   text-align: center;
   margin-top: var(--space-3);
+  line-height: 1.6;
 }
 
 /* ── Success Screen ───────────────────────────────────────── */
 .success-screen {
   display: none;
+  animation: fadeIn 0.5s ease;
+}
+
+.success-screen.visible { display: block; }
+
+.success-screen__wrap {
+  max-width: 420px;
+  margin: var(--space-8) auto;
   text-align: center;
-  padding: var(--space-12) var(--space-6);
-  animation: fadeIn 0.4s ease;
+  padding: var(--space-6) var(--space-5);
 }
 
-.success-screen.visible {
-  display: block;
-}
-
-.success-screen__icon {
-  width: 80px;
-  height: 80px;
+.success-screen__lottie {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto var(--space-6);
   background: var(--clr-success-light);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto var(--space-6);
-  font-size: 2.5rem;
+  font-size: 3.5rem;
+  animation: successPop 0.5s var(--transition-spring);
+  box-shadow: 0 0 0 12px rgba(5,150,105,0.08), 0 0 0 24px rgba(5,150,105,0.04);
+}
+
+@keyframes successPop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
 }
 
 .success-screen__title {
   font-size: var(--font-size-2xl);
-  font-weight: 700;
+  font-weight: 800;
   color: var(--clr-gray-900);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.03em;
 }
 
 .success-screen__desc {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--clr-gray-500);
-  margin-bottom: var(--space-8);
-  max-width: 360px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-bottom: var(--space-6);
+  line-height: 1.7;
+}
+
+.success-screen__card {
+  background: var(--clr-success-light);
+  border: 1.5px solid var(--clr-success-mid);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .success-screen__time {
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  color: var(--clr-primary);
-  margin-bottom: var(--space-1);
+  font-size: var(--font-size-3xl);
+  font-weight: 800;
+  color: var(--clr-success);
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .success-screen__date {
   font-size: var(--font-size-sm);
-  color: var(--clr-gray-500);
-  margin-bottom: var(--space-8);
+  color: var(--clr-success);
+  opacity: 0.75;
+  margin-top: var(--space-1);
 }
 
-/* ── Form Grid (tablet+) ──────────────────────────────────── */
+/* ── Form Grid ────────────────────────────────────────────── */
 @media (min-width: 640px) {
   .form-grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0 var(--space-5);
   }
-
-  #signature-canvas {
-    height: 180px;
-  }
 }
 
-/* ── Loading State ────────────────────────────────────────── */
+/* ── Form Loading ─────────────────────────────────────────── */
 .form-loading {
   display: none;
   text-align: center;
-  padding: var(--space-8);
+  padding: var(--space-16) var(--space-6);
 }
 
-.form-loading.visible {
-  display: block;
+.form-loading.visible { display: block; }
+
+.form-loading__spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--clr-primary-mid);
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto var(--space-4);
 }
 
 .form-loading__text {
   font-size: var(--font-size-sm);
-  color: var(--clr-gray-500);
-  margin-top: var(--space-3);
+  color: var(--clr-gray-400);
+  font-weight: 500;
 }
