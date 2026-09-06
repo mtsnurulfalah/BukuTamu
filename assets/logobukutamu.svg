@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1000 1000"
+     width="1000"
+     height="1000">
+
+  <defs>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#149447"/>
+      <stop offset="100%" stop-color="#006B35"/>
+    </linearGradient>
+
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F4C542"/>
+      <stop offset="100%" stop-color="#D99A00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ========================= -->
+  <!-- EMBLEM -->
+  <!-- ========================= -->
+
+  <!-- Islamic arch -->
+  <path d="
+    M220 390
+    V290
+    C220 145 340 70 500 70
+    C660 70 780 145 780 290
+    V390
+    L735 350
+    V295
+    C735 190 640 125 500 125
+    C360 125 265 190 265 295
+    V350 Z"
+    fill="url(#green)"/>
+
+  <!-- Star -->
+  <path d="
+    M500 145
+    L514 177
+    L549 180
+    L522 203
+    L530 237
+    L500 219
+    L470 237
+    L478 203
+    L451 180
+    L486 177 Z"
+    fill="url(#gold)"/>
+
+  <!-- People -->
+  <circle cx="500" cy="315" r="62" fill="url(#green)"/>
+  <path d="
+    M405 490
+    C405 405 440 365 500 365
+    C560 365 595 405 595 490
+    L595 540
+    L405 540 Z"
+    fill="url(#green)"/>
+
+  <circle cx="335" cy="365" r="43" fill="#58B947"/>
+  <path d="
+    M275 495
+    C280 430 302 405 335 405
+    C365 405 390 430 395 485
+    L395 520
+    L275 520 Z"
+    fill="#58B947"/>
+
+  <circle cx="665" cy="365" r="43" fill="#58B947"/>
+  <path d="
+    M605 485
+    C610 430 635 405 665 405
+    C698 405 720 430 725 495
+    L725 520
+    L605 520 Z"
+    fill="#58B947"/>
+
+  <!-- Clipboard -->
+  <rect x="625" y="275" width="175" height="230"
+        rx="22" fill="none"
+        stroke="url(#green)"
+        stroke-width="22"/>
+
+  <rect x="675" y="250" width="75" height="40"
+        rx="12" fill="url(#green)"/>
+
+  <!-- Checklist -->
+  <path d="M650 335 l14 14 l25 -28"
+        fill="none" stroke="#159447"
+        stroke-width="13" stroke-linecap="round"
+        stroke-linejoin="round"/>
+  <line x1="710" y1="335" x2="770" y2="335"
+        stroke="#159447" stroke-width="13"
+        stroke-linecap="round"/>
+
+  <path d="M650 390 l14 14 l25 -28"
+        fill="none" stroke="#159447"
+        stroke-width="13" stroke-linecap="round"
+        stroke-linejoin="round"/>
+  <line x1="710" y1="390" x2="770" y2="390"
+        stroke="#159447" stroke-width="13"
+        stroke-linecap="round"/>
+
+  <path d="M650 445 l14 14 l25 -28"
+        fill="none" stroke="#159447"
+        stroke-width="13" stroke-linecap="round"
+        stroke-linejoin="round"/>
+  <line x1="710" y1="445" x2="770" y2="445"
+        stroke="#159447" stroke-width="13"
+        stroke-linecap="round"/>
+
+  <!-- Digital pixels -->
+  <rect x="815" y="255" width="38" height="38" rx="7" fill="#159447"/>
+  <rect x="865" y="300" width="30" height="30" rx="6" fill="#F0B928"/>
+  <rect x="820" y="315" width="38" height="38" rx="7" fill="#159447"/>
+  <rect x="870" y="360" width="25" height="25" rx="5" fill="#159447"/>
+
+  <!-- ========================= -->
+  <!-- OPEN BOOK -->
+  <!-- ========================= -->
+
+  <path d="
+    M105 560
+    C235 525 350 545 500 650
+    C650 545 765 525 895 560
+    L895 625
+    C750 590 650 610 500 720
+    C350 610 250 590 105 625 Z"
+    fill="url(#green)"/>
+
+  <path d="
+    M125 620
+    C260 590 355 615 500 715
+    C645 615 740 590 875 620
+    L875 665
+    C740 635 645 660 500 760
+    C355 660 260 635 125 665 Z"
+    fill="url(#gold)"/>
+
+  <path d="
+    M145 665
+    C280 635 370 665 500 760
+    C630 665 720 635 855 665
+    L855 715
+    C725 680 640 710 500 805
+    C360 710 275 680 145 715 Z"
+    fill="url(#green)"/>
+
+  <!-- ========================= -->
+  <!-- TITLE -->
+  <!-- ========================= -->
+
+  <text x="500" y="875"
+        text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="82"
+        font-weight="700"
+        fill="#006B35">
+    Buku Tamu
+  </text>
+
+  <text x="500" y="935"
+        text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="48"
+        font-weight="700"
+        fill="#159447">
+    MTs Nurul Falah
+  </text>
+
+  <!-- Gold ornaments -->
+  <rect x="115" y="915" width="85" height="12" rx="6"
+        fill="#F0B928"/>
+  <rect x="800" y="915" width="85" height="12" rx="6"
+        fill="#F0B928"/>
+
+</svg>
