@@ -1,60 +1,84 @@
 /**
- * login.js
- * Logic halaman login (/login.html).
+ * login.js — Halaman Login
  * ─────────────────────────────────────────────────────────
  * Alur:
- *   1. Cek jika sudah login → redirect sesuai role
- *   2. Handle submit form → callGAS('login', ...)
- *   3. Simpan session → redirect ke /satpam atau /admin
+ *   1. Cek jika sudah login → redirect langsung sesuai role
+ *   2. Load config sekolah → isi nama di UI
+ *   3. Handle submit form → callGAS('login', ...)
+ *   4. Simpan session → redirect ke /satpam atau /admin
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-  // ── Cek jika sudah login ─────────────────────────────────
+'use strict';
+
+document.addEventListener('DOMContentLoaded', async () => {
+
+  // ── 1. Redirect jika sudah login ──────────────────────────
   const session = getSession();
   if (session && session.token) {
     _redirectByRole(session.role);
+    return; // Hentikan eksekusi — redirect sedang berlangsung
+  }
+
+  // ── 2. Isi UI awal ─────────────────────────────────────────
+  _setYear();
+  _setAppName(CONFIG.APP_NAME);
+
+  // Load config sekolah untuk isi nama — best-effort (tidak blocking)
+  _loadSchoolName();
+
+  // ── 3. Referensi elemen DOM ────────────────────────────────
+  const form          = document.getElementById('login-form');
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const btnLogin      = document.getElementById('btn-login');
+  const toggleBtn     = document.getElementById('toggle-password');
+  const toggleIcon    = document.getElementById('toggle-icon');
+
+  // Guard: pastikan semua elemen wajib ada
+  if (!form || !usernameInput || !passwordInput || !btnLogin) {
+    console.error('login.js: elemen form tidak ditemukan di DOM.');
     return;
   }
 
-  // ── Isi tahun di footer ──────────────────────────────────
-  const yearEl = document.getElementById('year');
-  if (yearEl) yearEl.textContent = new Date().getFullYear();
-
-  // ── Isi nama aplikasi dari CONFIG ────────────────────────
-  const appNameEl = document.getElementById('app-name');
-  if (appNameEl) appNameEl.textContent = CONFIG.APP_NAME;
-
-  // ── Referensi elemen ─────────────────────────────────────
-  const form         = document.getElementById('login-form');
-  const usernameInput = document.getElementById('username');
-  const passwordInput = document.getElementById('password');
-  const btnLogin     = document.getElementById('btn-login');
-  const errorBox     = document.getElementById('login-error');
-  const errorText    = document.getElementById('login-error-text');
-  const toggleBtn    = document.getElementById('toggle-password');
-  const toggleIcon   = document.getElementById('toggle-icon');
-
-  // ── Toggle Tampilkan Password ────────────────────────────
+  // ── 4. Toggle tampilkan password ───────────────────────────
   if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
       const isPassword = passwordInput.type === 'password';
       passwordInput.type = isPassword ? 'text' : 'password';
-      toggleIcon.textContent = isPassword ? '🙈' : '👁️';
-      toggleBtn.setAttribute('aria-label',
+
+      // FIX L2: null guard pada toggleIcon
+      if (toggleIcon) {
+        toggleIcon.textContent = isPassword ? '🙈' : '👁️';
+      }
+      toggleBtn.setAttribute(
+        'aria-label',
         isPassword ? 'Sembunyikan password' : 'Tampilkan password'
       );
+      // Kembalikan fokus ke input password setelah toggle
+      passwordInput.focus();
     });
   }
 
-  // ── Hide error saat user mulai mengetik ──────────────────
-  [usernameInput, passwordInput].forEach(input => {
-    input.addEventListener('input', () => {
-      _hideError();
-      input.classList.remove('is-invalid');
-    });
+  // ── 5. Sembunyikan error saat user mengetik ────────────────
+  usernameInput.addEventListener('input', () => {
+    _hideError();
+    usernameInput.classList.remove('is-invalid');
   });
 
-  // ── Submit Form ──────────────────────────────────────────
+  passwordInput.addEventListener('input', () => {
+    _hideError();
+    passwordInput.classList.remove('is-invalid');
+  });
+
+  // FIX L10: Enter di username → pindah fokus ke password
+  usernameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      passwordInput.focus();
+    }
+  });
+
+  // ── 6. Submit form ──────────────────────────────────────────
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     _hideError();
@@ -64,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Validasi client-side
     let hasError = false;
+
     if (!username) {
       usernameInput.classList.add('is-invalid');
       hasError = true;
@@ -74,11 +99,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (hasError) {
       _showError('Username dan password wajib diisi.');
-      usernameInput.focus();
+      // Fokus ke field yang kosong pertama
+      if (!username) usernameInput.focus();
+      else passwordInput.focus();
       return;
     }
 
-    // Set loading state
+    // Set loading
     setButtonLoading(btnLogin);
 
     try {
@@ -90,16 +117,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Simpan session
         saveSession(token, role, nama, uname);
 
-        // Feedback sukses
+        // Feedback sukses sebelum redirect
         showToast(`Selamat datang, ${nama}! 👋`, 'success', 2000);
 
-        // Tunda sedikit agar toast terlihat, lalu redirect
+        // Tunda agar toast terlihat, lalu redirect
         setTimeout(() => {
-          // Cek apakah ada halaman tujuan yang disimpan sebelumnya
           const redirectTarget = sessionStorage.getItem('btamu_redirect');
           sessionStorage.removeItem('btamu_redirect');
 
-          if (redirectTarget && redirectTarget !== '/login') {
+          if (redirectTarget && redirectTarget !== '/login' && redirectTarget !== '/login.html') {
             window.location.href = redirectTarget;
           } else {
             _redirectByRole(role);
@@ -107,55 +133,110 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
 
       } else {
+        // Login gagal dari GAS
         _showError(result.message || 'Username atau password salah.');
+        // FIX L3: clear password di semua kondisi gagal, termasuk saat dari catch
         passwordInput.value = '';
-        passwordInput.classList.add('is-invalid');
         usernameInput.classList.add('is-invalid');
+        passwordInput.classList.add('is-invalid');
         resetButtonLoading(btnLogin, false);
         usernameInput.focus();
       }
 
-    } catch (err) {
-      _showError('Terjadi kesalahan. Periksa koneksi internet Anda.');
+    } catch (_err) {
+      // Error jaringan / timeout
+      _showError('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
+      // FIX L3: clear password di catch block juga
+      passwordInput.value = '';
       resetButtonLoading(btnLogin, false);
+      usernameInput.focus();
     }
   });
 
-  // Fokus ke username saat halaman dibuka
-  usernameInput.focus();
+  // ── 7. Fokus ke username saat halaman siap ──────────────────
+  // Tunda sedikit agar animasi slideUp tidak terpotong
+  setTimeout(() => usernameInput.focus(), 100);
 });
 
-// ── Private Helpers ───────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+// PRIVATE HELPERS
+// ════════════════════════════════════════════════════════════
 
 /**
  * Redirect ke dashboard sesuai role.
  * @param {string} role
  */
 function _redirectByRole(role) {
-  if (role === ROLES.ADMIN) {
-    window.location.href = '/admin';
-  } else {
-    window.location.href = '/satpam';
-  }
+  window.location.href = role === ROLES.ADMIN ? '/admin' : '/satpam';
 }
 
 /**
- * Tampilkan kotak error login.
+ * FIX L9: Tampilkan kotak error dengan re-trigger animasi.
  * @param {string} message
  */
 function _showError(message) {
-  const errorBox  = document.getElementById('login-error');
-  const errorText = document.getElementById('login-error-text');
-  if (errorBox && errorText) {
-    errorText.textContent = message;
-    errorBox.classList.add('visible');
-  }
+  const box  = document.getElementById('login-error');
+  const text = document.getElementById('login-error-text');
+  if (!box || !text) return;
+
+  text.textContent = message;
+
+  // Re-trigger animasi: hapus class → force reflow → tambah lagi
+  box.classList.remove('visible');
+  void box.offsetHeight; // trigger reflow
+  box.classList.add('visible');
 }
 
 /**
  * Sembunyikan kotak error login.
  */
 function _hideError() {
-  const errorBox = document.getElementById('login-error');
-  if (errorBox) errorBox.classList.remove('visible');
+  const box = document.getElementById('login-error');
+  if (box) box.classList.remove('visible');
+}
+
+/**
+ * Isi tahun di footer.
+ */
+function _setYear() {
+  const el = document.getElementById('year');
+  if (el) el.textContent = new Date().getFullYear();
+}
+
+/**
+ * Isi nama aplikasi/sekolah di elemen UI.
+ * @param {string} name
+ */
+function _setAppName(name) {
+  const appNameEl  = document.getElementById('app-name');
+  const brandEl    = document.getElementById('brand-school-name');
+  const mobileTitle = document.getElementById('login-mobile-title');
+
+  if (appNameEl)   appNameEl.textContent  = name;
+  if (brandEl)     brandEl.textContent    = name;
+  if (mobileTitle) mobileTitle.textContent = name;
+}
+
+/**
+ * FIX L11: Load nama sekolah dari GAS config dan update UI.
+ * Best-effort — halaman tetap berfungsi jika gagal.
+ */
+async function _loadSchoolName() {
+  try {
+    const result = await callGAS('getConfig');
+    if (result?.status === 'ok' && result.data?.nama_sekolah) {
+      _setAppName(result.data.nama_sekolah);
+
+      // Update page title juga
+      document.title = `Login — ${result.data.nama_sekolah}`;
+
+      // Update subtitle jika ada
+      const subEl = document.getElementById('login-brand-sub');
+      if (subEl && result.data.alamat_sekolah) {
+        subEl.textContent = result.data.alamat_sekolah;
+      }
+    }
+  } catch (_) {
+    // Gagal load config — biarkan default
+  }
 }
