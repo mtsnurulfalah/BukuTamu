@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="description" content="Login — Buku Tamu Digital Sekolah" />
+  <title>Login — Buku Tamu Digital</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/global.css" />
+  <link rel="stylesheet" href="/css/login.css" />
+</head>
+<body class="login-page">
+
+  <!-- Background Decoration -->
+  <div class="login-bg-decor" aria-hidden="true">
+    <div class="login-bg-decor__circle"></div>
+    <div class="login-bg-decor__circle"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" role="alert" aria-live="polite"></div>
+
+  <!-- Login Wrapper -->
+  <main class="login-wrapper">
+    <div class="login-card">
+
+      <!-- Logo & Title -->
+      <div class="login-logo">
+        <div class="login-logo__icon" aria-hidden="true">🏫</div>
+        <h1 class="login-logo__title" id="app-name">Buku Tamu Digital</h1>
+        <p class="login-logo__subtitle">Masuk untuk mengakses dashboard</p>
+      </div>
+
+      <!-- Error Message -->
+      <div class="login-error" id="login-error" role="alert">
+        <span>⚠️</span>
+        <span id="login-error-text">Username atau password salah.</span>
+      </div>
+
+      <!-- Login Form -->
+      <form class="login-form" id="login-form" novalidate>
+
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            class="form-control"
+            placeholder="Masukkan username"
+            autocomplete="username"
+            autocapitalize="none"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="password-wrapper">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              class="form-control"
+              placeholder="Masukkan password"
+              autocomplete="current-password"
+              required
+            />
+            <button
+              type="button"
+              class="password-toggle"
+              id="toggle-password"
+              aria-label="Tampilkan/sembunyikan password"
+            >
+              <span id="toggle-icon">👁️</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="login-submit">
+          <button type="submit" class="btn btn--primary btn--full" id="btn-login">
+            <span class="btn__spinner"></span>
+            <span class="btn__text">🔐 Masuk</span>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Footer -->
+      <div class="login-footer">
+        <p>Buku Tamu Digital &copy; <span id="year"></span></p>
+        <p style="margin-top:4px;">
+          <a href="/" style="color:var(--clr-primary);">← Kembali ke Form Tamu</a>
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/login.js"></script>
+
+</body>
+</html>

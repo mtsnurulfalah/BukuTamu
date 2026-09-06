@@ -1,0 +1,172 @@
+/* ============================================================
+   login.css — Halaman Login (Mobile First)
+   ============================================================ */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, var(--clr-primary-dark) 0%, var(--clr-primary) 50%, var(--clr-accent) 100%);
+}
+
+/* ── Login Center Wrapper ─────────────────────────────────── */
+.login-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  min-height: 100vh;
+}
+
+/* ── Login Card ───────────────────────────────────────────── */
+.login-card {
+  background: var(--clr-white);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8) var(--space-6);
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.3s ease;
+}
+
+/* ── Login Header ─────────────────────────────────────────── */
+.login-logo {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.login-logo__icon {
+  width: 72px;
+  height: 72px;
+  background: var(--clr-primary);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-4);
+  font-size: 2rem;
+  color: var(--clr-white);
+  box-shadow: var(--shadow-md);
+}
+
+.login-logo__title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--clr-gray-900);
+  margin-bottom: var(--space-1);
+}
+
+.login-logo__subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-500);
+}
+
+/* ── Login Form ───────────────────────────────────────────── */
+.login-form {
+  margin-top: var(--space-2);
+}
+
+.login-form .form-group {
+  margin-bottom: var(--space-4);
+}
+
+/* ── Password Input Wrapper ───────────────────────────────── */
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper .form-control {
+  padding-right: var(--space-12);
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--clr-gray-400);
+  font-size: 1.1rem;
+  transition: color var(--transition);
+}
+
+.password-toggle:hover {
+  color: var(--clr-gray-700);
+}
+
+/* ── Error Box ────────────────────────────────────────────── */
+.login-error {
+  display: none;
+  background: var(--clr-danger-light);
+  color: var(--clr-danger);
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-4);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.login-error.visible {
+  display: flex;
+}
+
+/* ── Submit Button ────────────────────────────────────────── */
+.login-submit {
+  margin-top: var(--space-2);
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+.login-footer {
+  text-align: center;
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--clr-gray-100);
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+}
+
+/* ── Background decoration ─────────────────────────────────── */
+.login-bg-decor {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.login-bg-decor__circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.login-bg-decor__circle:nth-child(1) {
+  width: 300px;
+  height: 300px;
+  top: -100px;
+  right: -80px;
+}
+
+.login-bg-decor__circle:nth-child(2) {
+  width: 200px;
+  height: 200px;
+  bottom: -60px;
+  left: -60px;
+}
+
+.login-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 640px) {
+  .login-card {
+    padding: var(--space-10) var(--space-8);
+  }
+}

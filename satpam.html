@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="description" content="Dashboard Satpam — Buku Tamu Digital" />
+  <title>Dashboard Satpam — Buku Tamu Digital</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/global.css" />
+  <link rel="stylesheet" href="/css/satpam.css" />
+</head>
+<body class="satpam-page">
+
+  <!-- Toast Container -->
+  <div id="toast-container" role="alert" aria-live="polite"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar" role="navigation" aria-label="Navigasi utama">
+    <div class="navbar__brand">
+      <span aria-hidden="true">🏫</span>
+      <span id="nav-school-name">Buku Tamu</span>
+    </div>
+    <div class="navbar__right">
+      <span class="navbar__badge" id="active-count" aria-label="Jumlah tamu aktif">0</span>
+      <span class="navbar__user" id="nav-user-name"></span>
+      <button
+        class="btn btn--ghost btn--sm"
+        id="btn-logout"
+        style="color:rgba(255,255,255,0.85)"
+        aria-label="Keluar"
+      >
+        🚪 Keluar
+      </button>
+    </div>
+  </nav>
+
+  <!-- Notification Banner -->
+  <div
+    class="notif-banner"
+    id="notif-banner"
+    role="status"
+    aria-live="polite"
+    tabindex="0"
+  >
+    <!-- Diisi JS saat ada tamu baru -->
+  </div>
+
+  <!-- Stats Strip -->
+  <section class="stats-strip" aria-label="Statistik tamu hari ini">
+    <div class="stats-strip__item stats-strip__item--active">
+      <div class="stats-strip__value" id="stat-aktif">0</div>
+      <div class="stats-strip__label">Sedang Hadir</div>
+    </div>
+    <div class="stats-strip__item">
+      <div class="stats-strip__value" id="stat-hari-ini">0</div>
+      <div class="stats-strip__label">Total Hari Ini</div>
+    </div>
+    <div class="stats-strip__item">
+      <div class="stats-strip__value" id="stat-pulang">0</div>
+      <div class="stats-strip__label">Sudah Pulang</div>
+    </div>
+  </section>
+
+  <!-- Dashboard Header -->
+  <div class="dashboard-header">
+    <div>
+      <div class="dashboard-header__title">Tamu Sedang Hadir</div>
+      <div class="refresh-indicator" id="last-refresh">Memuat...</div>
+    </div>
+    <div class="dashboard-header__actions">
+      <button
+        class="btn btn--outline btn--sm"
+        id="btn-refresh"
+        aria-label="Perbarui data"
+      >
+        🔄 Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Search Bar -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <span class="search-input-wrap__icon" aria-hidden="true">🔍</span>
+      <input
+        type="search"
+        class="form-control"
+        id="search-input"
+        placeholder="Cari nama tamu..."
+        aria-label="Cari tamu berdasarkan nama"
+      />
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main id="main-content">
+
+    <!-- Skeleton Loader -->
+    <div id="skeleton-loader" class="tamu-list" aria-label="Memuat data...">
+      <div class="tamu-card" aria-hidden="true">
+        <div class="skeleton skeleton--text" style="width:60%;height:1.2em;"></div>
+        <div class="skeleton skeleton--text-sm" style="margin-top:8px;"></div>
+        <div class="skeleton skeleton--card" style="height:60px;margin-top:12px;"></div>
+      </div>
+      <div class="tamu-card" aria-hidden="true">
+        <div class="skeleton skeleton--text" style="width:70%;height:1.2em;"></div>
+        <div class="skeleton skeleton--text-sm" style="margin-top:8px;"></div>
+        <div class="skeleton skeleton--card" style="height:60px;margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- Card List (Mobile) -->
+    <div class="tamu-list" id="tamu-card-list" style="display:none;" role="list" aria-label="Daftar tamu aktif">
+      <!-- Diisi oleh JS -->
+    </div>
+
+    <!-- Table (Desktop) -->
+    <div class="tamu-table-wrap" id="tamu-table-wrap" style="display:none;">
+      <div class="table-wrapper">
+        <table class="table" id="tamu-table" aria-label="Tabel tamu aktif">
+          <thead>
+            <tr>
+              <th scope="col">Nama</th>
+              <th scope="col">Jenis Tamu</th>
+              <th scope="col">Jam Datang</th>
+              <th scope="col">Keperluan</th>
+              <th scope="col">Bertemu</th>
+              <th scope="col">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tamu-table-body">
+            <!-- Diisi oleh JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state" style="display:none;" role="status">
+      <div class="empty-state__icon" aria-hidden="true">🎉</div>
+      <div class="empty-state__title">Tidak ada tamu aktif</div>
+      <div class="empty-state__desc">Saat ini tidak ada tamu yang sedang berkunjung.</div>
+    </div>
+
+  </main>
+
+  <!-- ── Bottom Sheet: Catat Pulang ───────────────────────── -->
+  <div class="bottom-sheet" id="sheet-pulang" role="dialog" aria-modal="true" aria-labelledby="sheet-pulang-title">
+    <div class="bottom-sheet__backdrop" id="sheet-pulang-backdrop"></div>
+    <div class="bottom-sheet__content">
+      <div class="bottom-sheet__handle" aria-hidden="true"></div>
+      <h2 class="modal__title" id="sheet-pulang-title">Catat Jam Pulang</h2>
+
+      <div class="catat-pulang-info">
+        <div class="catat-pulang-info__name" id="pulang-nama">—</div>
+        <div class="catat-pulang-info__meta" id="pulang-meta">—</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-jam-pulang">Jam Pulang</label>
+        <input
+          type="time"
+          id="input-jam-pulang"
+          class="form-control"
+          required
+        />
+      </div>
+
+      <div class="catat-pulang-actions">
+        <button
+          class="btn btn--secondary"
+          id="btn-batal-pulang"
+        >
+          Batal
+        </button>
+        <button
+          class="btn btn--success"
+          id="btn-confirm-pulang"
+        >
+          <span class="btn__spinner"></span>
+          <span class="btn__text">✅ Konfirmasi Pulang</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Detail Tamu ───────────────────────────────── -->
+  <div class="modal-backdrop" id="modal-detail" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
+    <div class="modal">
+      <div class="modal__handle" aria-hidden="true"></div>
+      <button class="modal__close" id="btn-close-detail" aria-label="Tutup detail">✕</button>
+      <h2 class="modal__title" id="modal-detail-title">Detail Tamu</h2>
+      <div id="modal-detail-content">
+        <!-- Diisi oleh JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/satpam.js"></script>
+
+</body>
+</html>

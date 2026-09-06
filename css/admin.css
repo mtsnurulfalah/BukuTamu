@@ -1,0 +1,376 @@
+/* ============================================================
+   admin.css — Dashboard Admin (Mobile First)
+   ============================================================ */
+
+.admin-page {
+  min-height: 100vh;
+  background: var(--clr-gray-50);
+}
+
+/* ── Admin Tabs Navigation ────────────────────────────────── */
+.admin-nav {
+  background: var(--clr-white);
+  border-bottom: 1px solid var(--clr-gray-200);
+  padding: var(--space-3) var(--space-4);
+  position: sticky;
+  top: 56px;
+  z-index: 40;
+}
+
+.admin-nav .tabs {
+  max-width: 100%;
+}
+
+/* ── Page Sections ────────────────────────────────────────── */
+.admin-section {
+  padding: var(--space-5) var(--space-4);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 640px) {
+  .admin-section {
+    padding: var(--space-6) var(--space-6);
+  }
+}
+
+/* ── Stats Grid ───────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+@media (min-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+.stat-card--primary {
+  border-left: 4px solid var(--clr-primary);
+}
+.stat-card--success {
+  border-left: 4px solid var(--clr-success);
+}
+.stat-card--warning {
+  border-left: 4px solid var(--clr-warning);
+}
+.stat-card--info {
+  border-left: 4px solid var(--clr-accent);
+}
+
+.stat-card__icon {
+  margin-bottom: var(--space-2);
+  font-size: 1.5rem;
+}
+
+/* ── Charts Section ───────────────────────────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+@media (min-width: 640px) {
+  .charts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.chart-card {
+  background: var(--clr-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  border: 1px solid var(--clr-gray-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-card__title {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--clr-gray-700);
+  margin-bottom: var(--space-4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Trend Chart (7 hari) ─────────────────────────────────── */
+.trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  height: 80px;
+}
+
+.trend-chart__bar {
+  flex: 1;
+  background: var(--clr-primary);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  min-height: 4px;
+  position: relative;
+  transition: height 0.5s ease;
+}
+
+.trend-chart__bar:hover::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--clr-gray-800);
+  color: var(--clr-white);
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.trend-chart__label-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.trend-chart__label {
+  flex: 1;
+  text-align: center;
+  font-size: 10px;
+  color: var(--clr-gray-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Filter Bar ───────────────────────────────────────────── */
+.filter-bar {
+  background: var(--clr-white);
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.filter-bar__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.filter-bar__label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--clr-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-1);
+}
+
+.filter-bar .form-control {
+  min-height: 40px;
+  font-size: var(--font-size-sm);
+}
+
+.filter-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+@media (min-width: 640px) {
+  .filter-bar__row {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .filter-bar__row > * {
+    flex: 1;
+    min-width: 160px;
+  }
+}
+
+/* ── Rekap Tabel Section ──────────────────────────────────── */
+.rekap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.rekap-header__title {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--clr-gray-900);
+}
+
+.rekap-header__count {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-500);
+}
+
+/* ── Manajemen Staf ───────────────────────────────────────── */
+.staf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.staf-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.staf-card {
+  background: var(--clr-white);
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.staf-card.inactive {
+  opacity: 0.6;
+}
+
+.staf-card__avatar {
+  width: 44px;
+  height: 44px;
+  background: var(--clr-primary-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  flex-shrink: 0;
+}
+
+.staf-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.staf-card__name {
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  color: var(--clr-gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.staf-card__jabatan {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-500);
+  margin-top: 2px;
+}
+
+.staf-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ── Add/Edit Staf Form ───────────────────────────────────── */
+.staf-form-card {
+  background: var(--clr-primary-light);
+  border: 1.5px solid var(--clr-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+  display: none;
+  animation: slideUp 0.2s ease;
+}
+
+.staf-form-card.visible {
+  display: block;
+}
+
+.staf-form-card__title {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--clr-primary-dark);
+  margin-bottom: var(--space-4);
+}
+
+.staf-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .staf-form-row {
+    flex-direction: row;
+  }
+  .staf-form-row > .form-group {
+    flex: 1;
+    margin-bottom: 0;
+  }
+}
+
+/* ── Export Button ────────────────────────────────────────── */
+.export-btn {
+  background: var(--clr-success);
+  color: var(--clr-white);
+}
+
+.export-btn:hover {
+  background: #15803d;
+}
+
+/* ── Detail Modal (admin) ─────────────────────────────────── */
+.detail-badge-row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+/* ── Notification Panel ───────────────────────────────────── */
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--clr-danger);
+  border-radius: 50%;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}
+
+/* ── Users Section placeholder ────────────────────────────── */
+.section-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--clr-gray-900);
+  margin-bottom: var(--space-4);
+}
+
+.section-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-500);
+  margin-bottom: var(--space-5);
+}

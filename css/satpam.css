@@ -1,0 +1,301 @@
+/* ============================================================
+   satpam.css — Dashboard Satpam (Mobile First)
+   ============================================================ */
+
+.satpam-page {
+  min-height: 100vh;
+  background: var(--clr-gray-50);
+}
+
+/* ── Dashboard Header Bar ─────────────────────────────────── */
+.dashboard-header {
+  background: var(--clr-white);
+  border-bottom: 1px solid var(--clr-gray-200);
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.dashboard-header__title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--clr-gray-900);
+}
+
+.dashboard-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Summary Stats Strip ──────────────────────────────────── */
+.stats-strip {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--clr-white);
+  border-bottom: 1px solid var(--clr-gray-200);
+}
+
+.stats-strip__item {
+  flex-shrink: 0;
+  background: var(--clr-primary-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  min-width: 120px;
+  text-align: center;
+}
+
+.stats-strip__item--active {
+  background: var(--clr-primary);
+  color: var(--clr-white);
+}
+
+.stats-strip__value {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--clr-primary);
+  line-height: 1;
+}
+
+.stats-strip__item--active .stats-strip__value {
+  color: var(--clr-white);
+}
+
+.stats-strip__label {
+  font-size: var(--font-size-xs);
+  color: var(--clr-primary);
+  font-weight: 600;
+  margin-top: var(--space-1);
+}
+
+.stats-strip__item--active .stats-strip__label {
+  color: rgba(255,255,255,0.85);
+}
+
+/* ── Search Bar ───────────────────────────────────────────── */
+.search-bar {
+  padding: var(--space-4);
+  background: var(--clr-white);
+  border-bottom: 1px solid var(--clr-gray-200);
+}
+
+.search-input-wrap {
+  position: relative;
+}
+
+.search-input-wrap__icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--clr-gray-400);
+  pointer-events: none;
+  font-size: 1rem;
+}
+
+.search-input-wrap .form-control {
+  padding-left: var(--space-10);
+}
+
+/* ── List Container ───────────────────────────────────────── */
+.tamu-list {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Desktop Table (hidden on mobile) ────────────────────── */
+.tamu-table-wrap {
+  display: none;
+  padding: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .tamu-list {
+    display: none;
+  }
+  .tamu-table-wrap {
+    display: block;
+  }
+}
+
+/* ── Card Action Buttons ──────────────────────────────────── */
+.btn-pulang {
+  background: var(--clr-success);
+  color: var(--clr-white);
+  flex: 1;
+}
+
+.btn-pulang:hover {
+  background: #15803d;
+}
+
+.btn-detail {
+  background: var(--clr-gray-100);
+  color: var(--clr-gray-700);
+  border: 1.5px solid var(--clr-gray-200);
+}
+
+.btn-detail:hover {
+  background: var(--clr-gray-200);
+}
+
+/* ── Bottom Sheet (mobile modal for Catat Pulang) ─────────── */
+.bottom-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-backdrop);
+  display: none;
+}
+
+.bottom-sheet.active {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.bottom-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  animation: fadeIn 0.2s ease;
+}
+
+.bottom-sheet__content {
+  position: relative;
+  background: var(--clr-white);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--space-6) var(--space-5);
+  animation: slideUp 0.3s ease;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.bottom-sheet__handle {
+  width: 40px;
+  height: 4px;
+  background: var(--clr-gray-300);
+  border-radius: var(--radius-full);
+  margin: 0 auto var(--space-5);
+}
+
+/* ── Jam Pulang Confirmation ──────────────────────────────── */
+.catat-pulang-info {
+  background: var(--clr-gray-50);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--clr-gray-200);
+}
+
+.catat-pulang-info__name {
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-1);
+}
+
+.catat-pulang-info__meta {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-500);
+}
+
+.catat-pulang-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.catat-pulang-actions .btn {
+  flex: 1;
+}
+
+/* ── Detail Modal Signature ───────────────────────────────── */
+.detail-signature {
+  margin-top: var(--space-3);
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  background: var(--clr-gray-50);
+}
+
+.detail-signature img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ── Auto refresh info ────────────────────────────────────── */
+.refresh-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  background: var(--clr-white);
+  border-bottom: 1px solid var(--clr-gray-100);
+}
+
+.refresh-bar__text {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+}
+
+.refresh-bar__btn {
+  font-size: var(--font-size-xs);
+  color: var(--clr-primary);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-2);
+  min-height: unset;
+}
+
+/* ── Desktop adjustments ──────────────────────────────────── */
+@media (min-width: 640px) {
+  .dashboard-header {
+    padding: var(--space-5) var(--space-6);
+  }
+
+  .stats-strip {
+    padding: var(--space-4) var(--space-6);
+    gap: var(--space-4);
+  }
+
+  .tamu-list {
+    padding: var(--space-5) var(--space-6);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+@media (min-width: 1024px) {
+  .tamu-table-wrap {
+    padding: var(--space-5) var(--space-6);
+  }
+
+  .bottom-sheet__content {
+    max-width: 480px;
+    margin: auto;
+    border-radius: var(--radius-xl);
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    bottom: unset;
+    max-height: 80vh;
+  }
+
+  .bottom-sheet__handle {
+    display: none;
+  }
+
+  .bottom-sheet.active {
+    align-items: center;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="description" content="Dashboard Admin — Buku Tamu Digital" />
+  <title>Dashboard Admin — Buku Tamu Digital</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/global.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-page">
+
+  <!-- Toast Container -->
+  <div id="toast-container" role="alert" aria-live="polite"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar" role="navigation" aria-label="Navigasi utama">
+    <div class="navbar__brand">
+      <span aria-hidden="true">🏫</span>
+      <span id="nav-school-name">Buku Tamu</span>
+    </div>
+    <div class="navbar__right">
+      <div style="position:relative;display:inline-flex;">
+        <span class="navbar__badge" id="notif-count" style="display:none;" aria-label="Notifikasi tamu baru">0</span>
+      </div>
+      <span class="navbar__user" id="nav-user-name"></span>
+      <button
+        class="btn btn--ghost btn--sm"
+        id="btn-logout"
+        style="color:rgba(255,255,255,0.85)"
+        aria-label="Keluar"
+      >
+        🚪 Keluar
+      </button>
+    </div>
+  </nav>
+
+  <!-- Notification Banner -->
+  <div
+    class="notif-banner"
+    id="notif-banner"
+    role="status"
+    aria-live="polite"
+    tabindex="0"
+  ></div>
+
+  <!-- Tab Navigation -->
+  <nav class="admin-nav" aria-label="Navigasi section admin">
+    <div class="tabs" role="tablist">
+      <button
+        class="tab-btn active"
+        id="tab-ringkasan"
+        role="tab"
+        aria-selected="true"
+        aria-controls="pane-ringkasan"
+      >
+        📊 Ringkasan
+      </button>
+      <button
+        class="tab-btn"
+        id="tab-rekap"
+        role="tab"
+        aria-selected="false"
+        aria-controls="pane-rekap"
+      >
+        📋 Rekap Tamu
+      </button>
+      <button
+        class="tab-btn"
+        id="tab-staf"
+        role="tab"
+        aria-selected="false"
+        aria-controls="pane-staf"
+      >
+        👥 Staf
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="main-content">
+
+    <!-- ── TAB: RINGKASAN ──────────────────────────────────── -->
+    <div
+      class="tab-pane active admin-section"
+      id="pane-ringkasan"
+      role="tabpanel"
+      aria-labelledby="tab-ringkasan"
+    >
+      <div class="page-header">
+        <h1 class="page-header__title">Ringkasan</h1>
+        <p class="page-header__subtitle" id="ringkasan-date">—</p>
+      </div>
+
+      <!-- Stat Cards Grid -->
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card stat-card--primary">
+          <div class="stat-card__icon" aria-hidden="true">👥</div>
+          <div class="stat-card__label">Tamu Hari Ini</div>
+          <div class="stat-card__value" id="stat-hari-ini">
+            <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
+          </div>
+          <div class="stat-card__sub" id="stat-hari-ini-sub">—</div>
+        </div>
+        <div class="stat-card stat-card--success">
+          <div class="stat-card__icon" aria-hidden="true">🟢</div>
+          <div class="stat-card__label">Sedang Hadir</div>
+          <div class="stat-card__value" id="stat-aktif">
+            <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
+          </div>
+          <div class="stat-card__sub">tamu aktif saat ini</div>
+        </div>
+        <div class="stat-card stat-card--warning">
+          <div class="stat-card__icon" aria-hidden="true">📅</div>
+          <div class="stat-card__label">Total Bulan Ini</div>
+          <div class="stat-card__value" id="stat-bulan-ini">
+            <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
+          </div>
+          <div class="stat-card__sub" id="stat-bulan-sub">—</div>
+        </div>
+        <div class="stat-card stat-card--info">
+          <div class="stat-card__icon" aria-hidden="true">🏆</div>
+          <div class="stat-card__label">Terbanyak</div>
+          <div class="stat-card__value" id="stat-terbanyak" style="font-size:1rem;">
+            <div class="skeleton skeleton--text" style="width:80px;height:1.2rem;"></div>
+          </div>
+          <div class="stat-card__sub" id="stat-terbanyak-count">—</div>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="charts-grid">
+        <!-- Breakdown per jenis tamu -->
+        <div class="chart-card">
+          <div class="chart-card__title">Jenis Tamu</div>
+          <div class="bar-chart" id="chart-jenis">
+            <div class="skeleton skeleton--text" style="height:10px;margin-bottom:12px;"></div>
+            <div class="skeleton skeleton--text" style="height:10px;margin-bottom:12px;width:80%;"></div>
+            <div class="skeleton skeleton--text" style="height:10px;margin-bottom:12px;width:60%;"></div>
+            <div class="skeleton skeleton--text" style="height:10px;margin-bottom:12px;width:40%;"></div>
+          </div>
+        </div>
+
+        <!-- Tren 7 hari -->
+        <div class="chart-card">
+          <div class="chart-card__title">Tren 7 Hari Terakhir</div>
+          <div class="trend-chart" id="trend-chart">
+            <!-- Diisi JS -->
+          </div>
+          <div class="trend-chart__label-row" id="trend-labels">
+            <!-- Diisi JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: REKAP TAMU ─────────────────────────────────── -->
+    <div
+      class="tab-pane admin-section"
+      id="pane-rekap"
+      role="tabpanel"
+      aria-labelledby="tab-rekap"
+    >
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-bar__row">
+          <div>
+            <div class="filter-bar__label">Dari Tanggal</div>
+            <input type="date" id="filter-dari" class="form-control" aria-label="Filter dari tanggal" />
+          </div>
+          <div>
+            <div class="filter-bar__label">Sampai Tanggal</div>
+            <input type="date" id="filter-sampai" class="form-control" aria-label="Filter sampai tanggal" />
+          </div>
+          <div>
+            <div class="filter-bar__label">Jenis Tamu</div>
+            <select id="filter-jenis" class="form-control" aria-label="Filter jenis tamu">
+              <option value="">Semua Jenis</option>
+              <!-- Diisi JS -->
+            </select>
+          </div>
+          <div>
+            <div class="filter-bar__label">Cari Nama</div>
+            <input
+              type="search"
+              id="filter-search"
+              class="form-control"
+              placeholder="Cari nama..."
+              aria-label="Cari berdasarkan nama"
+            />
+          </div>
+        </div>
+        <div class="filter-actions">
+          <button class="btn btn--primary btn--sm" id="btn-filter">
+            🔍 Terapkan Filter
+          </button>
+          <button class="btn btn--secondary btn--sm" id="btn-reset-filter">
+            ↩️ Reset
+          </button>
+          <button class="btn export-btn btn--sm" id="btn-export">
+            <span class="btn__spinner"></span>
+            <span class="btn__text">📥 Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Header -->
+      <div class="rekap-header">
+        <div>
+          <div class="rekap-header__title">Data Kunjungan</div>
+          <div class="rekap-header__count" id="rekap-count">Memuat...</div>
+        </div>
+      </div>
+
+      <!-- Tabel -->
+      <div class="table-wrapper" id="rekap-table-wrapper">
+        <table class="table" id="rekap-table" aria-label="Tabel rekap tamu">
+          <thead>
+            <tr>
+              <th scope="col">Tanggal</th>
+              <th scope="col">Nama</th>
+              <th scope="col">Jenis</th>
+              <th scope="col">Instansi</th>
+              <th scope="col">Jam Datang</th>
+              <th scope="col">Jam Pulang</th>
+              <th scope="col">Status</th>
+              <th scope="col">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="rekap-table-body">
+            <!-- Diisi JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State Rekap -->
+      <div class="empty-state" id="rekap-empty" style="display:none;">
+        <div class="empty-state__icon" aria-hidden="true">📭</div>
+        <div class="empty-state__title">Tidak ada data</div>
+        <div class="empty-state__desc">Tidak ada data kunjungan untuk filter yang dipilih.</div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="rekap-pagination" aria-label="Navigasi halaman"></div>
+
+    </div>
+
+    <!-- ── TAB: MANAJEMEN STAF ─────────────────────────────── -->
+    <div
+      class="tab-pane admin-section"
+      id="pane-staf"
+      role="tabpanel"
+      aria-labelledby="tab-staf"
+    >
+      <div class="staf-header">
+        <div>
+          <div class="section-title">Manajemen Staf</div>
+          <div class="section-subtitle">Kelola daftar staf yang muncul di dropdown form tamu.</div>
+        </div>
+        <button class="btn btn--primary btn--sm" id="btn-tambah-staf" aria-expanded="false">
+          ➕ Tambah Staf
+        </button>
+      </div>
+
+      <!-- Add/Edit Form -->
+      <div class="staf-form-card" id="staf-form-card">
+        <div class="staf-form-card__title" id="staf-form-title">Tambah Staf Baru</div>
+        <form id="staf-form" novalidate>
+          <input type="hidden" id="staf-id" />
+          <div class="staf-form-row">
+            <div class="form-group">
+              <label class="form-label" for="staf-nama">
+                Nama Lengkap <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="staf-nama"
+                class="form-control"
+                placeholder="Nama staf"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="staf-jabatan">
+                Jabatan <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="staf-jabatan"
+                class="form-control"
+                placeholder="Contoh: Guru, Kepala Sekolah"
+                required
+              />
+            </div>
+          </div>
+          <div style="display:flex;gap:var(--space-3);margin-top:var(--space-4);">
+            <button type="submit" class="btn btn--primary btn--sm" id="btn-save-staf">
+              <span class="btn__spinner"></span>
+              <span class="btn__text">💾 Simpan</span>
+            </button>
+            <button type="button" class="btn btn--secondary btn--sm" id="btn-cancel-staf">
+              Batal
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Staf List -->
+      <div class="staf-list" id="staf-list" role="list">
+        <!-- Skeleton -->
+        <div class="staf-card" aria-hidden="true">
+          <div class="skeleton skeleton--avatar"></div>
+          <div style="flex:1;">
+            <div class="skeleton skeleton--text" style="width:50%;height:1em;"></div>
+            <div class="skeleton skeleton--text-sm" style="margin-top:6px;"></div>
+          </div>
+        </div>
+        <div class="staf-card" aria-hidden="true">
+          <div class="skeleton skeleton--avatar"></div>
+          <div style="flex:1;">
+            <div class="skeleton skeleton--text" style="width:60%;height:1em;"></div>
+            <div class="skeleton skeleton--text-sm" style="margin-top:6px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty staf -->
+      <div class="empty-state" id="staf-empty" style="display:none;">
+        <div class="empty-state__icon" aria-hidden="true">👤</div>
+        <div class="empty-state__title">Belum ada staf</div>
+        <div class="empty-state__desc">Tambahkan staf untuk ditampilkan di form tamu.</div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ── Modal: Detail Tamu ───────────────────────────────── -->
+  <div class="modal-backdrop" id="modal-detail" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
+    <div class="modal">
+      <div class="modal__handle" aria-hidden="true"></div>
+      <button class="modal__close" id="btn-close-detail" aria-label="Tutup detail">✕</button>
+      <h2 class="modal__title" id="modal-detail-title">Detail Kunjungan</h2>
+      <div class="detail-badge-row" id="modal-detail-badges"></div>
+      <div id="modal-detail-content">
+        <!-- Diisi oleh JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/admin.js"></script>
+
+</body>
+</html>

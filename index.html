@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="description" content="Buku Tamu Digital Sekolah — Silakan daftarkan kunjungan Anda" />
+  <title>Buku Tamu Digital</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/global.css" />
+  <link rel="stylesheet" href="/css/form-tamu.css" />
+</head>
+<body class="form-page">
+
+  <!-- Toast Container -->
+  <div id="toast-container" role="alert" aria-live="polite"></div>
+
+  <!-- School Header -->
+  <header class="school-header" id="school-header">
+    <div class="school-header__logo" id="school-logo">
+      <span id="school-logo-icon">🏫</span>
+    </div>
+    <h1 class="school-header__title" id="school-name">Buku Tamu Digital</h1>
+    <p class="school-header__subtitle" id="school-subtitle">Selamat datang, silakan isi data kunjungan Anda</p>
+    <p class="school-header__date" id="header-date"></p>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content">
+
+    <!-- Loading State -->
+    <div class="form-loading" id="form-loading">
+      <div class="spinner" style="margin:0 auto;"></div>
+      <p class="form-loading__text">Memuat formulir...</p>
+    </div>
+
+    <!-- Form Tamu -->
+    <div class="form-tamu-container" id="form-wrapper">
+      <form id="form-tamu" novalidate>
+
+        <!-- Seksi 1: Jenis Tamu -->
+        <div class="form-section">
+          <p class="form-section__title">
+            <span>👤</span> Jenis Tamu
+          </p>
+          <div class="form-group">
+            <label class="form-label" id="label-jenis">
+              Pilih Jenis Tamu <span class="required">*</span>
+            </label>
+            <div class="pill-selector" id="jenis-tamu-pills" role="group" aria-labelledby="label-jenis">
+              <!-- Diisi oleh JS -->
+            </div>
+            <input type="hidden" id="jenis-tamu" name="jenisTamu" required />
+            <span class="form-error" id="error-jenis-tamu" role="alert">
+              <span>⚠️</span> Pilih jenis tamu terlebih dahulu
+            </span>
+          </div>
+        </div>
+
+        <!-- Seksi 2: Informasi Otomatis -->
+        <div class="form-section">
+          <p class="form-section__title">
+            <span>📅</span> Waktu Kunjungan
+          </p>
+          <div class="auto-fields">
+            <div class="auto-field">
+              <div class="auto-field__label">Tanggal</div>
+              <div class="auto-field__value" id="display-tanggal">—</div>
+              <input type="hidden" id="tanggal" name="tanggal" />
+            </div>
+            <div class="auto-field">
+              <div class="auto-field__label">Jam Datang</div>
+              <div class="auto-field__value" id="display-jam">—</div>
+              <input type="hidden" id="jam-datang" name="jamDatang" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Seksi 3: Data Pribadi -->
+        <div class="form-section">
+          <p class="form-section__title">
+            <span>📋</span> Data Diri
+          </p>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="nama-lengkap">
+                Nama Lengkap <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="nama-lengkap"
+                name="namaLengkap"
+                class="form-control"
+                placeholder="Masukkan nama lengkap"
+                autocomplete="name"
+                required
+              />
+              <span class="form-error" id="error-nama" role="alert">
+                <span>⚠️</span> Nama lengkap wajib diisi
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="instansi">
+                Instansi / Asal <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="instansi"
+                name="instansi"
+                class="form-control"
+                placeholder="Contoh: SDN 01, Dinas Pendidikan"
+                required
+              />
+              <span class="form-error" id="error-instansi" role="alert">
+                <span>⚠️</span> Instansi/asal wajib diisi
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="no-hp">
+                No. HP / WA <span class="required">*</span>
+              </label>
+              <input
+                type="tel"
+                id="no-hp"
+                name="noHp"
+                class="form-control"
+                placeholder="Contoh: 08123456789"
+                autocomplete="tel"
+                inputmode="numeric"
+                required
+              />
+              <span class="form-error" id="error-no-hp" role="alert">
+                <span>⚠️</span> Nomor HP/WA wajib diisi
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="email">
+                Email <span class="required">*</span>
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                class="form-control"
+                placeholder="contoh@email.com"
+                autocomplete="email"
+                inputmode="email"
+                required
+              />
+              <span class="form-error" id="error-email" role="alert">
+                <span>⚠️</span> Format email tidak valid
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seksi 4: Keperluan -->
+        <div class="form-section">
+          <p class="form-section__title">
+            <span>💬</span> Keperluan Kunjungan
+          </p>
+
+          <div class="form-group">
+            <label class="form-label" for="keperluan">
+              Keperluan <span class="required">*</span>
+            </label>
+            <textarea
+              id="keperluan"
+              name="keperluan"
+              class="form-control"
+              placeholder="Jelaskan keperluan kunjungan Anda..."
+              rows="3"
+              required
+            ></textarea>
+            <span class="form-error" id="error-keperluan" role="alert">
+              <span>⚠️</span> Keperluan wajib diisi
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="bertemu-dengan">
+              Bertemu Dengan <span class="required">*</span>
+            </label>
+            <select
+              id="bertemu-dengan"
+              name="bertemuDengan"
+              class="form-control"
+              required
+            >
+              <option value="">— Pilih staf yang dituju —</option>
+              <!-- Diisi oleh JS dari GAS -->
+            </select>
+            <span class="form-error" id="error-bertemu" role="alert">
+              <span>⚠️</span> Pilih staf yang akan ditemui
+            </span>
+          </div>
+        </div>
+
+        <!-- Seksi 5: Tanda Tangan -->
+        <div class="form-section">
+          <p class="form-section__title">
+            <span>✍️</span> Tanda Tangan
+          </p>
+          <div class="form-group">
+            <label class="form-label" id="label-ttd">
+              Tanda Tangan Digital <span class="required">*</span>
+            </label>
+            <div class="signature-container" id="signature-container" aria-labelledby="label-ttd">
+              <canvas id="signature-canvas" aria-label="Area tanda tangan"></canvas>
+              <div class="signature-placeholder" id="signature-placeholder">
+                <span class="signature-placeholder__icon">✍️</span>
+                <span>Tanda tangan di sini</span>
+              </div>
+            </div>
+            <div class="signature-actions">
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                id="btn-clear-signature"
+                aria-label="Hapus tanda tangan"
+              >
+                🗑️ Hapus
+              </button>
+            </div>
+            <p class="signature-hint">
+              <span>💡</span> Gambar tanda tangan Anda menggunakan jari atau mouse
+            </p>
+            <span class="form-error" id="error-ttd" role="alert">
+              <span>⚠️</span> Tanda tangan wajib diisi
+            </span>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="submit-section">
+          <button
+            type="submit"
+            class="btn btn--primary btn--full"
+            id="btn-submit"
+            disabled
+          >
+            <span class="btn__spinner"></span>
+            <span class="btn__text">✅ Daftarkan Kunjungan</span>
+          </button>
+          <p class="submit-note">
+            Dengan mengirimkan formulir ini, Anda menyetujui bahwa data yang diisi adalah benar.
+          </p>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Success Screen -->
+    <div class="success-screen" id="success-screen" role="status">
+      <div class="success-screen__icon">✅</div>
+      <h2 class="success-screen__title">Kunjungan Tercatat!</h2>
+      <p class="success-screen__desc">
+        Data kunjungan Anda telah berhasil disimpan. Silakan menuju ke bagian resepsionis.
+      </p>
+      <div class="success-screen__time" id="success-time"></div>
+      <div class="success-screen__date" id="success-date"></div>
+      <button
+        class="btn btn--primary"
+        id="btn-new-entry"
+        style="margin:0 auto;"
+      >
+        ➕ Daftarkan Tamu Lain
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/form-tamu.js"></script>
+
+</body>
+</html>
