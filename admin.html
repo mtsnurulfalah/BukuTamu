@@ -80,6 +80,15 @@
       >
         👥 Staf
       </button>
+      <button
+        class="tab-btn"
+        id="tab-pengaturan"
+        role="tab"
+        aria-selected="false"
+        aria-controls="pane-pengaturan"
+      >
+        ⚙️ Pengaturan
+      </button>
     </div>
   </nav>
 
@@ -346,7 +355,476 @@
 
     </div>
 
+    <!-- ── TAB: PENGATURAN ──────────────────────────────────── -->
+    <div
+      class="tab-pane admin-section"
+      id="pane-pengaturan"
+      role="tabpanel"
+      aria-labelledby="tab-pengaturan"
+    >
+
+      <div class="ringkasan-header">
+        <h1 class="ringkasan-header__title">Pengaturan Sekolah</h1>
+      </div>
+
+      <!-- ── Identitas Sekolah ─────────────────────────────── -->
+      <div class="settings-card">
+        <div class="settings-card__header">
+          <div class="settings-card__icon">🏫</div>
+          <div>
+            <div class="settings-card__title">Identitas Sekolah</div>
+            <div class="settings-card__sub">Nama, alamat, dan kepala sekolah</div>
+          </div>
+        </div>
+        <div class="settings-card__body">
+          <form id="form-identitas" novalidate>
+            <div class="settings-form-grid">
+              <div class="form-group">
+                <label class="form-label" for="set-nama-sekolah">
+                  Nama Sekolah <span class="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="set-nama-sekolah"
+                  class="form-control"
+                  placeholder="Contoh: SMA Negeri 1 Jakarta"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="set-kepala-sekolah">
+                  Nama Kepala Sekolah
+                </label>
+                <input
+                  type="text"
+                  id="set-kepala-sekolah"
+                  class="form-control"
+                  placeholder="Contoh: Drs. Budi Santoso, M.Pd"
+                />
+              </div>
+              <div class="form-group settings-full-col">
+                <label class="form-label" for="set-alamat">
+                  Alamat Sekolah
+                </label>
+                <textarea
+                  id="set-alamat"
+                  class="form-control"
+                  placeholder="Contoh: Jl. Pendidikan No. 1, Jakarta Pusat"
+                  rows="2"
+                ></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="set-tahun-ajaran">
+                  Tahun Ajaran
+                </label>
+                <input
+                  type="text"
+                  id="set-tahun-ajaran"
+                  class="form-control"
+                  placeholder="Contoh: 2026/2027"
+                />
+              </div>
+            </div>
+            <div class="settings-actions">
+              <button type="submit" class="btn btn--primary" id="btn-save-identitas">
+                <span class="btn__spinner"></span>
+                <span class="btn__text">💾 Simpan Identitas</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ── Logo Sekolah ──────────────────────────────────── -->
+      <div class="settings-card">
+        <div class="settings-card__header">
+          <div class="settings-card__icon">🖼️</div>
+          <div>
+            <div class="settings-card__title">Logo Sekolah</div>
+            <div class="settings-card__sub">Tampil di header form tamu dan halaman login</div>
+          </div>
+        </div>
+        <div class="settings-card__body">
+          <div class="logo-settings-wrap">
+
+            <!-- Preview -->
+            <div class="logo-preview-box">
+              <div class="logo-preview-box__label">Preview</div>
+              <div class="logo-preview-box__img" id="preview-logo-sekolah">
+                <span id="preview-logo-sekolah-fallback">🏫</span>
+              </div>
+              <div class="logo-preview-box__desc" id="preview-logo-sekolah-status">
+                Belum ada logo
+              </div>
+            </div>
+
+            <!-- Form -->
+            <div class="logo-form-side">
+              <form id="form-logo-sekolah" novalidate>
+                <div class="form-group">
+                  <label class="form-label" for="set-logo-url">
+                    URL Logo Sekolah
+                  </label>
+                  <input
+                    type="url"
+                    id="set-logo-url"
+                    class="form-control"
+                    placeholder="https://drive.google.com/uc?id=..."
+                  />
+                  <p class="form-hint">
+                    💡 Upload ke Google Drive → Bagikan → Siapa saja dengan link → salin URL.
+                  </p>
+                </div>
+                <div class="logo-form-actions">
+                  <button type="button" class="btn btn--soft btn--sm" id="btn-preview-logo-sekolah">
+                    👁️ Preview
+                  </button>
+                  <button type="submit" class="btn btn--primary btn--sm" id="btn-save-logo-sekolah">
+                    <span class="btn__spinner"></span>
+                    <span class="btn__text">💾 Simpan</span>
+                  </button>
+                  <button type="button" class="btn btn--secondary btn--sm" id="btn-hapus-logo-sekolah">
+                    🗑️ Hapus
+                  </button>
+                </div>
+              </form>
+
+              <div class="logo-guide">
+                <div class="logo-guide__title">📌 Cara mendapatkan URL dari Google Drive:</div>
+                <ol class="logo-guide__steps">
+                  <li>Upload gambar ke Google Drive</li>
+                  <li>Klik kanan → <strong>Bagikan</strong> → atur ke <em>Siapa saja dengan link</em></li>
+                  <li>Ubah format link:<br>
+                    <code>…/file/d/<strong>FILE_ID</strong>/view</code>
+                    <span style="margin:0 4px;color:var(--clr-gray-400);">→</span>
+                    <code>…/uc?id=<strong>FILE_ID</strong></code>
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Logo Aplikasi ─────────────────────────────────── -->
+      <div class="settings-card">
+        <div class="settings-card__header">
+          <div class="settings-card__icon">📱</div>
+          <div>
+            <div class="settings-card__title">Logo Aplikasi</div>
+            <div class="settings-card__sub">Ikon di navbar dan tab browser</div>
+          </div>
+        </div>
+        <div class="settings-card__body">
+          <div class="logo-settings-wrap">
+
+            <!-- Preview -->
+            <div class="logo-preview-box">
+              <div class="logo-preview-box__label">Preview</div>
+              <div class="logo-preview-box__img logo-preview-box__img--sm" id="preview-logo-app">
+                <span id="preview-logo-app-fallback">📋</span>
+              </div>
+              <div class="logo-preview-box__desc" id="preview-logo-app-status">
+                Menggunakan ikon default
+              </div>
+            </div>
+
+            <!-- Form -->
+            <div class="logo-form-side">
+              <form id="form-logo-app" novalidate>
+                <div class="form-group">
+                  <label class="form-label" for="set-logo-app-url">
+                    URL Logo Aplikasi
+                  </label>
+                  <input
+                    type="url"
+                    id="set-logo-app-url"
+                    class="form-control"
+                    placeholder="https://..."
+                  />
+                  <p class="form-hint">
+                    💡 Ukuran ideal: 192×192px atau 512×512px, format PNG/WebP, rasio 1:1.
+                  </p>
+                </div>
+                <div class="logo-form-actions">
+                  <button type="button" class="btn btn--soft btn--sm" id="btn-preview-logo-app">
+                    👁️ Preview
+                  </button>
+                  <button type="submit" class="btn btn--primary btn--sm" id="btn-save-logo-app">
+                    <span class="btn__spinner"></span>
+                    <span class="btn__text">💾 Simpan</span>
+                  </button>
+                  <button type="button" class="btn btn--secondary btn--sm" id="btn-hapus-logo-app">
+                    🗑️ Hapus
+                  </button>
+                </div>
+              </form>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Pratinjau Header Form Tamu ────────────────────── -->
+      <div class="settings-card">
+        <div class="settings-card__header">
+          <div class="settings-card__icon">🖥️</div>
+          <div>
+            <div class="settings-card__title">Pratinjau Header Form Tamu</div>
+            <div class="settings-card__sub">Tampilan header berdasarkan pengaturan saat ini</div>
+          </div>
+        </div>
+        <div class="settings-card__body" style="padding:0;overflow:hidden;border-radius:0 0 var(--radius-xl) var(--radius-xl);">
+          <div class="settings-preview-header">
+            <div class="settings-preview-header__logo" id="settings-preview-logo">
+              <span id="settings-preview-logo-icon">🏫</span>
+            </div>
+            <div class="settings-preview-header__name" id="settings-preview-name">
+              Nama Sekolah
+            </div>
+            <div class="settings-preview-header__addr" id="settings-preview-addr">
+              Alamat Sekolah
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- ── end pane-pengaturan ──────────────────────────────── -->
+
   </main>
+  <div
+    class="tab-pane admin-section"
+    id="pane-pengaturan"
+    role="tabpanel"
+    aria-labelledby="tab-pengaturan"
+  >
+
+    <div class="ringkasan-header">
+      <h1 class="ringkasan-header__title">Pengaturan Sekolah</h1>
+    </div>
+
+    <!-- ── Identitas Sekolah ─────────────────────────────── -->
+    <div class="settings-card" id="settings-identitas">
+      <div class="settings-card__header">
+        <div class="settings-card__icon">🏫</div>
+        <div>
+          <div class="settings-card__title">Identitas Sekolah</div>
+          <div class="settings-card__sub">Nama, alamat, dan kepala sekolah</div>
+        </div>
+      </div>
+      <div class="settings-card__body">
+        <form id="form-identitas" novalidate>
+          <div class="settings-form-grid">
+            <div class="form-group">
+              <label class="form-label" for="set-nama-sekolah">
+                Nama Sekolah <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="set-nama-sekolah"
+                class="form-control"
+                placeholder="Contoh: SMA Negeri 1 Jakarta"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="set-kepala-sekolah">
+                Nama Kepala Sekolah
+              </label>
+              <input
+                type="text"
+                id="set-kepala-sekolah"
+                class="form-control"
+                placeholder="Contoh: Drs. Budi Santoso, M.Pd"
+              />
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+              <label class="form-label" for="set-alamat">
+                Alamat Sekolah
+              </label>
+              <textarea
+                id="set-alamat"
+                class="form-control"
+                placeholder="Contoh: Jl. Pendidikan No. 1, Jakarta Pusat, DKI Jakarta"
+                rows="2"
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="set-tahun-ajaran">
+                Tahun Ajaran
+              </label>
+              <input
+                type="text"
+                id="set-tahun-ajaran"
+                class="form-control"
+                placeholder="Contoh: 2026/2027"
+              />
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button type="submit" class="btn btn--primary" id="btn-save-identitas">
+              <span class="btn__spinner"></span>
+              <span class="btn__text">💾 Simpan Identitas</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Logo Sekolah ──────────────────────────────────── -->
+    <div class="settings-card" id="settings-logo-sekolah">
+      <div class="settings-card__header">
+        <div class="settings-card__icon">🖼️</div>
+        <div>
+          <div class="settings-card__title">Logo Sekolah</div>
+          <div class="settings-card__sub">Tampil di header form tamu dan halaman login</div>
+        </div>
+      </div>
+      <div class="settings-card__body">
+        <div class="logo-settings-wrap">
+
+          <!-- Preview -->
+          <div class="logo-preview-box" id="preview-logo-sekolah-wrap">
+            <div class="logo-preview-box__label">Preview</div>
+            <div class="logo-preview-box__img" id="preview-logo-sekolah">
+              <span id="preview-logo-sekolah-fallback">🏫</span>
+            </div>
+            <div class="logo-preview-box__desc" id="preview-logo-sekolah-status">
+              Belum ada logo
+            </div>
+          </div>
+
+          <!-- Form URL -->
+          <div class="logo-form-side">
+            <form id="form-logo-sekolah" novalidate>
+              <div class="form-group">
+                <label class="form-label" for="set-logo-url">
+                  URL Logo Sekolah
+                </label>
+                <input
+                  type="url"
+                  id="set-logo-url"
+                  class="form-control"
+                  placeholder="https://drive.google.com/..."
+                />
+                <p class="form-hint">
+                  💡 Upload logo ke Google Drive, pastikan link dapat diakses publik, lalu paste URL-nya di sini.
+                </p>
+              </div>
+              <div class="logo-form-actions">
+                <button type="button" class="btn btn--soft btn--sm" id="btn-preview-logo-sekolah">
+                  👁️ Cek Preview
+                </button>
+                <button type="submit" class="btn btn--primary btn--sm" id="btn-save-logo-sekolah">
+                  <span class="btn__spinner"></span>
+                  <span class="btn__text">💾 Simpan</span>
+                </button>
+                <button type="button" class="btn btn--secondary btn--sm" id="btn-hapus-logo-sekolah">
+                  🗑️ Hapus Logo
+                </button>
+              </div>
+            </form>
+            <div class="logo-guide">
+              <div class="logo-guide__title">📌 Cara mendapatkan URL logo dari Google Drive:</div>
+              <ol class="logo-guide__steps">
+                <li>Upload file gambar ke Google Drive</li>
+                <li>Klik kanan file → <strong>Bagikan</strong> → atur ke <strong>Siapa saja dengan link</strong></li>
+                <li>Salin link, lalu ubah format:<br>
+                  <code>drive.google.com/file/d/<strong>FILE_ID</strong>/view</code><br>
+                  menjadi:<br>
+                  <code>drive.google.com/uc?id=<strong>FILE_ID</strong></code>
+                </li>
+              </ol>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Logo Aplikasi (Favicon) ───────────────────────── -->
+    <div class="settings-card" id="settings-logo-app">
+      <div class="settings-card__header">
+        <div class="settings-card__icon">📱</div>
+        <div>
+          <div class="settings-card__title">Logo Aplikasi</div>
+          <div class="settings-card__sub">Ikon di navbar dan tab browser (favicon)</div>
+        </div>
+      </div>
+      <div class="settings-card__body">
+        <div class="logo-settings-wrap">
+
+          <!-- Preview -->
+          <div class="logo-preview-box" id="preview-logo-app-wrap">
+            <div class="logo-preview-box__label">Preview</div>
+            <div class="logo-preview-box__img logo-preview-box__img--sm" id="preview-logo-app">
+              <span id="preview-logo-app-fallback">📋</span>
+            </div>
+            <div class="logo-preview-box__desc" id="preview-logo-app-status">
+              Menggunakan ikon default
+            </div>
+          </div>
+
+          <!-- Form URL -->
+          <div class="logo-form-side">
+            <form id="form-logo-app" novalidate>
+              <div class="form-group">
+                <label class="form-label" for="set-logo-app-url">
+                  URL Logo Aplikasi
+                </label>
+                <input
+                  type="url"
+                  id="set-logo-app-url"
+                  class="form-control"
+                  placeholder="https://..."
+                />
+                <p class="form-hint">
+                  💡 Ukuran ideal: persegi (1:1), minimal 192×192px, format PNG atau WebP.
+                </p>
+              </div>
+              <div class="logo-form-actions">
+                <button type="button" class="btn btn--soft btn--sm" id="btn-preview-logo-app">
+                  👁️ Cek Preview
+                </button>
+                <button type="submit" class="btn btn--primary btn--sm" id="btn-save-logo-app">
+                  <span class="btn__spinner"></span>
+                  <span class="btn__text">💾 Simpan</span>
+                </button>
+                <button type="button" class="btn btn--secondary btn--sm" id="btn-hapus-logo-app">
+                  🗑️ Hapus Logo
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Pratinjau Halaman Form Tamu ───────────────────── -->
+    <div class="settings-card">
+      <div class="settings-card__header">
+        <div class="settings-card__icon">✅</div>
+        <div>
+          <div class="settings-card__title">Pratinjau Header Form Tamu</div>
+          <div class="settings-card__sub">Tampilan header setelah pengaturan disimpan</div>
+        </div>
+      </div>
+      <div class="settings-card__body" style="padding:0;overflow:hidden;border-radius:0 0 var(--radius-xl) var(--radius-xl);">
+        <div class="settings-preview-header" id="settings-preview-header">
+          <div class="settings-preview-header__logo" id="settings-preview-logo">
+            <span id="settings-preview-logo-icon">🏫</span>
+          </div>
+          <div class="settings-preview-header__name" id="settings-preview-name">Nama Sekolah</div>
+          <div class="settings-preview-header__addr" id="settings-preview-addr">Alamat Sekolah</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- ── end pane-pengaturan ──────────────────────────────── -->
 
   <!-- ── Modal: Detail Tamu ───────────────────────────────── -->
   <div class="modal-backdrop" id="modal-detail" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
