@@ -1,253 +1,297 @@
 /**
- * form-tamu.js
- * Logic halaman form tamu publik (index.html).
+ * form-tamu.js — Halaman Form Tamu Publik
  * ─────────────────────────────────────────────────────────
  * Alur:
- *   1. Load config sekolah (nama, logo) dari GAS
- *   2. Load daftar staf aktif untuk dropdown "Bertemu Dengan"
- *   3. Set tanggal & jam otomatis (realtime clock)
- *   4. Render pill selector jenis tamu
- *   5. Inisialisasi signature_pad canvas
- *   6. Validasi semua field secara real-time
- *   7. Submit → callGAS('addTamu', ...) → halaman sukses
+ *   1. Load config sekolah (nama, logo) + staf secara paralel dari GAS
+ *   2. Render pill selector jenis tamu
+ *   3. Set tanggal & jam otomatis (live clock setiap detik)
+ *   4. Inisialisasi signature_pad (dengan DPR-aware canvas sizing)
+ *   5. Pasang validasi real-time per field
+ *   6. Submit → callGAS('addTamu') → success screen
  */
 
-// ── State ─────────────────────────────────────────────────────
-let signaturePad   = null;   // instance signature_pad
-let selectedJenis  = '';     // jenis tamu yang dipilih
-let clockInterval  = null;   // interval untuk jam live
-let isSubmitting   = false;  // guard double submit
+'use strict';
 
-// ── Regex validasi email ──────────────────────────────────────
+// ── Module State ──────────────────────────────────────────────
+let signaturePad   = null;   // instance SignaturePad
+let selectedJenis  = '';     // jenis tamu yang dipilih
+let clockInterval  = null;   // interval ID untuk live clock
+let isSubmitting   = false;  // guard double-submit
+let stafLoadFailed = false;  // flag kegagalan load staf
+
+// ── Konstanta ─────────────────────────────────────────────────
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-// ── DOMContentLoaded ──────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════
+// INISIALISASI
+// ═════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
   showFormLoading(true);
 
-  // Jalankan load config & staf secara paralel
-  const [configResult, stafResult] = await Promise.all([
-    callGAS('getConfig').catch(() => ({ status: 'error', data: {} })),
-    callGAS('getStaf').catch(() => ({ status: 'error', data: [] })),
-  ]);
+  try {
+    // Load config & staf secara paralel
+    const [configResult, stafResult] = await Promise.allSettled([
+      callGAS('getConfig'),
+      callGAS('getStaf'),
+    ]);
 
-  // Terapkan config sekolah ke UI
-  applySchoolConfig(configResult.data || {});
+    const config = configResult.status === 'fulfilled' && configResult.value?.status === 'ok'
+      ? (configResult.value.data || {})
+      : {};
 
-  // Isi dropdown Bertemu Dengan
-  populateStafDropdown(stafResult.data || []);
+    const stafList = stafResult.status === 'fulfilled' && stafResult.value?.status === 'ok'
+      ? (stafResult.value.data || [])
+      : [];
 
-  // Render pill selector jenis tamu
-  renderJenisTamuPills();
+    stafLoadFailed = stafList.length === 0 &&
+      (stafResult.status === 'rejected' || stafResult.value?.status !== 'ok');
 
-  // Set tanggal & jam otomatis + mulai clock
-  initClock();
+    // Terapkan ke UI
+    applySchoolConfig(config);
+    populateStafDropdown(stafList);
+    renderJenisTamuPills();
+    initClock();
+    initSignaturePad();
+    attachFormEvents();
 
-  // Inisialisasi signature pad
-  initSignaturePad();
-
-  // Pasang event listeners form
-  attachFormEvents();
+  } catch (err) {
+    // Fallback: tetap tampilkan form meski ada error
+    console.error('Form init error:', err);
+    renderJenisTamuPills();
+    initClock();
+    initSignaturePad();
+    attachFormEvents();
+  }
 
   showFormLoading(false);
 });
 
-// ── Apply School Config ───────────────────────────────────────
+// ═════════════════════════════════════════════════════════════
+// SCHOOL CONFIG
+// ═════════════════════════════════════════════════════════════
 /**
- * Terapkan data config sekolah ke elemen UI.
+ * Terapkan data config sekolah ke header UI.
+ * Guard duplikasi: hapus img lama sebelum menyisipkan yang baru.
  * @param {Object} config
  */
 function applySchoolConfig(config) {
-  // Nama sekolah
-  const namaSekolah = config.nama_sekolah || CONFIG.APP_NAME;
+  const namaSekolah = (config.nama_sekolah || '').trim() || CONFIG.APP_NAME;
 
-  const nameEl    = document.getElementById('school-name');
-  const logoIcon  = document.getElementById('school-logo-icon');
-  const logoImg   = document.getElementById('school-logo-img');
-
-  if (nameEl) nameEl.textContent = namaSekolah;
-
-  // Update judul halaman
+  // Judul halaman
   document.title = `Buku Tamu — ${namaSekolah}`;
 
-  // Logo
-  if (config.logo_url && config.logo_url.trim() !== '') {
-    // Buat elemen img jika ada URL logo
-    if (logoIcon) {
-      const img = document.createElement('img');
-      img.src   = config.logo_url;
-      img.alt   = `Logo ${namaSekolah}`;
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:var(--radius-lg);';
-      img.onerror = () => { img.remove(); }; // fallback jika gagal load
-      logoIcon.parentElement.appendChild(img);
-      logoIcon.style.display = 'none';
-    }
-  }
+  // Nama sekolah
+  const nameEl = document.getElementById('school-name');
+  if (nameEl) nameEl.textContent = namaSekolah;
 
-  // Subtitle alamat
+  // Alamat / subtitle
   const subtitleEl = document.getElementById('school-subtitle');
   if (subtitleEl && config.alamat_sekolah) {
     subtitleEl.textContent = config.alamat_sekolah;
   }
+
+  // Logo
+  const logoWrap = document.getElementById('school-logo');
+  const logoIcon = document.getElementById('school-logo-icon');
+  if (logoWrap && config.logo_url && config.logo_url.trim()) {
+    // Hapus img duplikat jika ada
+    const existing = logoWrap.querySelector('img');
+    if (existing) existing.remove();
+
+    const img = document.createElement('img');
+    img.src   = config.logo_url.trim();
+    img.alt   = `Logo ${namaSekolah}`;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;';
+    img.onload  = () => {
+      if (logoIcon) logoIcon.style.display = 'none';
+    };
+    img.onerror = () => {
+      img.remove();
+      if (logoIcon) logoIcon.style.display = '';
+    };
+    logoWrap.appendChild(img);
+  }
 }
 
-// ── Populate Staf Dropdown ────────────────────────────────────
+// ═════════════════════════════════════════════════════════════
+// STAF DROPDOWN
+// ═════════════════════════════════════════════════════════════
 /**
  * Isi dropdown "Bertemu Dengan" dengan daftar staf aktif.
+ * Tampilkan tombol retry jika data kosong.
  * @param {Array} stafList
  */
 function populateStafDropdown(stafList) {
-  const select = document.getElementById('bertemu-dengan');
+  const select   = document.getElementById('bertemu-dengan');
+  const retryWrap = document.getElementById('staf-retry-wrap');
   if (!select) return;
 
-  // Hapus semua option kecuali placeholder
-  while (select.options.length > 1) {
-    select.remove(1);
-  }
+  // Hapus semua opsi kecuali placeholder pertama
+  while (select.options.length > 1) select.remove(1);
 
-  if (!stafList || stafList.length === 0) {
+  if (!Array.isArray(stafList) || stafList.length === 0) {
     const opt = document.createElement('option');
     opt.value    = '';
     opt.disabled = true;
-    opt.textContent = '— Data staf tidak tersedia —';
+    opt.textContent = stafLoadFailed
+      ? '— Gagal memuat daftar staf —'
+      : '— Belum ada data staf —';
     select.appendChild(opt);
+
+    // Tampilkan tombol retry jika gagal
+    if (retryWrap) retryWrap.style.display = stafLoadFailed ? '' : 'none';
     return;
   }
 
+  if (retryWrap) retryWrap.style.display = 'none';
+
   stafList.forEach(staf => {
-    const opt = document.createElement('option');
-    opt.value       = staf.nama;
-    opt.textContent = staf.jabatan
+    const opt         = document.createElement('option');
+    opt.value         = staf.nama || '';
+    opt.textContent   = staf.jabatan
       ? `${staf.nama} (${staf.jabatan})`
-      : staf.nama;
+      : staf.nama || '';
     select.appendChild(opt);
   });
 }
 
-// ── Render Jenis Tamu Pills ───────────────────────────────────
-/**
- * Render tombol pill untuk setiap jenis tamu.
- */
+/** Retry load staf (dipanggil dari tombol retry) */
+async function retryLoadStaf() {
+  const btn = document.getElementById('btn-retry-staf');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memuat...'; }
+
+  try {
+    const result = await callGAS('getStaf');
+    stafLoadFailed = false;
+    const list = result?.status === 'ok' ? (result.data || []) : [];
+    stafLoadFailed = list.length === 0 && result?.status !== 'ok';
+    populateStafDropdown(list);
+    if (list.length > 0) showToast('Daftar staf berhasil dimuat.', 'success');
+    else showToast('Belum ada data staf yang tersedia.', 'default');
+  } catch {
+    showToast('Gagal memuat staf. Coba lagi.', 'danger');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Coba Lagi'; }
+  }
+}
+
+// ═════════════════════════════════════════════════════════════
+// PILL SELECTOR JENIS TAMU
+// ═════════════════════════════════════════════════════════════
 function renderJenisTamuPills() {
   const container = document.getElementById('jenis-tamu-pills');
   if (!container) return;
 
   container.innerHTML = '';
-
   JENIS_TAMU.forEach(jenis => {
     const btn = document.createElement('button');
-    btn.type          = 'button';
-    btn.className     = 'pill-selector__item';
-    btn.textContent   = jenis;
+    btn.type      = 'button';
+    btn.className = 'pill-selector__item';
+    btn.textContent  = jenis;
     btn.dataset.value = jenis;
     btn.setAttribute('aria-pressed', 'false');
-
-    btn.addEventListener('click', () => selectJenisTamu(jenis, btn));
+    btn.addEventListener('click', () => selectJenisTamu(jenis));
     container.appendChild(btn);
   });
 }
 
-/**
- * Set jenis tamu yang dipilih dan update UI pill.
- * @param {string} jenis
- * @param {HTMLButtonElement} clickedBtn
- */
-function selectJenisTamu(jenis, clickedBtn) {
+function selectJenisTamu(jenis) {
   selectedJenis = jenis;
 
-  // Update semua pill
   document.querySelectorAll('.pill-selector__item').forEach(btn => {
-    const isSelected = btn.dataset.value === jenis;
-    btn.classList.toggle('selected', isSelected);
-    btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    const sel = btn.dataset.value === jenis;
+    btn.classList.toggle('selected', sel);
+    btn.setAttribute('aria-pressed', sel ? 'true' : 'false');
   });
 
-  // Update hidden input
-  const hiddenInput = document.getElementById('jenis-tamu');
-  if (hiddenInput) hiddenInput.value = jenis;
+  const hidden = document.getElementById('jenis-tamu');
+  if (hidden) hidden.value = jenis;
 
-  // Hapus error
   hideFieldError('error-jenis-tamu');
-
   checkSubmitEligibility();
 }
 
-// ── Clock ─────────────────────────────────────────────────────
-/**
- * Set tanggal & jam datang otomatis dan jalankan live clock setiap detik.
- */
+// ═════════════════════════════════════════════════════════════
+// LIVE CLOCK
+// ═════════════════════════════════════════════════════════════
 function initClock() {
-  function updateClock() {
-    const now = new Date();
-
-    // Format tanggal: Senin, 06 September 2026
-    const opsiTanggal = {
-      weekday: 'long',
-      year   : 'numeric',
-      month  : 'long',
-      day    : 'numeric'
-    };
-    const tanggalDisplay = now.toLocaleDateString('id-ID', opsiTanggal);
-
-    // Format jam: HH:MM
-    const jam = now.toLocaleTimeString('id-ID', {
-      hour  : '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-
-    // Format tanggal ISO untuk dikirim ke GAS: YYYY-MM-DD
-    const y  = now.getFullYear();
-    const mo = String(now.getMonth() + 1).padStart(2, '0');
-    const d  = String(now.getDate()).padStart(2, '0');
-    const tanggalISO = `${y}-${mo}-${d}`;
-
-    // Update display
-    const dispTanggal = document.getElementById('display-tanggal');
-    const dispJam     = document.getElementById('display-jam');
-    const headerDate  = document.getElementById('header-date');
-    const hidTanggal  = document.getElementById('tanggal');
-    const hidJam      = document.getElementById('jam-datang');
-
-    if (dispTanggal) dispTanggal.textContent = tanggalDisplay;
-    if (dispJam)     dispJam.textContent     = jam;
-    if (headerDate)  headerDate.textContent  = tanggalDisplay;
-    if (hidTanggal)  hidTanggal.value        = tanggalISO;
-    if (hidJam)      hidJam.value            = jam;
+  // FIX B2: bersihkan interval lama sebelum membuat yang baru
+  if (clockInterval) {
+    clearInterval(clockInterval);
+    clockInterval = null;
   }
 
-  updateClock();
-  clockInterval = setInterval(updateClock, 1000);
+  function tick() {
+    const now = new Date();
+    const y   = now.getFullYear();
+    const mo  = String(now.getMonth() + 1).padStart(2, '0');
+    const d   = String(now.getDate()).padStart(2, '0');
+    const isoDate = `${y}-${mo}-${d}`;
+
+    const displayDate = now.toLocaleDateString('id-ID', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+    const displayTime = now.toLocaleTimeString('id-ID', {
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+
+    const safe = (id, val, prop = 'textContent') => {
+      const el = document.getElementById(id);
+      if (el) el[prop] = val;
+    };
+
+    safe('display-tanggal', displayDate);
+    safe('display-jam',     displayTime);
+    safe('header-date',     displayDate);
+    safe('tanggal',         isoDate,      'value');
+    safe('jam-datang',      displayTime,  'value');
+  }
+
+  tick();
+  clockInterval = setInterval(tick, 1000);
 }
 
-// ── Signature Pad ─────────────────────────────────────────────
-/**
- * Inisialisasi signature_pad pada canvas.
- * Menangani resize canvas agar tidak blur di Retina/HDPI.
- */
+// ═════════════════════════════════════════════════════════════
+// SIGNATURE PAD
+// ═════════════════════════════════════════════════════════════
 function initSignaturePad() {
-  const canvas    = document.getElementById('signature-canvas');
-  const container = document.getElementById('signature-container');
+  const canvas      = document.getElementById('signature-canvas');
+  const container   = document.getElementById('signature-container');
   const placeholder = document.getElementById('signature-placeholder');
-  const clearBtn  = document.getElementById('btn-clear-signature');
+  const clearBtn    = document.getElementById('btn-clear-signature');
 
   if (!canvas || typeof SignaturePad === 'undefined') {
-    console.warn('signature_pad tidak tersedia atau canvas tidak ditemukan.');
+    console.warn('SignaturePad tidak tersedia atau canvas tidak ditemukan.');
     return;
   }
 
-  // Resize canvas sesuai DPR untuk tampilan tajam di layar Retina
+  /**
+   * FIX B8: Simpan data tanda tangan sebelum resize, restore sesudahnya.
+   * Ini mencegah hilangnya tanda tangan saat orientasi berubah.
+   */
   function resizeCanvas() {
+    // Simpan data sebelum resize
+    const hadSignature = signaturePad && !signaturePad.isEmpty();
+    const savedData    = hadSignature ? signaturePad.toData() : null;
+
     const ratio  = Math.max(window.devicePixelRatio || 1, 1);
     const width  = canvas.offsetWidth;
-    const height = canvas.offsetHeight;
+    const height = canvas.offsetHeight || 160;
 
     canvas.width  = width  * ratio;
     canvas.height = height * ratio;
     canvas.getContext('2d').scale(ratio, ratio);
 
-    // Clear setelah resize agar tidak ada artefak
     if (signaturePad) signaturePad.clear();
+
+    // Restore tanda tangan jika ada
+    if (savedData && savedData.length > 0) {
+      try {
+        signaturePad.fromData(savedData);
+      } catch (_) {
+        // Jika restore gagal, biarkan canvas kosong
+      }
+    }
   }
 
   signaturePad = new SignaturePad(canvas, {
@@ -259,85 +303,80 @@ function initSignaturePad() {
 
   resizeCanvas();
 
-  // Handle resize window
+  // Debounced resize
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(resizeCanvas, 200);
+    resizeTimer = setTimeout(resizeCanvas, 250);
   });
 
-  // Sembunyikan placeholder saat mulai tanda tangan
   signaturePad.addEventListener('beginStroke', () => {
     if (placeholder) placeholder.classList.add('hidden');
     if (container)   container.classList.add('active');
   });
 
-  // Update state setelah tanda tangan selesai
   signaturePad.addEventListener('endStroke', () => {
     if (container) {
       container.classList.remove('active');
       container.classList.add('has-signature');
     }
-    // Update status indicator
     _setSignatureStatus(true);
     hideFieldError('error-ttd');
     checkSubmitEligibility();
   });
 
-  // Tombol clear
   if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      signaturePad.clear();
-      if (placeholder) placeholder.classList.remove('hidden');
-      if (container) {
-        container.classList.remove('has-signature', 'active');
-      }
-      _setSignatureStatus(false);
-      checkSubmitEligibility();
-    });
+    clearBtn.addEventListener('click', clearSignature);
   }
 }
 
-// ── Form Event Listeners ──────────────────────────────────────
-/**
- * Pasang semua event listener validasi dan submit pada form.
- */
+function clearSignature() {
+  if (!signaturePad) return;
+  signaturePad.clear();
+
+  const placeholder = document.getElementById('signature-placeholder');
+  const container   = document.getElementById('signature-container');
+  if (placeholder) placeholder.classList.remove('hidden');
+  if (container)   container.classList.remove('has-signature', 'active');
+
+  _setSignatureStatus(false);
+  checkSubmitEligibility();
+}
+
+function _setSignatureStatus(signed) {
+  const el = document.getElementById('signature-status');
+  if (!el) return;
+  el.classList.toggle('signed', signed);
+  const textEl = el.querySelector('span:not(.signature-status__dot)');
+  if (textEl) textEl.textContent = signed ? 'Tanda tangan tersimpan' : 'Belum ditandatangani';
+}
+
+// ═════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═════════════════════════════════════════════════════════════
 function attachFormEvents() {
   const form = document.getElementById('form-tamu');
   if (!form) return;
 
-  // ── Validasi real-time per field ──────────────────────────
+  // Validasi real-time tiap field text
+  [
+    ['nama-lengkap', 'error-nama',       'Nama lengkap wajib diisi.'],
+    ['instansi',     'error-instansi',   'Instansi/asal wajib diisi.'],
+    ['no-hp',        'error-no-hp',      'Nomor HP/WA wajib diisi.'],
+    ['keperluan',    'error-keperluan',  'Keperluan wajib diisi.'],
+  ].forEach(([id, errId, msg]) => attachRequiredValidation(id, errId, msg));
 
-  // Nama Lengkap
-  attachRequiredValidation('nama-lengkap', 'error-nama',
-    'Nama lengkap wajib diisi.');
-
-  // Instansi
-  attachRequiredValidation('instansi', 'error-instansi',
-    'Instansi/asal wajib diisi.');
-
-  // No. HP
-  attachRequiredValidation('no-hp', 'error-no-hp',
-    'Nomor HP/WA wajib diisi.');
-
-  // Email — validasi format
+  // Validasi email
   const emailInput = document.getElementById('email');
   if (emailInput) {
     emailInput.addEventListener('input', () => {
       validateEmail(emailInput);
       checkSubmitEligibility();
     });
-
-    emailInput.addEventListener('blur', () => {
-      validateEmail(emailInput, true); // strict mode saat blur
-    });
+    emailInput.addEventListener('blur', () => validateEmail(emailInput, true));
   }
 
-  // Keperluan
-  attachRequiredValidation('keperluan', 'error-keperluan',
-    'Keperluan wajib diisi.');
-
-  // Bertemu Dengan (select)
+  // Dropdown bertemu
   const bertemuSelect = document.getElementById('bertemu-dengan');
   if (bertemuSelect) {
     bertemuSelect.addEventListener('change', () => {
@@ -352,23 +391,21 @@ function attachFormEvents() {
     });
   }
 
-  // ── Submit ─────────────────────────────────────────────────
+  // Submit form
   form.addEventListener('submit', handleSubmit);
 
   // Tombol "Daftarkan Tamu Lain"
   const btnNew = document.getElementById('btn-new-entry');
-  if (btnNew) {
-    btnNew.addEventListener('click', resetForm);
-  }
+  if (btnNew) btnNew.addEventListener('click', resetForm);
+
+  // Tombol retry staf
+  const btnRetry = document.getElementById('btn-retry-staf');
+  if (btnRetry) btnRetry.addEventListener('click', retryLoadStaf);
 }
 
-// ── Validasi Helper ───────────────────────────────────────────
-/**
- * Pasang validasi required pada input + update submit button.
- * @param {string} inputId
- * @param {string} errorId
- * @param {string} errorMsg
- */
+// ═════════════════════════════════════════════════════════════
+// VALIDASI
+// ═════════════════════════════════════════════════════════════
 function attachRequiredValidation(inputId, errorId, errorMsg) {
   const input = document.getElementById(inputId);
   if (!input) return;
@@ -394,20 +431,23 @@ function attachRequiredValidation(inputId, errorId, errorMsg) {
 }
 
 /**
- * Validasi format email dengan feedback visual.
- * @param {HTMLInputElement} input
- * @param {boolean} strict - jika true, tampilkan error meski input kosong
+ * Validasi email dengan feedback visual.
+ * @param {HTMLInputElement|null} input
+ * @param {boolean} strict
+ * @returns {boolean}
  */
 function validateEmail(input, strict = false) {
+  // FIX B6: null guard
+  if (!input) return false;
+
   const val = input.value.trim();
-  const errorId = 'error-email';
 
   if (!val) {
     input.classList.remove('is-valid', 'is-invalid');
-    hideFieldError(errorId);
+    hideFieldError('error-email');
     if (strict) {
       input.classList.add('is-invalid');
-      showFieldError(errorId, 'Email wajib diisi.');
+      showFieldError('error-email', 'Email wajib diisi.');
     }
     return false;
   }
@@ -415,131 +455,101 @@ function validateEmail(input, strict = false) {
   if (!EMAIL_REGEX.test(val)) {
     input.classList.add('is-invalid');
     input.classList.remove('is-valid');
-    showFieldError(errorId, 'Format email tidak valid. Contoh: nama@domain.com');
+    showFieldError('error-email', 'Format email tidak valid. Contoh: nama@domain.com');
     return false;
   }
 
-  // Valid
   input.classList.add('is-valid');
   input.classList.remove('is-invalid');
-  hideFieldError(errorId);
+  hideFieldError('error-email');
   return true;
 }
 
 /**
- * Tampilkan pesan error pada field.
- * @param {string} errorId
- * @param {string} message
+ * FIX B5 & B9: Tampilkan pesan error — update textContent langsung pada elemen,
+ * tidak bergantung pada child <span> yang mungkin tidak ada.
  */
 function showFieldError(errorId, message) {
   const el = document.getElementById(errorId);
   if (!el) return;
-  if (message) {
-    // Update teks (biarkan ikon ⚠️ di HTML)
-    const span = el.querySelector('span:last-child') || el;
-    span.textContent = message;
-  }
+  if (message) el.textContent = `⚠️ ${message}`;
   el.classList.add('visible');
 }
 
-/**
- * Sembunyikan pesan error pada field.
- * @param {string} errorId
- */
 function hideFieldError(errorId) {
   const el = document.getElementById(errorId);
   if (el) el.classList.remove('visible');
 }
 
-// ── Submit Eligibility Check ──────────────────────────────────
-/**
- * Cek apakah semua field valid dan aktifkan/nonaktifkan tombol submit.
- */
 function checkSubmitEligibility() {
   const btn = document.getElementById('btn-submit');
   if (!btn) return;
-
-  const isValid = isFormValid();
-  btn.disabled = !isValid || isSubmitting;
+  btn.disabled = !isFormValid() || isSubmitting;
 }
 
-/**
- * Kembalikan true jika semua field wajib valid.
- * @returns {boolean}
- */
 function isFormValid() {
-  // Jenis tamu
   if (!selectedJenis) return false;
 
-  // Field text wajib
-  const fields = ['nama-lengkap', 'instansi', 'no-hp', 'keperluan'];
-  for (const id of fields) {
+  const requiredFields = ['nama-lengkap', 'instansi', 'no-hp', 'keperluan'];
+  for (const id of requiredFields) {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) return false;
   }
 
-  // Email
-  const emailInput = document.getElementById('email');
-  if (!emailInput || !EMAIL_REGEX.test(emailInput.value.trim())) return false;
+  const emailEl = document.getElementById('email');
+  if (!emailEl || !EMAIL_REGEX.test(emailEl.value.trim())) return false;
 
-  // Bertemu Dengan
-  const bertemuSelect = document.getElementById('bertemu-dengan');
-  if (!bertemuSelect || !bertemuSelect.value) return false;
+  const bertemuEl = document.getElementById('bertemu-dengan');
+  if (!bertemuEl || !bertemuEl.value) return false;
 
-  // Tanda tangan
+  // FIX B10: null guard untuk signaturePad
   if (!signaturePad || signaturePad.isEmpty()) return false;
 
   return true;
 }
 
-// ── Handle Submit ─────────────────────────────────────────────
-/**
- * Handle submit form tamu.
- * Validasi final → kumpulkan data → kirim ke GAS → tampilkan sukses.
- * @param {Event} e
- */
+// ═════════════════════════════════════════════════════════════
+// SUBMIT
+// ═════════════════════════════════════════════════════════════
 async function handleSubmit(e) {
   e.preventDefault();
-
   if (isSubmitting) return;
 
-  // Validasi final semua field
   if (!validateAllFields()) return;
 
   isSubmitting = true;
   const btn = document.getElementById('btn-submit');
-  setButtonLoading(btn);
+  if (btn) setButtonLoading(btn);
 
-  // Kumpulkan data form
   const payload = collectFormData();
+  if (!payload) {
+    // collectFormData gagal — elemen tidak ditemukan
+    showToast('Terjadi kesalahan internal. Refresh halaman dan coba lagi.', 'danger', 5000);
+    isSubmitting = false;
+    if (btn) resetButtonLoading(btn, false);
+    return;
+  }
 
   try {
     const result = await callGAS('addTamu', payload);
 
     if (result.status === 'ok') {
-      // Stop clock setelah submit
-      if (clockInterval) clearInterval(clockInterval);
-
-      // Tampilkan halaman sukses
+      // Hentikan clock
+      if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
       showSuccessScreen(payload);
-
     } else {
       showToast(result.message || 'Gagal menyimpan data. Coba lagi.', 'danger', 4000);
-      resetButtonLoading(btn, false);
       isSubmitting = false;
+      if (btn) resetButtonLoading(btn, false);
     }
 
-  } catch (err) {
+  } catch (_) {
     showToast('Terjadi kesalahan koneksi. Silakan coba lagi.', 'danger', 4000);
-    resetButtonLoading(btn, false);
     isSubmitting = false;
+    if (btn) resetButtonLoading(btn, false);
   }
 }
 
-/**
- * Jalankan validasi final semua field dan tampilkan error jika ada.
- * @returns {boolean} true jika semua valid
- */
 function validateAllFields() {
   let firstInvalid = null;
 
@@ -551,42 +561,41 @@ function validateAllFields() {
 
   // Field text wajib
   const fieldMap = [
-    { id: 'nama-lengkap', errorId: 'error-nama',      msg: 'Nama lengkap wajib diisi.' },
-    { id: 'instansi',     errorId: 'error-instansi',  msg: 'Instansi/asal wajib diisi.' },
-    { id: 'no-hp',        errorId: 'error-no-hp',     msg: 'Nomor HP/WA wajib diisi.' },
-    { id: 'keperluan',    errorId: 'error-keperluan', msg: 'Keperluan wajib diisi.' },
+    { id: 'nama-lengkap', errId: 'error-nama',      msg: 'Nama lengkap wajib diisi.' },
+    { id: 'instansi',     errId: 'error-instansi',  msg: 'Instansi/asal wajib diisi.' },
+    { id: 'no-hp',        errId: 'error-no-hp',     msg: 'Nomor HP/WA wajib diisi.' },
+    { id: 'keperluan',    errId: 'error-keperluan', msg: 'Keperluan wajib diisi.' },
   ];
 
-  fieldMap.forEach(({ id, errorId, msg }) => {
+  fieldMap.forEach(({ id, errId, msg }) => {
     const el = document.getElementById(id);
     if (!el || !el.value.trim()) {
-      el && el.classList.add('is-invalid');
-      showFieldError(errorId, msg);
-      firstInvalid = firstInvalid || el;
+      if (el) el.classList.add('is-invalid');
+      showFieldError(errId, msg);
+      if (!firstInvalid) firstInvalid = el;
     }
   });
 
-  // Email
-  const emailInput = document.getElementById('email');
-  if (!validateEmail(emailInput, true)) {
-    firstInvalid = firstInvalid || emailInput;
+  // Email — FIX B6: ambil element secara eksplisit dengan null check
+  const emailEl = document.getElementById('email');
+  if (!validateEmail(emailEl, true)) {
+    if (!firstInvalid) firstInvalid = emailEl;
   }
 
-  // Bertemu Dengan
-  const bertemuSelect = document.getElementById('bertemu-dengan');
-  if (!bertemuSelect || !bertemuSelect.value) {
-    bertemuSelect && bertemuSelect.classList.add('is-invalid');
+  // Bertemu dengan
+  const bertemuEl = document.getElementById('bertemu-dengan');
+  if (!bertemuEl || !bertemuEl.value) {
+    if (bertemuEl) bertemuEl.classList.add('is-invalid');
     showFieldError('error-bertemu', 'Pilih staf yang akan ditemui.');
-    firstInvalid = firstInvalid || bertemuSelect;
+    if (!firstInvalid) firstInvalid = bertemuEl;
   }
 
-  // Tanda tangan
+  // Tanda tangan — FIX B10: null guard
   if (!signaturePad || signaturePad.isEmpty()) {
     showFieldError('error-ttd', 'Tanda tangan wajib diisi.');
-    firstInvalid = firstInvalid || document.getElementById('signature-container');
+    if (!firstInvalid) firstInvalid = document.getElementById('signature-container');
   }
 
-  // Scroll ke error pertama
   if (firstInvalid) {
     firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return false;
@@ -596,73 +605,86 @@ function validateAllFields() {
 }
 
 /**
- * Kumpulkan semua data form ke dalam payload object untuk GAS.
- * @returns {Object}
+ * FIX B7: Semua akses .value dibungkus dengan null guard.
+ * @returns {Object|null} payload atau null jika ada elemen DOM yang hilang
  */
 function collectFormData() {
-  const tanggal   = document.getElementById('tanggal').value;
-  const jamDatang = document.getElementById('jam-datang').value;
+  const tanggalEl    = document.getElementById('tanggal');
+  const jamEl        = document.getElementById('jam-datang');
+  const namaEl       = document.getElementById('nama-lengkap');
+  const instansiEl   = document.getElementById('instansi');
+  const noHpEl       = document.getElementById('no-hp');
+  const emailEl      = document.getElementById('email');
+  const keperluanEl  = document.getElementById('keperluan');
+  const bertemuEl    = document.getElementById('bertemu-dengan');
 
-  // Export tanda tangan sebagai base64 PNG
+  // Pastikan semua elemen wajib ada
+  if (!tanggalEl || !jamEl || !namaEl || !instansiEl ||
+      !noHpEl || !emailEl || !keperluanEl || !bertemuEl) {
+    console.error('collectFormData: satu atau lebih elemen DOM tidak ditemukan.');
+    return null;
+  }
+
   const ttdBase64 = signaturePad && !signaturePad.isEmpty()
     ? signaturePad.toDataURL('image/png')
     : '';
 
   return {
-    tanggal       : tanggal,
-    jenisTamu     : selectedJenis,
-    jamDatang     : jamDatang,
-    namaLengkap   : document.getElementById('nama-lengkap').value.trim(),
-    instansi      : document.getElementById('instansi').value.trim(),
-    noHp          : document.getElementById('no-hp').value.trim(),
-    email         : document.getElementById('email').value.trim().toLowerCase(),
-    keperluan     : document.getElementById('keperluan').value.trim(),
-    bertemuDengan : document.getElementById('bertemu-dengan').value,
-    tandaTangan   : ttdBase64,
+    tanggal      : tanggalEl.value,
+    jenisTamu    : selectedJenis,
+    jamDatang    : jamEl.value,
+    namaLengkap  : namaEl.value.trim(),
+    instansi     : instansiEl.value.trim(),
+    noHp         : noHpEl.value.trim(),
+    email        : emailEl.value.trim().toLowerCase(),
+    keperluan    : keperluanEl.value.trim(),
+    bertemuDengan: bertemuEl.value,
+    tandaTangan  : ttdBase64,
   };
 }
 
-// ── Success Screen ────────────────────────────────────────────
-/**
- * Sembunyikan form dan tampilkan halaman sukses.
- * @param {Object} payload - Data yang sudah disubmit
- */
+// ═════════════════════════════════════════════════════════════
+// SUCCESS SCREEN
+// ═════════════════════════════════════════════════════════════
 function showSuccessScreen(payload) {
   const formWrapper   = document.getElementById('form-wrapper');
   const successScreen = document.getElementById('success-screen');
-  const successTime   = document.getElementById('success-time');
-  const successDate   = document.getElementById('success-date');
 
   if (formWrapper)   formWrapper.style.display = 'none';
-  if (successScreen) successScreen.classList.add('visible');
+  if (successScreen) {
+    // FIX B14: Re-trigger animasi dengan force reflow
+    successScreen.classList.remove('visible');
+    void successScreen.offsetHeight; // trigger reflow
+    successScreen.classList.add('visible');
+  }
 
-  // Tampilkan jam & tanggal kunjungan
-  if (successTime) successTime.textContent = payload.jamDatang || '';
-  if (successDate) {
-    const d = new Date();
-    successDate.textContent = d.toLocaleDateString('id-ID', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  const timeEl = document.getElementById('success-time');
+  const dateEl = document.getElementById('success-date');
+  if (timeEl) timeEl.textContent = payload?.jamDatang || '';
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('id-ID', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
   }
 
-  // Scroll ke atas
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ── Reset Form ────────────────────────────────────────────────
-/**
- * Reset semua field form ke kondisi awal untuk tamu berikutnya.
- */
+// ═════════════════════════════════════════════════════════════
+// RESET FORM
+// ═════════════════════════════════════════════════════════════
 function resetForm() {
-  isSubmitting   = false;
-  selectedJenis  = '';
+  // FIX B2: bersihkan clock lama, initClock akan buat yang baru
+  if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
 
-  // Reset form HTML
-  const form = document.getElementById('form-form-tamu') ||
-               document.getElementById('form-tamu');
+  isSubmitting  = false;
+  selectedJenis = '';
+
+  // FIX B1: gunakan ID yang benar langsung
+  const form = document.getElementById('form-tamu');
   if (form) form.reset();
 
-  // Reset hidden inputs
+  // Reset hidden input jenis tamu
   const hidJenis = document.getElementById('jenis-tamu');
   if (hidJenis) hidJenis.value = '';
 
@@ -672,53 +694,45 @@ function resetForm() {
     btn.setAttribute('aria-pressed', 'false');
   });
 
-  // Reset validasi class semua input
+  // Reset state validasi semua input
   document.querySelectorAll('.form-control').forEach(el => {
     el.classList.remove('is-valid', 'is-invalid');
   });
 
-  // Sembunyikan semua error
+  // Sembunyikan semua pesan error
   document.querySelectorAll('.form-error').forEach(el => {
     el.classList.remove('visible');
   });
 
   // Reset signature pad
-  if (signaturePad) {
-    signaturePad.clear();
-    const placeholder = document.getElementById('signature-placeholder');
-    const container   = document.getElementById('signature-container');
-    if (placeholder) placeholder.classList.remove('hidden');
-    if (container)   container.classList.remove('has-signature', 'active');
-  }
+  clearSignature();
 
-  // Sembunyikan success screen, tampilkan form
+  // Tampilkan form, sembunyikan success screen
   const formWrapper   = document.getElementById('form-wrapper');
   const successScreen = document.getElementById('success-screen');
   if (formWrapper)   formWrapper.style.display = '';
   if (successScreen) successScreen.classList.remove('visible');
 
-  // Disable submit button
+  // Nonaktifkan tombol submit
   const btn = document.getElementById('btn-submit');
   if (btn) btn.disabled = true;
 
   // Restart clock
   initClock();
 
-  // Scroll ke atas & fokus ke field pertama
+  // Scroll ke atas
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // Fokus ke field nama setelah animasi scroll
+  // Fokus ke field pertama setelah animasi scroll selesai
   setTimeout(() => {
     const namaInput = document.getElementById('nama-lengkap');
     if (namaInput) namaInput.focus();
   }, 500);
 }
 
-// ── Utility: Show/Hide Form Loading ──────────────────────────
-/**
- * Tampilkan atau sembunyikan skeleton loading form.
- * @param {boolean} show
- */
+// ═════════════════════════════════════════════════════════════
+// LOADING STATE
+// ═════════════════════════════════════════════════════════════
 function showFormLoading(show) {
   const loader  = document.getElementById('form-loading');
   const wrapper = document.getElementById('form-wrapper');
@@ -730,16 +744,4 @@ function showFormLoading(show) {
     if (loader)  loader.classList.remove('visible');
     if (wrapper) wrapper.style.display = '';
   }
-}
-
-/**
- * Update tampilan status tanda tangan.
- * @param {boolean} signed
- */
-function _setSignatureStatus(signed) {
-  const el = document.getElementById('signature-status');
-  if (!el) return;
-  el.classList.toggle('signed', signed);
-  const textEl = el.querySelector('span:last-child');
-  if (textEl) textEl.textContent = signed ? 'Tanda tangan tersimpan' : 'Belum ditandatangani';
 }
