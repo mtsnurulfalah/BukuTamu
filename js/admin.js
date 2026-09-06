@@ -61,6 +61,11 @@ async function loadSchoolConfig() {
     const el = document.getElementById('nav-school-name');
     if (el) el.textContent = nama;
     document.title = `Dashboard Admin — ${nama}`;
+
+    // Apply logo aplikasi ke navbar jika sudah diatur
+    if (r.data.logo_app_url) {
+      _updateNavbarLogo(r.data.logo_app_url);
+    }
   }
 }
 
@@ -94,6 +99,7 @@ async function switchTab(tabId) {
   if (tabId === 'ringkasan') await loadRingkasan();
   if (tabId === 'rekap')     await loadRekap();
   if (tabId === 'staf')      await loadStaf();
+  if (tabId === 'pengaturan') await loadPengaturan();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -797,4 +803,438 @@ function _pageRange(current, total) {
   if (current < total - 2)   pages.push('...');
   pages.push(total);
   return pages;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// TAB: PENGATURAN SEKOLAH
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Inisialisasi tab pengaturan — register semua event listeners.
+ * Dipanggil sekali saat switchTab('pengaturan').
+ */
+let _pengaturanInitialized = false;
+
+async function loadPengaturan() {
+  // Fetch config dari GAS
+  const result = await callGAS('getConfig').catch(() => null);
+  const config = (result?.status === 'ok' && result.data) ? result.data : {};
+
+  // ── Isi form identitas ──────────────────────────────────────
+  _setVal('set-nama-sekolah',   config.nama_sekolah    || '');
+  _setVal('set-kepala-sekolah', config.kepala_sekolah  || '');
+  _setVal('set-alamat',         config.alamat_sekolah  || '');
+  _setVal('set-tahun-ajaran',   config.tahun_ajaran    || '');
+
+  // ── Isi form logo sekolah ───────────────────────────────────
+  _setVal('set-logo-url', config.logo_url || '');
+  _applyLogoPreview('sekolah', config.logo_url || '');
+
+  // ── Isi form logo aplikasi ──────────────────────────────────
+  _setVal('set-logo-app-url', config.logo_app_url || '');
+  _applyLogoPreview('app', config.logo_app_url || '');
+
+  // ── Update live preview header ──────────────────────────────
+  _updatePreviewHeader(config);
+
+  // ── Register events (sekali saja) ──────────────────────────
+  if (!_pengaturanInitialized) {
+    _initPengaturanEvents();
+    _pengaturanInitialized = true;
+  }
+}
+
+// ── Register semua event listener pengaturan ──────────────────
+function _initPengaturanEvents() {
+
+  // ── Form Identitas Submit ───────────────────────────────────
+  document.getElementById('form-identitas')
+    ?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-identitas');
+
+      const namaSekolah = _getVal('set-nama-sekolah').trim();
+      if (!namaSekolah) {
+        showToast('Nama sekolah tidak boleh kosong.', 'danger');
+        document.getElementById('set-nama-sekolah')?.focus();
+        return;
+      }
+
+      setButtonLoading(btn);
+
+      const result = await callGAS('updateConfigBatch', {
+        token  : getToken(),
+        updates: {
+          nama_sekolah   : namaSekolah,
+          kepala_sekolah : _getVal('set-kepala-sekolah'),
+          alamat_sekolah : _getVal('set-alamat'),
+          tahun_ajaran   : _getVal('set-tahun-ajaran'),
+        },
+      });
+
+      resetButtonLoading(btn, false);
+
+      if (result.status === 'ok') {
+        showToast('Identitas sekolah berhasil disimpan ✅', 'success');
+        _showSavedIndicator('form-identitas');
+
+        // Update live preview header & navbar
+        _updatePreviewHeader({
+          nama_sekolah  : _getVal('set-nama-sekolah'),
+          alamat_sekolah: _getVal('set-alamat'),
+          logo_url      : _getVal('set-logo-url'),
+        });
+        _updateNavbarName(_getVal('set-nama-sekolah'));
+
+      } else {
+        showToast(result.message || 'Gagal menyimpan identitas.', 'danger');
+      }
+    });
+
+  // ── Input identitas → live update preview ───────────────────
+  ['set-nama-sekolah', 'set-alamat'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => {
+      _updatePreviewHeader({
+        nama_sekolah  : _getVal('set-nama-sekolah'),
+        alamat_sekolah: _getVal('set-alamat'),
+        logo_url      : _getVal('set-logo-url'),
+      });
+    });
+  });
+
+  // ── Form Logo Sekolah ───────────────────────────────────────
+  document.getElementById('btn-preview-logo-sekolah')
+    ?.addEventListener('click', () => {
+      _applyLogoPreview('sekolah', _getVal('set-logo-url'));
+    });
+
+  document.getElementById('set-logo-url')
+    ?.addEventListener('input', () => {
+      // Reset preview ke placeholder saat URL diubah
+      _resetLogoPreview('sekolah');
+    });
+
+  document.getElementById('form-logo-sekolah')
+    ?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-logo-sekolah');
+      const url = _getVal('set-logo-url').trim();
+
+      // Validasi: jika ada URL, cek bisa diload
+      if (url && !_isValidUrl(url)) {
+        showToast('URL logo tidak valid. Pastikan dimulai dengan https://', 'danger');
+        return;
+      }
+
+      setButtonLoading(btn);
+
+      const result = await callGAS('updateConfig', {
+        token: getToken(),
+        key  : 'logo_url',
+        value: url,
+      });
+
+      resetButtonLoading(btn, false);
+
+      if (result.status === 'ok') {
+        showToast(url ? 'Logo sekolah berhasil disimpan ✅' : 'Logo sekolah berhasil dihapus.', 'success');
+        _applyLogoPreview('sekolah', url);
+        _updatePreviewHeader({
+          nama_sekolah  : _getVal('set-nama-sekolah'),
+          alamat_sekolah: _getVal('set-alamat'),
+          logo_url      : url,
+        });
+      } else {
+        showToast(result.message || 'Gagal menyimpan logo.', 'danger');
+      }
+    });
+
+  document.getElementById('btn-hapus-logo-sekolah')
+    ?.addEventListener('click', async () => {
+      if (!confirm('Hapus logo sekolah? Header form tamu akan kembali menampilkan ikon default.')) return;
+
+      _setVal('set-logo-url', '');
+      const btn = document.getElementById('btn-save-logo-sekolah');
+      setButtonLoading(btn);
+
+      const result = await callGAS('updateConfig', {
+        token: getToken(),
+        key  : 'logo_url',
+        value: '',
+      });
+
+      resetButtonLoading(btn, false);
+
+      if (result.status === 'ok') {
+        showToast('Logo sekolah berhasil dihapus.', 'success');
+        _applyLogoPreview('sekolah', '');
+        _updatePreviewHeader({
+          nama_sekolah  : _getVal('set-nama-sekolah'),
+          alamat_sekolah: _getVal('set-alamat'),
+          logo_url      : '',
+        });
+      } else {
+        showToast(result.message || 'Gagal menghapus logo.', 'danger');
+      }
+    });
+
+  // ── Form Logo Aplikasi ──────────────────────────────────────
+  document.getElementById('btn-preview-logo-app')
+    ?.addEventListener('click', () => {
+      _applyLogoPreview('app', _getVal('set-logo-app-url'));
+    });
+
+  document.getElementById('set-logo-app-url')
+    ?.addEventListener('input', () => {
+      _resetLogoPreview('app');
+    });
+
+  document.getElementById('form-logo-app')
+    ?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-logo-app');
+      const url = _getVal('set-logo-app-url').trim();
+
+      if (url && !_isValidUrl(url)) {
+        showToast('URL logo aplikasi tidak valid.', 'danger');
+        return;
+      }
+
+      setButtonLoading(btn);
+
+      const result = await callGAS('updateConfig', {
+        token: getToken(),
+        key  : 'logo_app_url',
+        value: url,
+      });
+
+      resetButtonLoading(btn, false);
+
+      if (result.status === 'ok') {
+        showToast(url ? 'Logo aplikasi berhasil disimpan ✅' : 'Logo aplikasi berhasil dihapus.', 'success');
+        _applyLogoPreview('app', url);
+        // Update navbar logo live
+        _updateNavbarLogo(url);
+      } else {
+        showToast(result.message || 'Gagal menyimpan logo aplikasi.', 'danger');
+      }
+    });
+
+  document.getElementById('btn-hapus-logo-app')
+    ?.addEventListener('click', async () => {
+      if (!confirm('Hapus logo aplikasi? Navbar akan kembali ke ikon default.')) return;
+
+      _setVal('set-logo-app-url', '');
+      const btn = document.getElementById('btn-save-logo-app');
+      setButtonLoading(btn);
+
+      const result = await callGAS('updateConfig', {
+        token: getToken(),
+        key  : 'logo_app_url',
+        value: '',
+      });
+
+      resetButtonLoading(btn, false);
+
+      if (result.status === 'ok') {
+        showToast('Logo aplikasi berhasil dihapus.', 'success');
+        _applyLogoPreview('app', '');
+        _updateNavbarLogo('');
+      } else {
+        showToast(result.message || 'Gagal menghapus logo.', 'danger');
+      }
+    });
+}
+
+// ── Live Preview Helpers ───────────────────────────────────────
+
+/**
+ * Apply logo ke preview box.
+ * @param {'sekolah'|'app'} type
+ * @param {string} url
+ */
+function _applyLogoPreview(type, url) {
+  const previewId  = `preview-logo-${type}`;
+  const fallbackId = `preview-logo-${type}-fallback`;
+  const statusId   = `preview-logo-${type}-status`;
+
+  const box      = document.getElementById(previewId);
+  const fallback = document.getElementById(fallbackId);
+  const status   = document.getElementById(statusId);
+
+  if (!box) return;
+
+  // Hapus img lama jika ada
+  const oldImg = box.querySelector('img');
+  if (oldImg) oldImg.remove();
+
+  if (!url) {
+    box.classList.remove('has-image', 'error');
+    if (fallback) fallback.style.display = '';
+    if (status) {
+      status.textContent = type === 'sekolah' ? 'Belum ada logo' : 'Menggunakan ikon default';
+      status.className   = 'logo-preview-box__desc';
+    }
+    return;
+  }
+
+  // Buat img baru dan test load
+  const img = document.createElement('img');
+  img.alt = `Logo ${type}`;
+  img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;';
+
+  img.onload = () => {
+    box.classList.add('has-image');
+    box.classList.remove('error');
+    if (fallback) fallback.style.display = 'none';
+    if (status) {
+      status.textContent = '✅ Gambar berhasil dimuat';
+      status.className   = 'logo-preview-box__desc success';
+    }
+  };
+
+  img.onerror = () => {
+    img.remove();
+    box.classList.add('error');
+    box.classList.remove('has-image');
+    if (fallback) fallback.style.display = '';
+    if (status) {
+      status.textContent = '❌ Gagal memuat gambar';
+      status.className   = 'logo-preview-box__desc error';
+    }
+  };
+
+  img.src = url;
+  box.appendChild(img);
+}
+
+/**
+ * Reset logo preview ke state kosong/default.
+ * @param {'sekolah'|'app'} type
+ */
+function _resetLogoPreview(type) {
+  const box = document.getElementById(`preview-logo-${type}`);
+  if (!box) return;
+  const oldImg = box.querySelector('img');
+  if (oldImg) oldImg.remove();
+  box.classList.remove('has-image', 'error');
+  const fallback = document.getElementById(`preview-logo-${type}-fallback`);
+  if (fallback) fallback.style.display = '';
+  const status = document.getElementById(`preview-logo-${type}-status`);
+  if (status) {
+    status.textContent = type === 'sekolah' ? 'Belum ada logo' : 'Menggunakan ikon default';
+    status.className   = 'logo-preview-box__desc';
+  }
+}
+
+/**
+ * Update pratinjau header di tab pengaturan.
+ * @param {{ nama_sekolah, alamat_sekolah, logo_url }} config
+ */
+function _updatePreviewHeader(config) {
+  const nameEl  = document.getElementById('settings-preview-name');
+  const addrEl  = document.getElementById('settings-preview-addr');
+  const logoBox = document.getElementById('settings-preview-logo');
+  const logoIcon = document.getElementById('settings-preview-logo-icon');
+
+  if (nameEl) nameEl.textContent = config.nama_sekolah  || 'Nama Sekolah';
+  if (addrEl) addrEl.textContent = config.alamat_sekolah || 'Alamat Sekolah';
+
+  if (logoBox && logoIcon) {
+    // Hapus img lama
+    const oldImg = logoBox.querySelector('img');
+    if (oldImg) oldImg.remove();
+
+    if (config.logo_url) {
+      const img = document.createElement('img');
+      img.src   = config.logo_url;
+      img.alt   = config.nama_sekolah || 'Logo sekolah';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      img.onload  = () => { logoIcon.style.display = 'none'; };
+      img.onerror = () => { img.remove(); logoIcon.style.display = ''; };
+      logoBox.appendChild(img);
+    } else {
+      logoIcon.style.display = '';
+    }
+  }
+}
+
+/**
+ * Update nama sekolah di navbar live.
+ * @param {string} nama
+ */
+function _updateNavbarName(nama) {
+  const el = document.getElementById('nav-school-name');
+  if (el && nama) el.textContent = nama;
+}
+
+/**
+ * Update logo di navbar live (brand icon).
+ * @param {string} url
+ */
+function _updateNavbarLogo(url) {
+  const iconEl = document.querySelector('.navbar__brand-icon');
+  if (!iconEl) return;
+
+  const oldImg = iconEl.querySelector('img');
+  if (oldImg) oldImg.remove();
+
+  if (url) {
+    const img = document.createElement('img');
+    img.src   = url;
+    img.alt   = 'Logo';
+    img.className = 'navbar__brand-logo-img';
+    img.onerror = () => img.remove();
+    iconEl.appendChild(img);
+    iconEl.querySelector('span') && (iconEl.querySelector('span').style.display = 'none');
+  } else {
+    const span = iconEl.querySelector('span');
+    if (span) span.style.display = '';
+  }
+}
+
+/**
+ * Tampilkan indikator "Tersimpan ✓" di samping tombol simpan.
+ * @param {string} formId
+ */
+function _showSavedIndicator(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+
+  // Cari atau buat indikator
+  let indicator = form.querySelector('.settings-saved-indicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.className = 'settings-saved-indicator';
+    indicator.innerHTML = '<span>✅</span><span>Tersimpan</span>';
+    const actionsEl = form.querySelector('.settings-actions');
+    if (actionsEl) actionsEl.appendChild(indicator);
+  }
+
+  indicator.classList.add('visible');
+  setTimeout(() => indicator.classList.remove('visible'), 3000);
+}
+
+// ── Utility Helpers ───────────────────────────────────────────
+
+/** Ambil value dari input/textarea/select by ID */
+function _getVal(id) {
+  return document.getElementById(id)?.value || '';
+}
+
+/** Set value input/textarea by ID */
+function _setVal(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value || '';
+}
+
+/** Validasi URL dasar (https:// atau http://) */
+function _isValidUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
 }
