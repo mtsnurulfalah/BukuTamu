@@ -278,6 +278,8 @@ function initSignaturePad() {
       container.classList.remove('active');
       container.classList.add('has-signature');
     }
+    // Update status indicator
+    _setSignatureStatus(true);
     hideFieldError('error-ttd');
     checkSubmitEligibility();
   });
@@ -290,6 +292,7 @@ function initSignaturePad() {
       if (container) {
         container.classList.remove('has-signature', 'active');
       }
+      _setSignatureStatus(false);
       checkSubmitEligibility();
     });
   }
@@ -727,4 +730,16 @@ function showFormLoading(show) {
     if (loader)  loader.classList.remove('visible');
     if (wrapper) wrapper.style.display = '';
   }
+}
+
+/**
+ * Update tampilan status tanda tangan.
+ * @param {boolean} signed
+ */
+function _setSignatureStatus(signed) {
+  const el = document.getElementById('signature-status');
+  if (!el) return;
+  el.classList.toggle('signed', signed);
+  const textEl = el.querySelector('span:last-child');
+  if (textEl) textEl.textContent = signed ? 'Tanda tangan tersimpan' : 'Belum ditandatangani';
 }
