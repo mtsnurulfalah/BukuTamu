@@ -1,5 +1,5 @@
 /* ============================================================
-   admin.css — Dashboard Admin (Mobile First)
+   admin.css — Dashboard Admin v2 (Mobile First)
    ============================================================ */
 
 .admin-page {
@@ -7,31 +7,36 @@
   background: var(--clr-gray-50);
 }
 
-/* ── Admin Tabs Navigation ────────────────────────────────── */
+/* ── Admin Tab Nav ────────────────────────────────────────── */
 .admin-nav {
   background: var(--clr-white);
-  border-bottom: 1px solid var(--clr-gray-200);
+  border-bottom: 1px solid var(--clr-gray-100);
   padding: var(--space-3) var(--space-4);
   position: sticky;
   top: 56px;
   z-index: 40;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.04);
 }
 
-.admin-nav .tabs {
-  max-width: 100%;
+.admin-nav .tabs { max-width: 560px; }
+
+@media (min-width: 640px) {
+  .admin-nav { padding: var(--space-3) var(--space-6); }
 }
 
-/* ── Page Sections ────────────────────────────────────────── */
+/* ── Admin Section ────────────────────────────────────────── */
 .admin-section {
   padding: var(--space-5) var(--space-4);
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
 @media (min-width: 640px) {
-  .admin-section {
-    padding: var(--space-6) var(--space-6);
-  }
+  .admin-section { padding: var(--space-6) var(--space-6); }
+}
+
+@media (min-width: 1024px) {
+  .admin-section { padding: var(--space-7) var(--space-8); }
 }
 
 /* ── Stats Grid ───────────────────────────────────────────── */
@@ -49,25 +54,20 @@
   }
 }
 
-.stat-card--primary {
-  border-left: 4px solid var(--clr-primary);
-}
-.stat-card--success {
-  border-left: 4px solid var(--clr-success);
-}
-.stat-card--warning {
-  border-left: 4px solid var(--clr-warning);
-}
-.stat-card--info {
-  border-left: 4px solid var(--clr-accent);
+/* stat card accent bar warna via global.css --
+   override nilai stat-card__value lebih besar di admin */
+.admin-section .stat-card__value {
+  font-size: var(--font-size-4xl);
 }
 
-.stat-card__icon {
-  margin-bottom: var(--space-2);
-  font-size: 1.5rem;
+.admin-section .stat-card--teks .stat-card__value {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 
-/* ── Charts Section ───────────────────────────────────────── */
+/* ── Charts Grid ──────────────────────────────────────────── */
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -75,64 +75,92 @@
   margin-bottom: var(--space-6);
 }
 
-@media (min-width: 640px) {
-  .charts-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+@media (min-width: 768px) {
+  .charts-grid { grid-template-columns: 1.2fr 1fr; }
 }
 
 .chart-card {
   background: var(--clr-white);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-5);
   border: 1px solid var(--clr-gray-200);
   box-shadow: var(--shadow-sm);
+}
+
+.chart-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
 }
 
 .chart-card__title {
   font-size: var(--font-size-sm);
   font-weight: 700;
   color: var(--clr-gray-700);
-  margin-bottom: var(--space-4);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.07em;
 }
 
-/* ── Trend Chart (7 hari) ─────────────────────────────────── */
+.chart-card__total {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+  background: var(--clr-gray-100);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+}
+
+/* ── Trend Chart ──────────────────────────────────────────── */
 .trend-chart {
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
-  height: 80px;
+  height: 88px;
+  padding: 0 var(--space-1);
 }
 
 .trend-chart__bar {
   flex: 1;
-  background: var(--clr-primary);
+  background: linear-gradient(180deg, var(--clr-primary), var(--clr-primary-dark));
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   min-height: 4px;
   position: relative;
-  transition: height 0.5s ease;
+  transition: height 0.6s cubic-bezier(0.4,0,0.2,1);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.trend-chart__bar:hover { opacity: 1; }
+
+.trend-chart__bar::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -26px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  background: var(--clr-gray-900);
+  color: var(--clr-white);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--transition), transform var(--transition);
+  pointer-events: none;
 }
 
 .trend-chart__bar:hover::after {
-  content: attr(data-count);
-  position: absolute;
-  top: -24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--clr-gray-800);
-  color: var(--clr-white);
-  font-size: var(--font-size-xs);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
 }
 
 .trend-chart__label-row {
   display: flex;
   gap: var(--space-2);
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
+  padding: 0 var(--space-1);
 }
 
 .trend-chart__label {
@@ -140,6 +168,7 @@
   text-align: center;
   font-size: 10px;
   color: var(--clr-gray-400);
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -149,12 +178,13 @@
 .filter-bar {
   background: var(--clr-white);
   border: 1px solid var(--clr-gray-200);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
   margin-bottom: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
+  box-shadow: var(--shadow-sm);
 }
 
 .filter-bar__row {
@@ -163,24 +193,29 @@
   gap: var(--space-3);
 }
 
+.filter-bar__field { display: flex; flex-direction: column; gap: var(--space-2); }
+
 .filter-bar__label {
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--clr-gray-500);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: var(--space-1);
+  letter-spacing: 0.07em;
 }
 
 .filter-bar .form-control {
   min-height: 40px;
   font-size: var(--font-size-sm);
+  border-radius: var(--radius-lg);
+  height: 40px;
 }
 
 .filter-actions {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--clr-gray-100);
 }
 
 @media (min-width: 640px) {
@@ -188,14 +223,13 @@
     flex-direction: row;
     flex-wrap: wrap;
   }
-
-  .filter-bar__row > * {
+  .filter-bar__field {
     flex: 1;
-    min-width: 160px;
+    min-width: 140px;
   }
 }
 
-/* ── Rekap Tabel Section ──────────────────────────────────── */
+/* ── Rekap Section Header ─────────────────────────────────── */
 .rekap-header {
   display: flex;
   align-items: center;
@@ -209,57 +243,86 @@
   font-size: var(--font-size-base);
   font-weight: 700;
   color: var(--clr-gray-900);
+  letter-spacing: -0.01em;
 }
 
 .rekap-header__count {
   font-size: var(--font-size-sm);
-  color: var(--clr-gray-500);
+  color: var(--clr-gray-400);
+  background: var(--clr-gray-100);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
 }
 
-/* ── Manajemen Staf ───────────────────────────────────────── */
+/* ── Staf Section ─────────────────────────────────────────── */
 .staf-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: var(--space-5);
+  gap: var(--space-4);
   flex-wrap: wrap;
-  gap: var(--space-3);
+}
+
+.staf-header__text { }
+
+.section-title {
+  font-size: var(--font-size-lg);
+  font-weight: 800;
+  color: var(--clr-gray-900);
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.section-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-400);
 }
 
 .staf-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   margin-bottom: var(--space-6);
 }
 
+/* ── Staf Card ────────────────────────────────────────────── */
 .staf-card {
   background: var(--clr-white);
   border: 1px solid var(--clr-gray-200);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   padding: var(--space-4);
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.staf-card:hover {
   box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .staf-card.inactive {
-  opacity: 0.6;
+  opacity: 0.55;
+  background: var(--clr-gray-50);
 }
 
 .staf-card__avatar {
   width: 44px;
   height: 44px;
-  background: var(--clr-primary-light);
-  border-radius: 50%;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--clr-primary-light), var(--clr-primary-mid));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-size: var(--font-size-lg);
+  font-weight: 800;
   color: var(--clr-primary);
   flex-shrink: 0;
+  letter-spacing: -0.02em;
 }
 
 .staf-card__info {
@@ -271,15 +334,17 @@
   font-weight: 700;
   font-size: var(--font-size-base);
   color: var(--clr-gray-900);
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .staf-card__jabatan {
-  font-size: var(--font-size-sm);
-  color: var(--clr-gray-500);
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
   margin-top: 2px;
+  font-weight: 500;
 }
 
 .staf-card__actions {
@@ -288,26 +353,25 @@
   flex-shrink: 0;
 }
 
-/* ── Add/Edit Staf Form ───────────────────────────────────── */
+/* ── Staf Form Card ───────────────────────────────────────── */
 .staf-form-card {
   background: var(--clr-primary-light);
-  border: 1.5px solid var(--clr-primary);
-  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--clr-primary-mid);
+  border-radius: var(--radius-xl);
   padding: var(--space-5);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
   display: none;
-  animation: slideUp 0.2s ease;
+  animation: slideUp 0.25s var(--transition-spring);
 }
 
-.staf-form-card.visible {
-  display: block;
-}
+.staf-form-card.visible { display: block; }
 
 .staf-form-card__title {
   font-size: var(--font-size-base);
   font-weight: 700;
   color: var(--clr-primary-dark);
   margin-bottom: var(--space-4);
+  letter-spacing: -0.01em;
 }
 
 .staf-form-row {
@@ -317,60 +381,67 @@
 }
 
 @media (min-width: 640px) {
-  .staf-form-row {
-    flex-direction: row;
-  }
-  .staf-form-row > .form-group {
-    flex: 1;
-    margin-bottom: 0;
-  }
+  .staf-form-row { flex-direction: row; }
+  .staf-form-row > .form-group { flex: 1; margin-bottom: 0; }
 }
 
 /* ── Export Button ────────────────────────────────────────── */
 .export-btn {
   background: var(--clr-success);
   color: var(--clr-white);
+  box-shadow: var(--shadow-success);
 }
+.export-btn:hover { background: #047857; }
 
-.export-btn:hover {
-  background: #15803d;
-}
-
-/* ── Detail Modal (admin) ─────────────────────────────────── */
+/* ── Detail Modal Badges ──────────────────────────────────── */
 .detail-badge-row {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
-/* ── Notification Panel ───────────────────────────────────── */
+/* ── Notif Pulse ──────────────────────────────────────────── */
 .notif-dot {
   width: 8px;
   height: 8px;
   background: var(--clr-danger);
   border-radius: 50%;
   position: absolute;
-  top: 4px;
-  right: 4px;
-  animation: pulse 1.5s infinite;
+  top: 3px;
+  right: 3px;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
+  animation: notifPulse 1.8s ease infinite;
 }
 
-@keyframes pulse {
+@keyframes notifPulse {
   0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.4); opacity: 0.7; }
+  50%       { transform: scale(1.5); opacity: 0.6; }
 }
 
-/* ── Users Section placeholder ────────────────────────────── */
-.section-title {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--clr-gray-900);
-  margin-bottom: var(--space-4);
-}
-
-.section-subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--clr-gray-500);
+/* ── Ringkasan Page Header ────────────────────────────────── */
+.ringkasan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.ringkasan-header__title {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  color: var(--clr-gray-900);
+  letter-spacing: -0.03em;
+}
+
+.ringkasan-header__date {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-400);
+  background: var(--clr-white);
+  border: 1px solid var(--clr-gray-200);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
 }
