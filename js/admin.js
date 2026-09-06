@@ -134,8 +134,19 @@ async function loadRingkasan() {
   // ── Bar Chart Jenis Tamu ────────────────────────────────────
   renderBarChart(d.perJenis, d.totalSemua);
 
+  // Update total label
+  const jenisTotalEl = document.getElementById('chart-jenis-total');
+  if (jenisTotalEl) jenisTotalEl.textContent = `${d.totalSemua} total`;
+
   // ── Trend Chart 7 Hari ──────────────────────────────────────
   renderTrendChart(d.tren7Hari);
+
+  // Update total trend label
+  const trendTotalEl = document.getElementById('chart-trend-total');
+  if (trendTotalEl) {
+    const sum7 = d.tren7Hari.reduce((a, b) => a + b.total, 0);
+    trendTotalEl.textContent = `${sum7} / 7 hari`;
+  }
 }
 
 /**
