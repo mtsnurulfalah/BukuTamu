@@ -117,6 +117,10 @@ html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
+  /* Reservasi ruang scrollbar secara permanen sehingga tidak ada
+     layout shift saat konten bertambah/berkurang atau modal dibuka.
+     Didukung oleh semua browser modern (Chrome 94+, Firefox 97+, Safari 15.4+). */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -541,6 +545,41 @@ select.form-control {
 .badge--accent  { background: var(--clr-accent-light);  color: var(--clr-accent); }
 
 /* ── Modal ────────────────────────────────────────────────── */
+
+/*
+ * Saat modal aktif, body diberi class "modal-open" oleh JS.
+ * padding-right dikompensasi via custom property --scrollbar-width
+ * yang dihitung JS (window.innerWidth - document.documentElement.clientWidth).
+ * Ini mencegah layout shift saat scrollbar menghilang.
+ */
+body.modal-open {
+  overflow: hidden;
+  /* fallback 0px jika JS belum sempat set, tapi JS selalu set duluan */
+  padding-right: var(--scrollbar-width, 0px);
+}
+
+/* Navbar ikut digeser agar tidak melompat ke kiri saat body di-lock */
+body.modal-open .navbar {
+  padding-right: calc(var(--space-4) + var(--scrollbar-width, 0px));
+}
+
+@media (min-width: 640px) {
+  body.modal-open .navbar {
+    padding-right: calc(var(--space-6) + var(--scrollbar-width, 0px));
+  }
+}
+
+/* Admin nav (sticky) juga perlu kompensasi */
+body.modal-open .admin-nav {
+  padding-right: calc(var(--space-4) + var(--scrollbar-width, 0px));
+}
+
+@media (min-width: 640px) {
+  body.modal-open .admin-nav {
+    padding-right: calc(var(--space-6) + var(--scrollbar-width, 0px));
+  }
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -551,10 +590,13 @@ select.form-control {
   align-items: flex-end;
   justify-content: center;
   padding: 0;
-  animation: fadeIn 0.2s ease;
+  /* Tidak ada animasi di backdrop — animasi ada di .modal di dalamnya */
 }
 
-.modal-backdrop.active { display: flex; }
+.modal-backdrop.active {
+  display: flex;
+  animation: fadeIn 0.2s ease;
+}
 
 .modal {
   background: var(--clr-white);
@@ -903,7 +945,16 @@ select.form-control {
 }
 
 .tab-pane         { display: none; padding-top: var(--space-5); }
-.tab-pane.active  { display: block; animation: fadeInUp 0.2s ease; }
+.tab-pane.active  { display: block; animation: fadeIn 0.15s ease; }
+
+/* fadeInUp tetap ada untuk komponen lain yang memakainya,
+   tapi tab-pane kini pakai fadeIn tanpa translateY agar tidak jumping */
+
+/* Pastikan tab-pane aktif punya tinggi minimum agar halaman tidak collapse
+   saat konten lama hilang dan konten baru belum dimuat */
+.tab-pane.active {
+  min-height: 60vh;
+}
 
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(6px); }
