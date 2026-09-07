@@ -347,6 +347,7 @@ function openCatatPulang(tamuId) {
   // Buka bottom sheet
   const sheet = document.getElementById('sheet-pulang');
   if (sheet) sheet.classList.add('active');
+  lockScroll();
 
   // Fokus ke input jam
   setTimeout(() => jamInput?.focus(), 100);
@@ -358,6 +359,7 @@ function openCatatPulang(tamuId) {
 function closeCatatPulang() {
   const sheet = document.getElementById('sheet-pulang');
   if (sheet) sheet.classList.remove('active');
+  unlockScroll();
   selectedTamuId = null;
 }
 
@@ -437,6 +439,7 @@ async function openDetail(tamuId) {
   if (modalBox) modalBox.scrollTop = 0;
 
   modal.classList.add('active');
+  lockScroll();
 
   // Fetch detail lengkap dari GAS
   const result = await callGAS('getTamuById', {
@@ -463,6 +466,13 @@ async function openDetail(tamuId) {
   // Format tanggal display
   const tanggalDisplay = formatTanggalDisplay(t.tanggal);
 
+  // Label field instansi disesuaikan dengan jenis tamu
+  const instansiLabel = t.jenisTamu === 'Orang Tua/Wali Murid'
+    ? 'Orang Tua/Wali dari'
+    : t.jenisTamu === 'Alumni'
+      ? 'Tahun Lulus'
+      : 'Instansi / Asal';
+
   if (content) content.innerHTML = `
     <div style="margin-bottom:var(--space-3);">
       <span class="badge badge--${t.status === 'Hadir' ? 'success' : 'gray'}">${escapeHtml(t.status)}</span>
@@ -472,7 +482,7 @@ async function openDetail(tamuId) {
     <div class="detail-row"><div class="detail-row__label">Jam Datang</div><div class="detail-row__value">${displayVal(t.jamDatang)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Pulang</div><div class="detail-row__value">${displayVal(t.jamPulang) || '<span class="text-muted">Belum pulang</span>'}</div></div>
     <div class="detail-row"><div class="detail-row__label">Nama</div><div class="detail-row__value">${displayVal(t.namaLengkap)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Instansi</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
+    <div class="detail-row"><div class="detail-row__label">${escapeHtml(instansiLabel)}</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
     <div class="detail-row"><div class="detail-row__label">No. HP/WA</div><div class="detail-row__value">${displayVal(t.noHp)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Email</div><div class="detail-row__value">${displayVal(t.email)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value" style="white-space:pre-wrap;">${displayVal(t.keperluan)}</div></div>
@@ -491,6 +501,7 @@ async function openDetail(tamuId) {
 function closeDetail() {
   const modal = document.getElementById('modal-detail');
   if (modal) modal.classList.remove('active');
+  unlockScroll();
 }
 
 // ── Notifikasi In-App ─────────────────────────────────────────
