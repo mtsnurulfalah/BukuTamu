@@ -157,7 +157,7 @@ function initNavbar(session) {
   // Badge role
   const navRole = document.getElementById('nav-role-badge');
   if (navRole) {
-    navRole.textContent = session.role === ROLES.ADMIN ? '👑 Admin' : '🛡️ Satpam';
+    navRole.textContent = session.role === ROLES.ADMIN ? 'Admin' : 'Satpam';
   }
 
   // Tombol logout — buka modal konfirmasi, bukan langsung logout
