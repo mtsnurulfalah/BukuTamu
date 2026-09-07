@@ -5,17 +5,17 @@
 
 /* ── Custom Properties ────────────────────────────────────── */
 :root {
-  /* Warna Utama — biru lebih dalam & kaya */
-  --clr-primary:       #2563eb;
-  --clr-primary-dark:  #1e40af;
-  --clr-primary-deeper:#1e3a8a;
-  --clr-primary-light: #eff6ff;
-  --clr-primary-mid:   #bfdbfe;
-  --clr-primary-hover: #1d4ed8;
+  /* Warna Utama — navy institusional */
+  --clr-primary:       #1a4480;
+  --clr-primary-dark:  #12306b;
+  --clr-primary-deeper:#0d2554;
+  --clr-primary-light: #eef2f9;
+  --clr-primary-mid:   #b8cae0;
+  --clr-primary-hover: #163b73;
 
-  /* Warna Aksen */
-  --clr-accent:        #06b6d4;
-  --clr-accent-light:  #ecfeff;
+  /* Warna Aksen — gold */
+  --clr-accent:        #e8a020;
+  --clr-accent-light:  #fef7e8;
 
   /* Warna Status */
   --clr-success:       #059669;
@@ -89,7 +89,7 @@
   --shadow-lg:  0 12px 20px -4px rgba(15,23,42,0.10), 0 4px 8px -2px rgba(15,23,42,0.05);
   --shadow-xl:  0 24px 40px -8px rgba(15,23,42,0.12), 0 8px 16px -4px rgba(15,23,42,0.06);
   --shadow-2xl: 0 40px 64px -12px rgba(15,23,42,0.15);
-  --shadow-primary: 0 4px 14px rgba(37,99,235,0.30);
+  --shadow-primary: 0 4px 14px rgba(26,68,128,0.30);
   --shadow-success: 0 4px 14px rgba(5,150,105,0.25);
   --shadow-danger:  0 4px 14px rgba(220,38,38,0.25);
 
@@ -197,7 +197,6 @@ h3 { font-size: var(--font-size-lg); }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
   flex-shrink: 0;
 }
 
@@ -327,7 +326,7 @@ h3 { font-size: var(--font-size-lg); }
   outline: none;
   border-color: var(--clr-primary);
   background: var(--clr-white);
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  box-shadow: 0 0 0 3px rgba(26,68,128,0.12);
 }
 
 .form-control:disabled {
@@ -629,7 +628,6 @@ body.modal-open .admin-nav {
   justify-content: center;
   border-radius: var(--radius-full);
   color: var(--clr-gray-400);
-  font-size: 1.1rem;
   background: var(--clr-gray-100);
   transition: all var(--transition);
 }
@@ -740,9 +738,8 @@ body.modal-open .admin-nav {
 }
 
 .empty-state__icon {
-  font-size: 3.5rem;
-  margin-bottom: var(--space-5);
   display: block;
+  margin-bottom: var(--space-5);
   filter: grayscale(0.2);
 }
 
@@ -798,7 +795,6 @@ body.modal-open .admin-nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
   margin-bottom: var(--space-4);
 }
 
@@ -1253,10 +1249,6 @@ body.modal-open .admin-nav {
 }
 
 .logout-modal__icon {
-  font-size: 3rem;
-  line-height: 1;
-  margin-bottom: var(--space-3);
-  /* Lingkaran latar */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1264,6 +1256,7 @@ body.modal-open .admin-nav {
   height: 72px;
   background: var(--clr-gray-100);
   border-radius: 50%;
+  margin-bottom: var(--space-3);
 }
 
 .modal--logout .modal__title {
