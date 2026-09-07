@@ -89,9 +89,6 @@ async function switchTab(tabId) {
 
   _isTabSwitching = true;
 
-  // Simpan scroll position halaman sebelum tab di-switch agar tidak jumping
-  const scrollY = window.scrollY;
-
   // Update button states
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.id === `tab-${tabId}`);
@@ -105,21 +102,19 @@ async function switchTab(tabId) {
 
   activeTab = tabId;
 
-  // Restore scroll — konten baru mungkin lebih pendek dari konten lama,
-  // sehingga browser bisa "melompat". Kita reset ke posisi semula atau 0
-  // tergantung apakah tab baru punya konten yang cukup panjang.
-  // requestAnimationFrame memastikan DOM sudah di-paint sebelum scroll.
-  requestAnimationFrame(() => {
-    // Scroll ke atas tab nav agar konsisten, tanpa efek jumping
-    const adminNav = document.querySelector('.admin-nav');
-    if (adminNav) {
-      const navTop = adminNav.getBoundingClientRect().top + window.scrollY;
-      // Hanya scroll ke nav jika posisi saat ini di bawah nav
-      if (window.scrollY > navTop) {
-        window.scrollTo({ top: navTop - 8, behavior: 'instant' });
-      }
+  // Beri satu frame kepada browser untuk menghitung layout pane baru
+  // sebelum konten dimuat. Ini penting agar elemen seperti img, canvas,
+  // atau elemen yang bergantung pada dimensi visible sudah ter-layout.
+  await new Promise(resolve => requestAnimationFrame(resolve));
+
+  // Scroll ke atas tab nav agar konsisten, tanpa efek jumping
+  const adminNav = document.querySelector('.admin-nav');
+  if (adminNav) {
+    const navTop = adminNav.getBoundingClientRect().top + window.scrollY;
+    if (window.scrollY > navTop) {
+      window.scrollTo({ top: navTop - 8, behavior: 'instant' });
     }
-  });
+  }
 
   try {
     if (tabId === 'ringkasan')  await loadRingkasan();
@@ -1137,6 +1132,12 @@ async function loadPengaturan() {
   const result = await callGAS('getConfig').catch(() => null);
   const config = (result?.status === 'ok' && result.data) ? result.data : {};
 
+  // Jika fetch gagal total, tampilkan pesan tapi tetap lanjutkan isi form
+  // (nilai akan kosong, form tetap bisa digunakan)
+  if (!result || result.status !== 'ok') {
+    console.warn('loadPengaturan: gagal fetch config, form akan kosong.');
+  }
+
   // ── Isi form identitas ──────────────────────────────────────
   _setVal('set-nama-sekolah',   config.nama_sekolah    || '');
   _setVal('set-kepala-sekolah', config.kepala_sekolah  || '');
@@ -1421,7 +1422,16 @@ function _applyLogoPreview(type, url) {
     }
   };
 
+  // Set src SETELAH handler di-assign agar onload tidak terlewat
+  // pada gambar yang sudah di-cache browser.
   img.src = normalizeLogoUrl(url);
+
+  // Jika gambar sudah di-cache, onload mungkin tidak fired di beberapa browser.
+  // Cek langsung via .complete dan .naturalWidth sebagai fallback.
+  if (img.complete && img.naturalWidth > 0) {
+    img.onload();
+  }
+
   box.appendChild(img);
 }
 
