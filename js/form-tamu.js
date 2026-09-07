@@ -99,7 +99,7 @@ function applySchoolConfig(config) {
     if (existing) existing.remove();
 
     const img = document.createElement('img');
-    img.src   = config.logo_url.trim();
+    img.src   = normalizeLogoUrl(config.logo_url.trim());
     img.alt   = `Logo ${namaSekolah}`;
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;';
     // BUG #2 FIX: sembunyikan icon segera sebelum gambar mulai load,
