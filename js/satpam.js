@@ -70,7 +70,7 @@ function _updateNavbarLogo(url) {
 
   if (url) {
     const img     = document.createElement('img');
-    img.src       = url;
+    img.src       = normalizeLogoUrl(url);
     img.alt       = 'Logo';
     img.className = 'navbar__brand-logo-img';
     img.onload    = () => { iconEl.style.fontSize = '0'; };
