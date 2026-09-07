@@ -117,11 +117,11 @@
         <div class="ringkasan-header__date" id="ringkasan-date">—</div>
       </div>
 
-      <!-- Stat Cards Grid -->
-      <div class="stats-grid" id="stats-grid">
+      <!-- Stat Cards Grid — ▶▶ 6 cards untuk multi-tamu -->
+      <div class="stats-grid stats-grid--6" id="stats-grid">
         <div class="stat-card stat-card--primary">
           <div class="stat-card__icon" aria-hidden="true">👥</div>
-          <div class="stat-card__label">Tamu Hari Ini</div>
+          <div class="stat-card__label">Individu Hari Ini</div>
           <div class="stat-card__value" id="stat-hari-ini">
             <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
           </div>
@@ -133,15 +133,15 @@
           <div class="stat-card__value" id="stat-aktif">
             <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
           </div>
-          <div class="stat-card__sub" id="stat-aktif-sub">tamu aktif saat ini</div>
+          <div class="stat-card__sub" id="stat-aktif-sub">individu aktif</div>
         </div>
         <div class="stat-card stat-card--warning">
           <div class="stat-card__icon" aria-hidden="true">📅</div>
-          <div class="stat-card__label">Total Bulan Ini</div>
+          <div class="stat-card__label">Individu Bulan Ini</div>
           <div class="stat-card__value" id="stat-bulan-ini">
             <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
           </div>
-          <div class="stat-card__sub" id="stat-bulan-sub">—</div>
+          <div class="stat-card__sub" id="stat-bulan-ini-sub">—</div>
         </div>
         <div class="stat-card stat-card--info">
           <div class="stat-card__icon" aria-hidden="true">🏆</div>
@@ -149,7 +149,24 @@
           <div class="stat-card__value" id="stat-terbanyak" style="font-size:1rem;">
             <div class="skeleton skeleton--text" style="width:80px;height:1.2rem;"></div>
           </div>
-          <div class="stat-card__sub" id="stat-terbanyak-count">—</div>
+          <div class="stat-card__sub" id="stat-terbanyak-sub">—</div>
+        </div>
+        <!-- ▶▶ MULTI-TAMU: Stat card baru -->
+        <div class="stat-card stat-card--purple">
+          <div class="stat-card__icon" aria-hidden="true">📊</div>
+          <div class="stat-card__label">Total Semua</div>
+          <div class="stat-card__value" id="stat-total-semua">
+            <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
+          </div>
+          <div class="stat-card__sub" id="stat-total-semua-sub">individu</div>
+        </div>
+        <div class="stat-card stat-card--orange">
+          <div class="stat-card__icon" aria-hidden="true">🚌</div>
+          <div class="stat-card__label">Rombongan</div>
+          <div class="stat-card__value" id="stat-rombongan">
+            <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
+          </div>
+          <div class="stat-card__sub" id="stat-rombongan-sub">sesi rombongan</div>
         </div>
       </div>
 
@@ -216,7 +233,7 @@
               type="search"
               id="filter-search"
               class="form-control"
-              placeholder="Cari nama..."
+              placeholder="Nama tamu / anggota..."
               aria-label="Cari berdasarkan nama"
             />
           </div>
@@ -249,7 +266,7 @@
           <thead>
             <tr>
               <th scope="col">Tanggal</th>
-              <th scope="col">Nama</th>
+              <th scope="col">Nama / Rombongan</th>
               <th scope="col">Jenis</th>
               <th scope="col">Instansi</th>
               <th scope="col">Jam Datang</th>
