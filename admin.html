@@ -732,6 +732,47 @@
     </div>
   </div>
 
+  <!-- ── Modal: Konfirmasi Keluar ──────────────────────── -->
+  <div class="modal-backdrop" id="modal-logout" role="dialog" aria-modal="true"
+    aria-labelledby="modal-logout-title">
+    <div class="modal modal--logout">
+      <div class="modal__handle" aria-hidden="true"></div>
+
+      <div class="logout-modal__icon" aria-hidden="true">🚪</div>
+      <h2 class="modal__title" id="modal-logout-title">Keluar dari Aplikasi</h2>
+      <p class="logout-modal__desc">
+        Pilih halaman yang ingin dibuka setelah Anda keluar.
+      </p>
+
+      <div class="logout-modal__actions">
+        <!-- Keluar & ke Form Tamu -->
+        <button class="btn btn--primary logout-modal__btn" id="btn-logout-to-form">
+          <span class="btn__spinner"></span>
+          <span class="logout-modal__btn-icon">📋</span>
+          <span class="logout-modal__btn-body">
+            <span class="logout-modal__btn-label">Keluar &amp; Buka Form Tamu</span>
+            <span class="logout-modal__btn-sub">Halaman pendaftaran tamu publik</span>
+          </span>
+        </button>
+
+        <!-- Keluar & ke Login -->
+        <button class="btn btn--secondary logout-modal__btn" id="btn-logout-to-login">
+          <span class="btn__spinner"></span>
+          <span class="logout-modal__btn-icon">🔐</span>
+          <span class="logout-modal__btn-body">
+            <span class="logout-modal__btn-label">Keluar &amp; Buka Hal. Login</span>
+            <span class="logout-modal__btn-sub">Kembali ke halaman masuk petugas</span>
+          </span>
+        </button>
+
+        <!-- Batal -->
+        <button class="btn btn--ghost logout-modal__btn-batal" id="btn-logout-batal">
+          Batal — Tetap di Halaman Ini
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
