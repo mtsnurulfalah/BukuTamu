@@ -160,15 +160,56 @@ function initNavbar(session) {
     navRole.textContent = session.role === ROLES.ADMIN ? '👑 Admin' : '🛡️ Satpam';
   }
 
-  // Tombol logout
+  // Tombol logout — buka modal konfirmasi, bukan langsung logout
   const btnLogout = document.getElementById('btn-logout');
   if (btnLogout) {
-    btnLogout.addEventListener('click', async () => {
-      btnLogout.disabled = true;
-      btnLogout.textContent = 'Keluar...';
-      await logout();
+    btnLogout.addEventListener('click', () => {
+      openLogoutModal();
     });
   }
+}
+
+// ── Modal Konfirmasi Logout ───────────────────────────────────
+
+/**
+ * Buka modal konfirmasi sebelum logout.
+ * Modal ini tersedia di satpam.html dan admin.html via id="modal-logout".
+ */
+function openLogoutModal() {
+  const modal = document.getElementById('modal-logout');
+  if (!modal) {
+    // Fallback jika modal tidak ada di halaman (seharusnya tidak terjadi)
+    _doLogout('/login');
+    return;
+  }
+  modal.classList.add('active');
+  lockScroll();
+}
+
+function closeLogoutModal() {
+  const modal = document.getElementById('modal-logout');
+  if (modal) modal.classList.remove('active');
+  unlockScroll();
+}
+
+/**
+ * Proses logout lalu redirect ke tujuan yang dipilih user.
+ * @param {string} destination - URL tujuan setelah logout
+ */
+async function _doLogout(destination) {
+  // Tampilkan state loading di semua tombol aksi logout
+  const btnFormTamu = document.getElementById('btn-logout-to-form');
+  const btnLogin    = document.getElementById('btn-logout-to-login');
+  if (btnFormTamu) { btnFormTamu.disabled = true; btnFormTamu.classList.add('loading'); }
+  if (btnLogin)    { btnLogin.disabled    = true; btnLogin.classList.add('loading'); }
+
+  const token = getToken();
+  if (token) {
+    // Best-effort: kirim logout ke GAS (tidak menunggu response)
+    callGAS('logout', { token }).catch(() => {});
+  }
+  clearSession();
+  window.location.href = destination;
 }
 
 // ── Private Helpers ───────────────────────────────────────────
@@ -185,3 +226,34 @@ function _redirectToLogin() {
   }
   window.location.href = '/login';
 }
+
+// ── Event Listeners Modal Logout ─────────────────────────────
+// Dipasang via delegation setelah DOM siap, agar bekerja
+// di semua halaman yang memuat auth.js (satpam & admin).
+document.addEventListener('DOMContentLoaded', () => {
+  // Tombol Batal
+  document.getElementById('btn-logout-batal')
+    ?.addEventListener('click', closeLogoutModal);
+
+  // Tombol Keluar & Buka Form Tamu
+  document.getElementById('btn-logout-to-form')
+    ?.addEventListener('click', () => _doLogout('/'));
+
+  // Tombol Keluar & Buka Hal. Login
+  document.getElementById('btn-logout-to-login')
+    ?.addEventListener('click', () => _doLogout('/login'));
+
+  // Klik backdrop modal logout
+  document.getElementById('modal-logout')
+    ?.addEventListener('click', e => {
+      if (e.target === document.getElementById('modal-logout')) closeLogoutModal();
+    });
+
+  // Escape untuk tutup modal logout
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('modal-logout');
+      if (modal?.classList.contains('active')) closeLogoutModal();
+    }
+  });
+});
