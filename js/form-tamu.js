@@ -205,8 +205,57 @@ function selectJenisTamu(jenis) {
   const hidden = document.getElementById('jenis-tamu');
   if (hidden) hidden.value = jenis;
   _toggleInstansiField(jenis);
+
+  // Orang Tua/Wali Murid tidak boleh rombongan — 1 ortu = 1 anak
+  _applyRombonganLock(jenis === JENIS_ORTU);
+
   hideFieldError('error-jenis-tamu');
   checkSubmitEligibility();
+}
+
+/**
+ * Kunci atau buka stepper rombongan.
+ * Saat locked: reset ke 1 tamu, disable tombol +, sembunyikan tombol tambah manual,
+ * tampilkan pesan informatif kenapa rombongan tidak tersedia.
+ * @param {boolean} locked
+ */
+function _applyRombonganLock(locked) {
+  const plusBtn        = document.getElementById('btn-tamu-plus');
+  const minusBtn       = document.getElementById('btn-tamu-minus');
+  const btnTambah      = document.getElementById('btn-tambah-tamu-manual');
+  const hintEl         = document.getElementById('jumlah-tamu-hint');
+  const lockNoticeEl   = document.getElementById('rombongan-lock-notice');
+
+  if (locked) {
+    // Reset ke 1 tamu jika sebelumnya sudah ditambah
+    if (jumlahTamu > 1) {
+      jumlahTamu  = 1;
+      anggotaData = anggotaData.slice(0, 1);
+      renderAnggotaRepeater();
+      checkSubmitEligibility();
+    }
+
+    // Disable & style tombol +
+    if (plusBtn)  { plusBtn.disabled  = true;  plusBtn.setAttribute('aria-disabled', 'true'); }
+    if (minusBtn) { minusBtn.disabled = true; }
+
+    // Sembunyikan tombol tambah manual (ada di seksi anggota rombongan)
+    if (btnTambah) btnTambah.style.display = 'none';
+
+    // Sembunyikan hint default, tampilkan notice
+    if (hintEl)       hintEl.style.display       = 'none';
+    if (lockNoticeEl) lockNoticeEl.style.display  = '';
+
+  } else {
+    // Buka kembali
+    if (plusBtn)  { plusBtn.disabled  = jumlahTamu >= MAX_TAMU; plusBtn.removeAttribute('aria-disabled'); }
+    if (minusBtn) { minusBtn.disabled = jumlahTamu <= 1; }
+    if (btnTambah) btnTambah.style.display = '';
+
+    // Kembalikan hint default
+    if (hintEl)       hintEl.style.display       = '';
+    if (lockNoticeEl) lockNoticeEl.style.display  = 'none';
+  }
 }
 
 function _toggleInstansiField(jenis) {
@@ -410,7 +459,9 @@ function updateJumlahTamuDisplay() {
 
   if (display)  display.textContent = jumlahTamu;
   if (minusBtn) minusBtn.disabled   = jumlahTamu <= 1;
-  if (plusBtn)  plusBtn.disabled    = jumlahTamu >= MAX_TAMU;
+  // Tombol + juga dikunci jika jenis tamu adalah Orang Tua/Wali Murid
+  const isLocked = selectedJenis === JENIS_ORTU;
+  if (plusBtn)  plusBtn.disabled    = isLocked || jumlahTamu >= MAX_TAMU;
   if (label)    label.textContent   = jumlahTamu === 1 ? 'orang (kunjungan tunggal)' : `orang (rombongan)`;
 }
 
@@ -762,6 +813,8 @@ function attachFormEvents() {
   const btnTambahManual = document.getElementById('btn-tambah-tamu-manual');
   if (btnTambahManual) {
     btnTambahManual.addEventListener('click', () => {
+      // Guard: Orang Tua/Wali Murid tidak boleh rombongan
+      if (selectedJenis === JENIS_ORTU) return;
       if (jumlahTamu >= MAX_TAMU) {
         showToast(`Maksimal ${MAX_TAMU} tamu per kunjungan.`, 'danger');
         return;
@@ -1179,6 +1232,9 @@ function resetForm() {
   selectedJenis = '';
   jumlahTamu    = 1;
   anggotaData   = [_emptyAnggota()];
+
+  // Pastikan lock rombongan dilepas saat form direset
+  _applyRombonganLock(false);
 
   const form = document.getElementById('form-tamu');
   if (form) form.reset();
