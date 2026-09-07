@@ -14,6 +14,28 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/global.css" />
   <link rel="stylesheet" href="/css/login.css" />
+  <!--
+    Anti-FOUC: sembunyikan body sampai CSS selesai di-parse.
+    Inline style diproses instan sebelum resource eksternal apapun,
+    sehingga tidak ada frame dengan HTML unstyled yang ter-render.
+  -->
+  <style>body { visibility: hidden; }</style>
+  <!--
+    Tampilkan body setelah CSS selesai di-parse.
+    - DOMContentLoaded terpicu setelah HTML + semua stylesheet render-blocking
+      selesai di-download dan di-parse (CSS memang memblok rendering).
+    - requestAnimationFrame memastikan browser sudah menyelesaikan satu
+      layout + paint cycle penuh sebelum body terlihat.
+  -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      requestAnimationFrame(function() {
+        document.body.style.visibility = '';
+      });
+    });
+  </script>
+  <!-- Fallback jika JS dinonaktifkan: tampilkan body apa adanya -->
+  <noscript><style>body { visibility: visible; }</style></noscript>
 </head>
 <body class="login-page">
 
