@@ -1193,7 +1193,7 @@ function _applyLogoPreview(type, url) {
     }
   };
 
-  img.src = url;
+  img.src = normalizeLogoUrl(url);
   box.appendChild(img);
 }
 
@@ -1236,7 +1236,7 @@ function _updatePreviewHeader(config) {
 
     if (config.logo_url) {
       const img = document.createElement('img');
-      img.src   = config.logo_url;
+      img.src   = normalizeLogoUrl(config.logo_url);
       img.alt   = config.nama_sekolah || 'Logo sekolah';
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
       img.onload  = () => { logoIcon.style.display = 'none'; };
@@ -1270,8 +1270,8 @@ function _updateNavbarLogo(url) {
   if (oldImg) oldImg.remove();
 
   if (url) {
-    const img = document.createElement('img');
-    img.src       = url;
+    const img     = document.createElement('img');
+    img.src       = normalizeLogoUrl(url);
     img.alt       = 'Logo';
     img.className = 'navbar__brand-logo-img';
 
@@ -1334,3 +1334,8 @@ function _isValidUrl(url) {
     return false;
   }
 }
+
+/**
+ * Normalisasi URL Google Drive — lihat normalizeLogoUrl() di api.js.
+ * Alias lokal untuk kemudahan akses di admin.js.
+ */
