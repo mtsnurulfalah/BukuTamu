@@ -89,6 +89,9 @@ async function switchTab(tabId) {
 
   _isTabSwitching = true;
 
+  // Simpan scroll position halaman sebelum tab di-switch agar tidak jumping
+  const scrollY = window.scrollY;
+
   // Update button states
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.id === `tab-${tabId}`);
@@ -101,6 +104,22 @@ async function switchTab(tabId) {
   });
 
   activeTab = tabId;
+
+  // Restore scroll — konten baru mungkin lebih pendek dari konten lama,
+  // sehingga browser bisa "melompat". Kita reset ke posisi semula atau 0
+  // tergantung apakah tab baru punya konten yang cukup panjang.
+  // requestAnimationFrame memastikan DOM sudah di-paint sebelum scroll.
+  requestAnimationFrame(() => {
+    // Scroll ke atas tab nav agar konsisten, tanpa efek jumping
+    const adminNav = document.querySelector('.admin-nav');
+    if (adminNav) {
+      const navTop = adminNav.getBoundingClientRect().top + window.scrollY;
+      // Hanya scroll ke nav jika posisi saat ini di bawah nav
+      if (window.scrollY > navTop) {
+        window.scrollTo({ top: navTop - 8, behavior: 'instant' });
+      }
+    }
+  });
 
   try {
     if (tabId === 'ringkasan')  await loadRingkasan();
@@ -479,6 +498,7 @@ async function openRekapDetail(tamuId) {
   if (badges)  badges.innerHTML  = '';
   if (title)   title.textContent = 'Detail Kunjungan';
   modal.classList.add('active');
+  lockScroll();
 
   const result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
 
@@ -501,12 +521,19 @@ async function openRekapDetail(tamuId) {
        </div>`
     : '<span class="text-muted">—</span>';
 
+  // Label field instansi disesuaikan dengan jenis tamu
+  const instansiLabel = t.jenisTamu === 'Orang Tua/Wali Murid'
+    ? 'Orang Tua/Wali dari'
+    : t.jenisTamu === 'Alumni'
+      ? 'Tahun Lulus'
+      : 'Instansi / Asal';
+
   if (content) content.innerHTML = `
     <div class="detail-row"><div class="detail-row__label">Tanggal</div><div class="detail-row__value">${displayVal(formatTanggalDisplay(t.tanggal))}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Datang</div><div class="detail-row__value">${displayVal(t.jamDatang)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Pulang</div><div class="detail-row__value">${t.jamPulang || '<span class="text-muted">Belum pulang</span>'}</div></div>
     <div class="detail-row"><div class="detail-row__label">Nama</div><div class="detail-row__value">${displayVal(t.namaLengkap)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Instansi</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
+    <div class="detail-row"><div class="detail-row__label">${escapeHtml(instansiLabel)}</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
     <div class="detail-row"><div class="detail-row__label">No. HP/WA</div><div class="detail-row__value">${displayVal(t.noHp)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Email</div><div class="detail-row__value">${displayVal(t.email)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value" style="white-space:pre-wrap;">${displayVal(t.keperluan)}</div></div>
@@ -519,6 +546,7 @@ async function openRekapDetail(tamuId) {
 function closeRekapDetail() {
   const modal = document.getElementById('modal-detail');
   if (modal) modal.classList.remove('active');
+  unlockScroll();
 }
 
 // ── Export CSV ─────────────────────────────────────────────────
