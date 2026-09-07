@@ -155,43 +155,62 @@ async function loadRingkasan() {
     return;
   }
 
-  const hariIni  = d.hariIni  || { total: 0, hadir: 0, pulang: 0 };
-  const bulanIni = d.bulanIni || { total: 0, bulan: '' };
+  // ▶▶ MULTI-TAMU: ambil field baru dengan fallback ke field lama
+  const hariIni   = d.hariIni  || { total: 0, hadir: 0, pulang: 0 };
+  const bulanIni  = d.bulanIni || { total: 0, bulan: '' };
   const terbanyak = d.terbanyak || { jenis: '—', total: 0 };
   const perJenis  = d.perJenis  || [];
   const tren7Hari = d.tren7Hari || [];
   const totalSemua = d.totalSemua || 0;
 
+  // ▶▶ Field multi-tamu (dengan fallback ke field lama agar backward-compat)
+  const totalIndividuHariIni  = hariIni.totalIndividu  ?? hariIni.total;
+  const totalRombonganHariIni = hariIni.totalRombongan ?? 0;
+  const hadirIndividu         = hariIni.hadir          ?? 0;
+  const pulangIndividu        = hariIni.pulang         ?? 0;
+  const totalIndividuBulan    = bulanIni.totalIndividu ?? bulanIni.total;
+
   // ── Stat Cards ──────────────────────────────────────────────
+  // ▶▶ Hari ini: tampilkan individu + info sesi
   setStatCard('stat-hari-ini',
-    hariIni.total,
-    `${hariIni.hadir} hadir, ${hariIni.pulang} pulang`);
+    totalIndividuHariIni,
+    `${hariIni.totalSesi ?? hariIni.total} sesi · ${hadirIndividu} hadir · ${pulangIndividu} pulang`);
 
+  // ▶▶ Sedang hadir: individu
   setStatCard('stat-aktif',
-    hariIni.hadir,
-    'tamu aktif saat ini');
+    hadirIndividu,
+    `${hariIni.hadirSesi ?? hadirIndividu} sesi aktif`);
 
+  // ▶▶ Bulan ini: individu
   setStatCard('stat-bulan-ini',
-    bulanIni.total,
+    totalIndividuBulan,
     `Bulan ${_formatBulan(bulanIni.bulan)}`);
 
   setStatCard('stat-terbanyak',
     terbanyak.jenis,
-    `${terbanyak.total} kunjungan`, true);
+    `${terbanyak.total} individu`, true);
+
+  // ▶▶ Stat cards tambahan (rombongan & total semua)
+  const totalIndSemua  = d.totalIndividuSemua ?? totalSemua;
+  const totalRombSemua = d.totalRombonganSemua ?? 0;
+  setStatCard('stat-total-semua',   totalIndSemua,  `${totalSemua} sesi total`);
+  setStatCard('stat-rombongan',     totalRombSemua, 'sesi rombongan total');
 
   // ── Bar Chart Jenis Tamu ────────────────────────────────────
-  renderBarChart(perJenis, totalSemua);
+  renderBarChart(perJenis, totalIndSemua);
 
   const jenisTotalEl = document.getElementById('chart-jenis-total');
-  if (jenisTotalEl) jenisTotalEl.textContent = `${totalSemua} total`;
+  if (jenisTotalEl) jenisTotalEl.textContent = `${totalIndSemua} individu`;
 
   // ── Trend Chart 7 Hari ──────────────────────────────────────
   renderTrendChart(tren7Hari);
 
   const trendTotalEl = document.getElementById('chart-trend-total');
   if (trendTotalEl) {
-    const sum7 = tren7Hari.reduce((acc, item) => acc + (item.total || 0), 0);
-    trendTotalEl.textContent = `${sum7} / 7 hari`;
+    // ▶▶ Tampilkan total individu 7 hari terakhir
+    const sum7Ind  = tren7Hari.reduce((acc, item) => acc + (item.totalIndividu ?? item.total ?? 0), 0);
+    const sum7Sesi = tren7Hari.reduce((acc, item) => acc + (item.totalSesi    ?? item.total ?? 0), 0);
+    trendTotalEl.textContent = `${sum7Ind} individu · ${sum7Sesi} sesi / 7 hari`;
   }
 }
 
@@ -239,7 +258,7 @@ function renderBarChart(perJenis, totalSemua) {
   }).join('');
 }
 
-// ── Trend Chart (CSS) ─────────────────────────────────────────
+// ── Trend Chart (CSS) ─────────────────────────────────────
 function renderTrendChart(tren7Hari) {
   const chartEl  = document.getElementById('trend-chart');
   const labelsEl = document.getElementById('trend-labels');
@@ -250,16 +269,19 @@ function renderTrendChart(tren7Hari) {
     return;
   }
 
-  // FIX A10: ganti nama variabel 'd' agar tidak shadow outer scope
-  const max = Math.max(...tren7Hari.map(item => item.total), 1);
+  // BUG D4 FIX: gunakan totalIndividu untuk tinggi bar (konsisten dengan label)
+  // Fallback ke total (sesi) jika totalIndividu tidak tersedia (data lama)
+  const getValue = item => item.totalIndividu ?? item.total ?? 0;
+  const max = Math.max(...tren7Hari.map(getValue), 1);
 
   chartEl.innerHTML = tren7Hari.map(item => {
-    const heightPct = Math.round((item.total / max) * 100);
+    const val        = getValue(item);
+    const heightPct  = Math.round((val / max) * 100);
     return `<div class="trend-chart__bar"
                style="height:${Math.max(heightPct, 4)}%;"
-               data-count="${item.total}"
+               data-count="${val}"
                role="img"
-               aria-label="${escapeHtml(item.label)}: ${item.total} tamu">
+               aria-label="${escapeHtml(item.label)}: ${val} individu">
             </div>`;
   }).join('');
 
@@ -380,12 +402,14 @@ async function loadRekap() {
   rekapData  = result.data.tamu  || [];
   rekapTotal = result.data.total || 0;
   const pages = result.data.pages || 1;
+  // ▶▶ MULTI-TAMU: total individu
+  const totalIndividu = result.data.totalIndividu ?? rekapTotal;
 
   // Update count label
   const countEl = document.getElementById('rekap-count');
   if (countEl) {
     countEl.textContent = rekapTotal > 0
-      ? `${rekapTotal} data ditemukan (halaman ${rekapPage} dari ${pages})`
+      ? `${rekapTotal} sesi · ${totalIndividu} individu (hal. ${rekapPage}/${pages})`
       : 'Tidak ada data';
   }
 
@@ -403,11 +427,30 @@ function renderRekapTable(data) {
   const tbody = document.getElementById('rekap-table-body');
   if (!tbody) return;
 
-  tbody.innerHTML = data.map(t => `
-    <tr data-id="${escapeHtml(t.id)}">
+  tbody.innerHTML = data.map(t => {
+    // ▶▶ MULTI-TAMU: nama ringkasan rombongan
+    const anggota = Array.isArray(t.dataAnggota) ? t.dataAnggota : [];
+    let namaHtml;
+    if (t.isRombongan && anggota.length > 0) {
+      const shown = anggota.slice(0, 2).map(a => escapeHtml(a.namaLengkap || '—')).join(', ');
+      const sisa  = anggota.length - 2;
+      namaHtml = `${shown}${sisa > 0 ? ` <span class="badge-sisa-rekap">+${sisa}</span>` : ''}`;
+    } else {
+      namaHtml = escapeHtml(t.namaLengkap);
+    }
+
+    const badgeRomb = t.isRombongan
+      ? `<span class="badge-rombongan-sm">👥 ${t.jumlahTamu}</span>`
+      : '';
+
+    return `
+    <tr data-id="${escapeHtml(t.id)}" class="${t.isRombongan ? 'tr--rombongan' : ''}">
       <td>${escapeHtml(formatTanggalDisplay(t.tanggal))}</td>
       <td>
-        <div style="font-weight:600;white-space:normal;min-width:120px;">${escapeHtml(t.namaLengkap)}</div>
+        <div style="font-weight:600;white-space:normal;min-width:120px;">
+          ${namaHtml}
+          ${badgeRomb}
+        </div>
         <div class="text-xs text-muted">${escapeHtml(t.instansi)}</div>
       </td>
       <td><span class="badge badge--primary">${escapeHtml(t.jenisTamu)}</span></td>
@@ -426,7 +469,8 @@ function renderRekapTable(data) {
           🔍 Detail
         </button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function renderPagination(currentPage, totalPages) {
@@ -504,36 +548,61 @@ async function openRekapDetail(tamuId) {
   }
 
   const t = result.data;
-  if (title) title.textContent = t.namaLengkap;
+  if (title) title.textContent = t.isRombongan
+    ? `Rombongan — ${t.jumlahTamu} Tamu`
+    : (t.namaLengkap || 'Detail Kunjungan');
 
   if (badges) badges.innerHTML = `
     <span class="badge badge--${t.status === 'Hadir' ? 'success' : 'gray'}">${escapeHtml(t.status)}</span>
-    <span class="badge badge--primary">${escapeHtml(t.jenisTamu)}</span>`;
+    <span class="badge badge--primary">${escapeHtml(t.jenisTamu)}</span>
+    ${t.isRombongan ? `<span class="badge-rombongan-sm" style="margin-left:4px;">👥 ${t.jumlahTamu} Tamu</span>` : ''}`;
 
   const ttdHtml = t.tandaTangan
-    ? `<div class="detail-signature">
-         <img src="${t.tandaTangan}" alt="Tanda tangan ${escapeHtml(t.namaLengkap)}" />
-       </div>`
+    ? `<div class="detail-signature"><img src="${t.tandaTangan}" alt="Tanda tangan" /></div>`
     : '<span class="text-muted">—</span>';
 
-  // Label field instansi disesuaikan dengan jenis tamu
   const instansiLabel = t.jenisTamu === 'Orang Tua/Wali Murid'
     ? 'Orang Tua/Wali dari'
-    : t.jenisTamu === 'Alumni'
-      ? 'Tahun Lulus'
-      : 'Instansi / Asal';
+    : t.jenisTamu === 'Alumni' ? 'Tahun Lulus' : 'Instansi / Asal';
+
+  // ▶▶ Daftar anggota rombongan
+  const anggota = Array.isArray(t.dataAnggota) ? t.dataAnggota : [];
+  let anggotaHtml = '';
+  if (t.isRombongan && anggota.length > 0) {
+    anggotaHtml = `
+      <div class="detail-section-title" style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--clr-gray-100);">
+        👥 Daftar Anggota (${anggota.length} orang)
+      </div>
+      <ol style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:var(--space-2);">
+        ${anggota.map((a, i) => `
+          <li style="background:var(--clr-gray-50);border:1px solid var(--clr-gray-200);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);">
+            <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
+              <span style="width:22px;height:22px;border-radius:50%;background:${i===0?'var(--clr-primary)':'var(--clr-gray-300)'};color:${i===0?'white':'var(--clr-gray-700)'};font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</span>
+              <strong style="font-size:var(--font-size-sm);">${escapeHtml(a.namaLengkap||'—')}</strong>
+              ${i===0?'<span style="font-size:10px;background:var(--clr-primary);color:white;padding:1px 7px;border-radius:999px;font-weight:700;">Wakil</span>':''}
+              ${a.jabatan?`<span style="font-size:11px;color:var(--clr-gray-500);background:var(--clr-gray-200);padding:1px 7px;border-radius:999px;">${escapeHtml(a.jabatan)}</span>`:''}
+            </div>
+            ${(a.noHp||a.email)?`<div style="font-size:var(--font-size-xs);color:var(--clr-gray-500);margin-top:4px;display:flex;gap:var(--space-3);flex-wrap:wrap;">
+              ${a.noHp?`<span>📱 ${escapeHtml(a.noHp)}</span>`:''}
+              ${a.email?`<span>✉️ ${escapeHtml(a.email)}</span>`:''}
+            </div>`:''}
+          </li>`).join('')}
+      </ol>`;
+  }
 
   if (content) content.innerHTML = `
     <div class="detail-row"><div class="detail-row__label">Tanggal</div><div class="detail-row__value">${displayVal(formatTanggalDisplay(t.tanggal))}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Datang</div><div class="detail-row__value">${displayVal(t.jamDatang)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Pulang</div><div class="detail-row__value">${t.jamPulang || '<span class="text-muted">Belum pulang</span>'}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Nama</div><div class="detail-row__value">${displayVal(t.namaLengkap)}</div></div>
     <div class="detail-row"><div class="detail-row__label">${escapeHtml(instansiLabel)}</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">No. HP/WA</div><div class="detail-row__value">${displayVal(t.noHp)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Email</div><div class="detail-row__value">${displayVal(t.email)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value" style="white-space:pre-wrap;">${displayVal(t.keperluan)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Bertemu</div><div class="detail-row__value">${displayVal(t.bertemuDengan)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Tanda Tangan</div><div class="detail-row__value">${ttdHtml}</div></div>
+    ${!t.isRombongan ? `
+    <div class="detail-row"><div class="detail-row__label">Nama</div><div class="detail-row__value">${displayVal(t.namaLengkap)}</div></div>
+    <div class="detail-row"><div class="detail-row__label">No. HP/WA</div><div class="detail-row__value">${displayVal(t.noHp)}</div></div>
+    <div class="detail-row"><div class="detail-row__label">Email</div><div class="detail-row__value">${displayVal(t.email)}</div></div>` : ''}
+    ${anggotaHtml}
+    <div class="detail-row" style="margin-top:var(--space-4);"><div class="detail-row__label">Tanda Tangan</div><div class="detail-row__value">${ttdHtml}</div></div>
     ${t.diupdateOleh ? `<div class="detail-row"><div class="detail-row__label">Dicatat oleh</div><div class="detail-row__value">${displayVal(t.diupdateOleh)}</div></div>` : ''}
   `;
 }
@@ -571,27 +640,37 @@ async function handleExport() {
     return;
   }
 
-  // Generate CSV
+  const totalInd = result.data.totalIndividu ?? data.length;
   const csv = generateCSV(data);
   downloadCSV(csv, `buku-tamu-${dari || 'semua'}-${sampai || 'semua'}.csv`);
-  showToast(`${data.length} data berhasil diexport ke CSV. ✅`, 'success');
+  showToast(`${data.length} sesi (${totalInd} individu) berhasil diexport ke CSV. ✅`, 'success');
 }
 
 /**
- * Generate string CSV dari array of objects.
+ * ▶▶ MULTI-TAMU: Generate CSV dari array sesi kunjungan.
+ * Satu rombongan = satu baris per anggota (dengan info sesi diulang).
  */
 function generateCSV(data) {
   const headers = [
-    'ID', 'Tanggal', 'Jenis Tamu', 'Jam Datang',
-    'Nama Lengkap', 'Instansi', 'No. HP/WA', 'Email',
-    'Keperluan', 'Bertemu Dengan', 'Jam Pulang', 'Status'
+    'ID Sesi', 'Tanggal', 'Jenis Tamu', 'Jam Datang', 'Jam Pulang', 'Status',
+    'Jumlah Tamu', 'Instansi', 'Keperluan', 'Bertemu Dengan',
+    'No. Anggota', 'Nama Anggota', 'No. HP Anggota', 'Email Anggota', 'Jabatan Anggota'
   ];
 
-  const rows = data.map(t => [
-    t.id, t.tanggal, t.jenisTamu, t.jamDatang,
-    t.namaLengkap, t.instansi, t.noHp, t.email,
-    t.keperluan, t.bertemuDengan, t.jamPulang, t.status
-  ].map(v => `"${String(v || '').replace(/"/g, '""')}"`));
+  const rows = [];
+  data.forEach(t => {
+    const anggota = (Array.isArray(t.dataAnggota) && t.dataAnggota.length > 0)
+      ? t.dataAnggota
+      : [{ namaLengkap: t.namaLengkap, noHp: t.noHp || '', email: t.email || '', jabatan: '' }];
+
+    anggota.forEach((a, idx) => {
+      rows.push([
+        t.id, t.tanggal, t.jenisTamu, t.jamDatang, t.jamPulang || '', t.status,
+        t.jumlahTamu || 1, t.instansi, t.keperluan, t.bertemuDengan,
+        idx + 1, a.namaLengkap || '', a.noHp || '', a.email || '', a.jabatan || ''
+      ].map(v => `"${String(v || '').replace(/"/g, '""')}"`));
+    });
+  });
 
   return [headers.map(h => `"${h}"`).join(','), ...rows.map(r => r.join(','))].join('\r\n');
 }
