@@ -100,10 +100,16 @@
               <div class="auto-field__value" id="display-tanggal">—</div>
               <input type="hidden" id="tanggal" name="tanggal" />
             </div>
-            <div class="auto-field">
-              <div class="auto-field__label">🕐 Jam Datang</div>
-              <div class="auto-field__value" id="display-jam">—</div>
-              <input type="hidden" id="jam-datang" name="jamDatang" />
+            <div class="auto-field auto-field--editable">
+              <label class="auto-field__label" for="jam-datang">🕐 Jam Datang</label>
+              <input
+                type="time"
+                id="jam-datang"
+                name="jamDatang"
+                class="auto-field__time-input"
+                aria-label="Jam kedatangan"
+                required
+              />
             </div>
           </div>
         </div>
@@ -134,10 +140,11 @@
               </span>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="instansi">
+            <div class="form-group" id="group-instansi">
+              <label class="form-label" for="instansi" id="label-instansi">
                 Instansi / Asal <span class="required">*</span>
               </label>
+              <!-- Input teks — default untuk semua jenis kecuali Orang Tua/Wali Murid -->
               <input
                 type="text"
                 id="instansi"
@@ -146,6 +153,16 @@
                 placeholder="Contoh: SDN 01, Dinas Pendidikan"
                 required
               />
+              <!-- Dropdown siswa — muncul hanya saat jenis = Orang Tua/Wali Murid -->
+              <select
+                id="instansi-siswa"
+                name="instansiSiswa"
+                class="form-control"
+                style="display:none;"
+                aria-label="Pilih siswa"
+              >
+                <option value="">— Pilih nama siswa —</option>
+              </select>
               <span class="form-error" id="error-instansi" role="alert">
                 ⚠️ Instansi/asal wajib diisi
               </span>
