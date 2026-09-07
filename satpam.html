@@ -29,32 +29,22 @@
     <div class="navbar__right">
       <span class="navbar__badge" id="active-count" aria-label="Jumlah tamu aktif" style="display:none;">0</span>
       <span class="navbar__user" id="nav-user-name"></span>
-      <button
-        class="btn btn--ghost btn--sm"
-        id="btn-logout"
-        aria-label="Keluar"
-      >
-        🚪 Keluar
-      </button>
+      <button class="btn btn--ghost btn--sm" id="btn-logout" aria-label="Keluar">🚪 Keluar</button>
     </div>
   </nav>
 
   <!-- Notification Banner -->
-  <div
-    class="notif-banner"
-    id="notif-banner"
-    role="status"
-    aria-live="polite"
-    tabindex="0"
-  >
-    <!-- Diisi JS saat ada tamu baru -->
-  </div>
+  <div class="notif-banner" id="notif-banner" role="status" aria-live="polite" tabindex="0"></div>
 
-  <!-- Stats Strip -->
-  <section class="stats-strip" aria-label="Statistik tamu hari ini">
+  <!-- ▶▶ Stats Strip (4 kolom) -->
+  <section class="stats-strip stats-strip--4" aria-label="Statistik tamu hari ini">
     <div class="stats-strip__item stats-strip__item--active">
       <div class="stats-strip__value" id="stat-aktif">0</div>
-      <div class="stats-strip__label">Sedang Hadir</div>
+      <div class="stats-strip__label">Individu Hadir</div>
+    </div>
+    <div class="stats-strip__item">
+      <div class="stats-strip__value" id="stat-sesi-aktif">0</div>
+      <div class="stats-strip__label">Sesi Aktif</div>
     </div>
     <div class="stats-strip__item">
       <div class="stats-strip__value" id="stat-hari-ini">0</div>
@@ -76,11 +66,7 @@
       </div>
     </div>
     <div class="dashboard-toolbar__actions">
-      <button
-        class="btn btn--soft btn--sm"
-        id="btn-refresh"
-        aria-label="Perbarui data"
-      >
+      <button class="btn btn--soft btn--sm" id="btn-refresh" aria-label="Perbarui data">
         🔄 Refresh
       </button>
     </div>
@@ -94,8 +80,8 @@
         type="search"
         class="form-control"
         id="search-input"
-        placeholder="Cari nama tamu..."
-        aria-label="Cari tamu berdasarkan nama"
+        placeholder="Cari nama tamu, anggota rombongan, atau instansi..."
+        aria-label="Cari tamu"
       />
     </div>
   </div>
@@ -119,25 +105,26 @@
 
     <!-- Card List (Mobile) -->
     <div class="tamu-list" id="tamu-card-list" style="display:none;" role="list" aria-label="Daftar tamu aktif">
-      <!-- Diisi oleh JS -->
+      <!-- Diisi JS -->
     </div>
 
-    <!-- Table (Desktop) -->
+    <!-- Table (Desktop) — ▶▶ kolom Jumlah ditambahkan -->
     <div class="tamu-table-wrap" id="tamu-table-wrap" style="display:none;">
       <div class="table-wrapper">
         <table class="table" id="tamu-table" aria-label="Tabel tamu aktif">
           <thead>
             <tr>
-              <th scope="col">Nama</th>
+              <th scope="col">Nama / Rombongan</th>
               <th scope="col">Jenis Tamu</th>
               <th scope="col">Jam Datang</th>
               <th scope="col">Keperluan</th>
               <th scope="col">Bertemu</th>
+              <th scope="col" style="text-align:center;">Jml</th>
               <th scope="col">Aksi</th>
             </tr>
           </thead>
           <tbody id="tamu-table-body">
-            <!-- Diisi oleh JS -->
+            <!-- Diisi JS -->
           </tbody>
         </table>
       </div>
@@ -152,8 +139,11 @@
 
   </main>
 
-  <!-- ── Bottom Sheet: Catat Pulang ───────────────────────── -->
-  <div class="bottom-sheet" id="sheet-pulang" role="dialog" aria-modal="true" aria-labelledby="sheet-pulang-title">
+  <!-- ════════════════════════════════════════════════════════
+       Bottom Sheet: Catat Pulang
+       ════════════════════════════════════════════════════════ -->
+  <div class="bottom-sheet" id="sheet-pulang" role="dialog" aria-modal="true"
+    aria-labelledby="sheet-pulang-title">
     <div class="bottom-sheet__backdrop" id="sheet-pulang-backdrop"></div>
     <div class="bottom-sheet__content">
       <div class="bottom-sheet__handle" aria-hidden="true"></div>
@@ -169,25 +159,12 @@
 
       <div class="form-group">
         <label class="form-label" for="input-jam-pulang">Jam Pulang</label>
-        <input
-          type="time"
-          id="input-jam-pulang"
-          class="form-control"
-          required
-        />
+        <input type="time" id="input-jam-pulang" class="form-control" required />
       </div>
 
       <div class="catat-pulang-actions">
-        <button
-          class="btn btn--secondary"
-          id="btn-batal-pulang"
-        >
-          Batal
-        </button>
-        <button
-          class="btn btn--success"
-          id="btn-confirm-pulang"
-        >
+        <button class="btn btn--secondary" id="btn-batal-pulang">Batal</button>
+        <button class="btn btn--success" id="btn-confirm-pulang">
           <span class="btn__spinner"></span>
           <span class="btn__text">✅ Konfirmasi Pulang</span>
         </button>
@@ -195,14 +172,32 @@
     </div>
   </div>
 
-  <!-- ── Modal: Detail Tamu ───────────────────────────────── -->
-  <div class="modal-backdrop" id="modal-detail" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
-    <div class="modal">
+  <!-- ════════════════════════════════════════════════════════
+       Modal: Detail Tamu / Rombongan
+       ════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" id="modal-detail" role="dialog" aria-modal="true"
+    aria-labelledby="modal-detail-title">
+    <div class="modal modal--detail">
       <div class="modal__handle" aria-hidden="true"></div>
       <button class="modal__close" id="btn-close-detail" aria-label="Tutup detail">✕</button>
       <h2 class="modal__title" id="modal-detail-title">Detail Tamu</h2>
       <div id="modal-detail-content">
-        <!-- Diisi oleh JS -->
+        <!-- Diisi JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       ▶▶ Modal: Edit Kunjungan
+       ════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" id="modal-edit" role="dialog" aria-modal="true"
+    aria-labelledby="modal-edit-title">
+    <div class="modal modal--edit">
+      <div class="modal__handle" aria-hidden="true"></div>
+      <button class="modal__close" id="btn-close-edit" aria-label="Tutup edit">✕</button>
+      <h2 class="modal__title" id="modal-edit-title">Edit Kunjungan</h2>
+      <div id="modal-edit-content">
+        <!-- Diisi JS -->
       </div>
     </div>
   </div>
