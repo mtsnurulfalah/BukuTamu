@@ -218,25 +218,62 @@ function _setAppName(name) {
 }
 
 /**
- * FIX L11: Load nama sekolah dari GAS config dan update UI.
+ * FIX BUG #3: Load nama sekolah DAN logo dari GAS config, update UI.
  * Best-effort — halaman tetap berfungsi jika gagal.
  */
 async function _loadSchoolName() {
   try {
     const result = await callGAS('getConfig');
-    if (result?.status === 'ok' && result.data?.nama_sekolah) {
-      _setAppName(result.data.nama_sekolah);
+    if (result?.status === 'ok' && result.data) {
+      const data = result.data;
 
-      // Update page title juga
-      document.title = `Login — ${result.data.nama_sekolah}`;
+      // Nama sekolah
+      if (data.nama_sekolah) {
+        _setAppName(data.nama_sekolah);
+        document.title = `Login — ${data.nama_sekolah}`;
+      }
 
-      // Update subtitle jika ada
+      // Alamat (subtitle panel kiri)
       const subEl = document.getElementById('login-brand-sub');
-      if (subEl && result.data.alamat_sekolah) {
-        subEl.textContent = result.data.alamat_sekolah;
+      if (subEl && data.alamat_sekolah) {
+        subEl.textContent = data.alamat_sekolah;
+      }
+
+      // Logo sekolah (tampil di panel kiri tablet+) — gunakan logo_url
+      if (data.logo_url) {
+        _applyLoginLogo('login-brand-logo', data.logo_url, '0');
+      }
+
+      // Logo sekolah (tampil di panel mobile) — gunakan logo_url
+      if (data.logo_url) {
+        _applyLoginLogo('login-mobile-logo', data.logo_url, '0');
       }
     }
   } catch (_) {
-    // Gagal load config — biarkan default
+    // Gagal load config — biarkan tampilan default
   }
+}
+
+/**
+ * Sisipkan gambar logo ke dalam elemen login (panel kiri / mobile).
+ * Sembunyikan emoji default saat gambar berhasil dimuat.
+ * @param {string} containerId - ID elemen kontainer
+ * @param {string} url         - URL gambar
+ * @param {string} hideFontSize - fontSize untuk menyembunyikan emoji (misal '0')
+ */
+function _applyLoginLogo(containerId, url, hideFontSize = '0') {
+  const container = document.getElementById(containerId);
+  if (!container || !url) return;
+
+  // Hapus img lama jika ada
+  const oldImg = container.querySelector('img');
+  if (oldImg) oldImg.remove();
+
+  const img = document.createElement('img');
+  img.src   = url;
+  img.alt   = 'Logo sekolah';
+  img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:inherit;';
+  img.onload  = () => { container.style.fontSize = hideFontSize; };
+  img.onerror = () => { img.remove(); container.style.fontSize = ''; };
+  container.appendChild(img);
 }
