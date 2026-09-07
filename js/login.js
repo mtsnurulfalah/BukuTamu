@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // FIX L2: null guard pada toggleIcon
       if (toggleIcon) {
-        toggleIcon.textContent = isPassword ? '🙈' : '👁️';
+        toggleIcon.innerHTML = isPassword ? _icon('eye-off','1.1rem') : _icon('eye','1.1rem');
       }
       toggleBtn.setAttribute(
         'aria-label',
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveSession(token, role, nama, uname);
 
         // Feedback sukses sebelum redirect
-        showToast(`Selamat datang, ${nama}! 👋`, 'success', 2000);
+        showToast(`Selamat datang, ${nama}!`, 'success', 2000);
 
         // Tunda agar toast terlihat, lalu redirect
         setTimeout(() => {
