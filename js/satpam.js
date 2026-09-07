@@ -1,74 +1,59 @@
 /**
- * satpam.js
- * Logic dashboard satpam (/satpam.html).
+ * satpam.js — Dashboard Satpam
+ * ▶▶ v2: Mendukung Multi-Tamu / Rombongan
  * ─────────────────────────────────────────────────────────
  * Fitur:
- *   - Cek autentikasi (satpam/admin)
- *   - Load & render daftar tamu aktif
- *   - Auto-refresh tiap 30 detik
- *   - Card layout (mobile) / tabel layout (desktop)
- *   - Pencarian real-time berdasarkan nama
- *   - Bottom sheet / modal "Catat Pulang"
- *   - Modal detail tamu lengkap + tanda tangan
- *   - Notifikasi in-app saat ada tamu baru
- *   - Badge jumlah tamu aktif di navbar
+ *   - Daftar tamu aktif: rombongan tampil sebagai 1 baris
+ *   - Badge rombongan & jumlah individu
+ *   - Modal detail rombongan lengkap + daftar semua anggota
+ *   - Catat pulang berlaku untuk seluruh sesi rombongan
+ *   - Edit kunjungan: ubah data sesi + tambah/hapus/ubah anggota
+ *   - Stats strip: hadir sesi + hadir individu
+ *   - Pencarian cukup dengan nama salah satu anggota
  */
 
 // ── State ─────────────────────────────────────────────────────
-let allTamuAktif    = [];    // semua data tamu aktif dari GAS
-let filteredTamu    = [];    // setelah filter search
-let refreshTimer    = null;  // interval auto-refresh
-let lastCount       = -1;    // jumlah tamu saat terakhir fetch (untuk notif)
-let sudahPulangCount = 0;    // Bug #2 fix: counter lokal tamu yang sudah pulang hari ini
-let selectedTamuId  = null;  // ID tamu yang dipilih untuk catat pulang
-let session         = null;  // session user
+let allTamuAktif      = [];
+let filteredTamu      = [];
+let refreshTimer      = null;
+let lastCount         = -1;
+let sudahPulangCount  = 0;
+let selectedTamuId    = null;
+let session           = null;
+
+// ▶▶ Edit state
+let editModalOpen     = false;
+let editTamuData      = null;   // data kunjungan yang sedang diedit
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Cek auth — satpam dan admin boleh akses
   session = await checkAuth(ROLES.SATPAM);
   if (!session) return;
 
-  // Inisialisasi navbar
   initNavbar(session);
-
-  // Load config sekolah
   loadSchoolConfig();
-
-  // Load data pertama kali
   await loadTamuAktif();
-
-  // Mulai auto-refresh
   startAutoRefresh();
-
-  // Pasang event listeners
   attachEvents();
 });
 
 // ── Load School Config ────────────────────────────────────────
 async function loadSchoolConfig() {
   const result = await callGAS('getConfig').catch(() => null);
-  if (result && result.status === 'ok' && result.data) {
+  if (result?.status === 'ok' && result.data) {
     const nama = result.data.nama_sekolah || CONFIG.APP_NAME;
     const navName = document.getElementById('nav-school-name');
     if (navName) navName.textContent = nama;
     document.title = `Dashboard Satpam — ${nama}`;
-
-    // BUG #4 FIX: muat logo_app_url ke navbar, sama seperti admin.js
-    if (result.data.logo_app_url) {
-      _updateNavbarLogo(result.data.logo_app_url);
-    }
+    if (result.data.logo_app_url) _updateNavbarLogo(result.data.logo_app_url);
   }
 }
 
-// ── Helper: update logo navbar (identik dengan admin.js) ──────
 function _updateNavbarLogo(url) {
   const iconEl = document.querySelector('.navbar__brand-icon');
   if (!iconEl) return;
-
   const oldImg = iconEl.querySelector('img');
   if (oldImg) oldImg.remove();
-
   if (url) {
     const img     = document.createElement('img');
     img.src       = normalizeLogoUrl(url);
@@ -83,10 +68,6 @@ function _updateNavbarLogo(url) {
 }
 
 // ── Load Tamu Aktif ────────────────────────────────────────────
-/**
- * Fetch data tamu aktif dari GAS dan render ke UI.
- * @param {boolean} silent - jika true, tidak tampilkan skeleton
- */
 async function loadTamuAktif(silent = false) {
   if (!silent) showSkeleton(true);
 
@@ -95,8 +76,8 @@ async function loadTamuAktif(silent = false) {
   if (result.status === 'ok') {
     const newData  = result.data?.tamu || [];
     const newCount = newData.length;
+    const newIndiv = result.data?.totalIndividu || newCount;
 
-    // Deteksi tamu baru untuk notifikasi
     if (lastCount >= 0 && newCount > lastCount) {
       const diff = newCount - lastCount;
       showNotifBanner(`🔔 ${diff} tamu baru masuk. Klik untuk memperbarui.`);
@@ -104,46 +85,40 @@ async function loadTamuAktif(silent = false) {
 
     lastCount    = newCount;
     allTamuAktif = newData;
-
-    // Bug #7 fix: terapkan filter & render DI SINI saja.
-    // showSkeleton(false) di bawah tidak boleh memanggil renderTamu() lagi.
     applySearch();
-
-    // Bug #2 fix: teruskan counter pulang ke stats strip
-    updateStatsStrip(allTamuAktif, sudahPulangCount);
+    // ▶▶ Sertakan total individu di stats strip
+    updateStatsStrip(allTamuAktif, sudahPulangCount,
+      result.data?.totalIndividu ?? newCount);
 
   } else if (result.status === 'error') {
     showToast('Gagal memuat data: ' + (result.message || 'Coba lagi'), 'danger');
   }
 
-  // Bug #7 fix: hanya sembunyikan skeleton, jangan render ulang
   if (!silent) hideSkeleton();
   updateRefreshTime();
 }
 
 // ── Update Stats Strip ────────────────────────────────────────
-/**
- * @param {Array}  data       - daftar tamu yang sedang hadir
- * @param {number} [sudahPulang=0] - jumlah tamu yang sudah pulang hari ini
- *   (opsional; GAS endpoint getTamuAktif tidak mengembalikan nilai ini,
- *    sehingga kita pertahankan counter lokal dari sesi sebelumnya)
- */
-function updateStatsStrip(data, sudahPulang = 0) {
-  const aktif = data.length;
+function updateStatsStrip(data, sudahPulang = 0, totalIndividuAktif) {
+  const sesiAktif   = data.length;
+  const individAktif= totalIndividuAktif !== undefined
+    ? totalIndividuAktif
+    : data.reduce((s, t) => s + (t.jumlahTamu || 1), 0);
 
-  const elAktif   = document.getElementById('stat-aktif');
+  const elSesi    = document.getElementById('stat-sesi-aktif');
+  const elInd     = document.getElementById('stat-aktif');
   const elHariIni = document.getElementById('stat-hari-ini');
-  const elPulang  = document.getElementById('stat-pulang');   // Bug #2 fix: sekarang diisi
+  const elPulang  = document.getElementById('stat-pulang');
   const elBadge   = document.getElementById('active-count');
 
-  if (elAktif)   elAktif.textContent   = aktif;
-  // Total hari ini = hadir sekarang + yang sudah pulang
-  if (elHariIni) elHariIni.textContent = aktif + sudahPulang;
-  if (elPulang)  elPulang.textContent  = sudahPulang;         // Bug #2 fix
-  if (elBadge)   elBadge.textContent   = aktif;
-
-  // Sembunyikan badge jika tidak ada tamu aktif
-  if (elBadge) elBadge.style.display = aktif > 0 ? '' : 'none';
+  if (elSesi)    elSesi.textContent    = sesiAktif;
+  if (elInd)     elInd.textContent     = individAktif;
+  if (elHariIni) elHariIni.textContent = individAktif + sudahPulang;
+  if (elPulang)  elPulang.textContent  = sudahPulang;
+  if (elBadge)   {
+    elBadge.textContent    = individAktif;
+    elBadge.style.display  = individAktif > 0 ? '' : 'none';
+  }
 }
 
 // ── Apply Search Filter ───────────────────────────────────────
@@ -153,11 +128,21 @@ function applySearch() {
   if (!searchVal) {
     filteredTamu = [...allTamuAktif];
   } else {
-    // Bug #4 fix: null-safe toLowerCase untuk instansi
     filteredTamu = allTamuAktif.filter(t => {
       const nama     = (t.namaLengkap || '').toLowerCase();
-      const instansi = (t.instansi || '').toLowerCase();
-      return nama.includes(searchVal) || instansi.includes(searchVal);
+      const instansi = (t.instansi    || '').toLowerCase();
+      const kep      = (t.keperluan   || '').toLowerCase();
+
+      if (nama.includes(searchVal) || instansi.includes(searchVal) || kep.includes(searchVal)) return true;
+
+      // ▶▶ Cari dalam data anggota rombongan
+      if (Array.isArray(t.dataAnggota)) {
+        return t.dataAnggota.some(a =>
+          (a.namaLengkap || '').toLowerCase().includes(searchVal) ||
+          (a.jabatan     || '').toLowerCase().includes(searchVal)
+        );
+      }
+      return false;
     });
   }
 
@@ -165,55 +150,56 @@ function applySearch() {
 }
 
 // ── Render Tamu ───────────────────────────────────────────────
-/**
- * Render data tamu ke card list (mobile) atau tabel (desktop).
- */
 function renderTamu() {
   const isDesktop = window.innerWidth >= 1024;
+  if (isDesktop) { renderTable(); showView('table'); }
+  else           { renderCards(); showView('cards'); }
 
-  if (isDesktop) {
-    renderTable();
-    showView('table');
-  } else {
-    renderCards();
-    showView('cards');
-  }
-
-  // Empty state
   const emptyState = document.getElementById('empty-state');
-  if (emptyState) {
-    emptyState.style.display = filteredTamu.length === 0 ? '' : 'none';
-  }
+  if (emptyState) emptyState.style.display = filteredTamu.length === 0 ? '' : 'none';
 }
 
-/**
- * Tampilkan view yang benar dan sembunyikan yang lain.
- * @param {'cards'|'table'} view
- */
 function showView(view) {
   const cardList  = document.getElementById('tamu-card-list');
   const tableWrap = document.getElementById('tamu-table-wrap');
-
   if (cardList)  cardList.style.display  = view === 'cards' ? '' : 'none';
   if (tableWrap) tableWrap.style.display = view === 'table' ? '' : 'none';
+}
+
+// ── ▶▶ Helper: Render nama rombongan ─────────────────────────
+/**
+ * Buat teks ringkasan nama untuk satu sesi (1 tamu atau rombongan).
+ * Contoh: "Ahmad, Budi, Citra +1 lagi"
+ */
+function _namaRombongan(tamu) {
+  if (!tamu.isRombongan) return escapeHtml(tamu.namaLengkap);
+
+  const anggota = Array.isArray(tamu.dataAnggota) ? tamu.dataAnggota : [];
+  const shown   = anggota.slice(0, 3).map(a => escapeHtml(a.namaLengkap || '—')).join(', ');
+  const sisa    = anggota.length - 3;
+  return sisa > 0 ? `${shown} <span class="badge-sisa">+${sisa}</span>` : shown;
+}
+
+/** Badge jumlah tamu untuk rombongan */
+function _badgeTamu(tamu) {
+  if (!tamu.isRombongan) return '';
+  return `<span class="badge-rombongan">👥 ${tamu.jumlahTamu} Tamu</span>`;
 }
 
 // ── Render Cards (Mobile) ─────────────────────────────────────
 function renderCards() {
   const container = document.getElementById('tamu-card-list');
   if (!container) return;
-
-  if (filteredTamu.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
+  if (filteredTamu.length === 0) { container.innerHTML = ''; return; }
 
   container.innerHTML = filteredTamu.map(tamu => `
-    <article class="tamu-card" role="listitem" data-id="${escapeHtml(tamu.id)}">
+    <article class="tamu-card${tamu.isRombongan ? ' tamu-card--rombongan' : ''}"
+      role="listitem" data-id="${escapeHtml(tamu.id)}">
       <div class="tamu-card__header">
-        <div>
-          <div class="tamu-card__name">${escapeHtml(tamu.namaLengkap)}</div>
+        <div class="tamu-card__header-left">
+          <div class="tamu-card__name">${_namaRombongan(tamu)}</div>
           <div class="tamu-card__meta">${escapeHtml(tamu.instansi)}</div>
+          ${_badgeTamu(tamu)}
         </div>
         <span class="badge badge--success">Hadir</span>
       </div>
@@ -236,18 +222,14 @@ function renderCards() {
         </div>
       </div>
       <div class="tamu-card__actions">
-        <button
-          class="btn btn-pulang btn--sm"
+        <button class="btn btn-pulang btn--sm"
           onclick="openCatatPulang('${escapeHtml(tamu.id)}')"
-          aria-label="Catat pulang ${escapeHtml(tamu.namaLengkap)}"
-        >
+          aria-label="Catat pulang ${escapeHtml(tamu.namaLengkap)}">
           ✅ Catat Pulang
         </button>
-        <button
-          class="btn btn-detail btn--sm"
+        <button class="btn btn-detail btn--sm"
           onclick="openDetail('${escapeHtml(tamu.id)}')"
-          aria-label="Lihat detail ${escapeHtml(tamu.namaLengkap)}"
-        >
+          aria-label="Lihat detail ${escapeHtml(tamu.namaLengkap)}">
           🔍 Detail
         </button>
       </div>
@@ -261,39 +243,36 @@ function renderTable() {
   if (!tbody) return;
 
   if (filteredTamu.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" class="text-center text-muted" style="padding:var(--space-8);">
-          Tidak ada tamu aktif
-        </td>
-      </tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted"
+      style="padding:var(--space-8);">Tidak ada tamu aktif</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filteredTamu.map(tamu => `
-    <tr data-id="${escapeHtml(tamu.id)}">
+    <tr data-id="${escapeHtml(tamu.id)}"
+      class="${tamu.isRombongan ? 'tr--rombongan' : ''}">
       <td>
-        <div style="font-weight:600;">${escapeHtml(tamu.namaLengkap)}</div>
+        <div style="font-weight:600;">${_namaRombongan(tamu)}</div>
         <div class="text-xs text-muted">${escapeHtml(tamu.instansi)}</div>
+        ${_badgeTamu(tamu)}
       </td>
       <td><span class="badge badge--primary">${escapeHtml(tamu.jenisTamu)}</span></td>
       <td>${escapeHtml(tamu.jamDatang)}</td>
       <td style="max-width:180px;white-space:normal;">${escapeHtml(tamu.keperluan)}</td>
       <td>${escapeHtml(tamu.bertemuDengan)}</td>
+      <td style="text-align:center;font-weight:700;color:var(--clr-primary);">
+        ${tamu.jumlahTamu || 1}
+      </td>
       <td>
         <div style="display:flex;gap:var(--space-2);">
-          <button
-            class="btn btn--success btn--sm"
+          <button class="btn btn--success btn--sm"
             onclick="openCatatPulang('${escapeHtml(tamu.id)}')"
-            aria-label="Catat pulang ${escapeHtml(tamu.namaLengkap)}"
-          >
+            aria-label="Catat pulang">
             ✅ Pulang
           </button>
-          <button
-            class="btn btn--secondary btn--sm"
+          <button class="btn btn--secondary btn--sm"
             onclick="openDetail('${escapeHtml(tamu.id)}')"
-            aria-label="Detail ${escapeHtml(tamu.namaLengkap)}"
-          >
+            aria-label="Detail">
             🔍
           </button>
         </div>
@@ -303,59 +282,49 @@ function renderTable() {
 }
 
 // ── Catat Pulang ──────────────────────────────────────────────
-/**
- * Buka bottom sheet / modal catat pulang untuk tamu tertentu.
- * @param {string} tamuId
- */
 function openCatatPulang(tamuId) {
   const tamu = allTamuAktif.find(t => t.id === tamuId);
   if (!tamu) return;
 
   selectedTamuId = tamuId;
 
-  // Isi info tamu di bottom sheet
-  const namEl  = document.getElementById('pulang-nama');
-  const metaEl = document.getElementById('pulang-meta');
-  // Update avatar emoji berdasarkan jenis tamu (opsional, fallback ke 👤)
+  const namEl    = document.getElementById('pulang-nama');
+  const metaEl   = document.getElementById('pulang-meta');
   const avatarEl = document.querySelector('#sheet-pulang .catat-pulang-info__avatar');
+
+  // ▶▶ Avatar & nama: rombongan tampil berbeda
   const avatarMap = {
-    'Orang Tua/Wali Murid': '👨‍👩‍👧',
-    'Dinas/Instansi'      : '🏛️',
-    'Mitra'               : '🤝',
-    'Alumni'              : '🎓',
-    'Vendor/Penyedia'     : '📦',
+    'Orang Tua/Wali Murid': '👨‍👩‍👧', 'Dinas/Instansi': '🏛️',
+    'Mitra': '🤝', 'Alumni': '🎓', 'Vendor/Penyedia': '📦',
   };
-  if (avatarEl) avatarEl.textContent = avatarMap[tamu.jenisTamu] || '👤';
+  if (avatarEl) avatarEl.textContent = tamu.isRombongan ? '👥' : (avatarMap[tamu.jenisTamu] || '👤');
 
-  if (namEl)  namEl.textContent  = tamu.namaLengkap;
-  if (metaEl) metaEl.textContent = `${tamu.jenisTamu} • Datang: ${tamu.jamDatang} • ${tamu.bertemuDengan}`;
+  if (namEl) {
+    namEl.textContent = tamu.isRombongan
+      ? `Rombongan ${tamu.jumlahTamu} orang`
+      : tamu.namaLengkap;
+  }
+  if (metaEl) {
+    metaEl.textContent = tamu.isRombongan
+      ? `Wakil: ${tamu.namaLengkap} • Datang: ${tamu.jamDatang} • ${tamu.bertemuDengan}`
+      : `${tamu.jenisTamu} • Datang: ${tamu.jamDatang} • ${tamu.bertemuDengan}`;
+  }
 
-  // Set jam default = sekarang
   const jamInput = document.getElementById('input-jam-pulang');
   if (jamInput) {
     const now = new Date();
     jamInput.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   }
 
-  // Bug #5 fix: pastikan tombol dalam keadaan normal (enabled, tidak loading)
   const btnConfirm = document.getElementById('btn-confirm-pulang');
-  if (btnConfirm) {
-    btnConfirm.classList.remove('loading');
-    btnConfirm.disabled = false;
-  }
+  if (btnConfirm) { btnConfirm.classList.remove('loading'); btnConfirm.disabled = false; }
 
-  // Buka bottom sheet
   const sheet = document.getElementById('sheet-pulang');
   if (sheet) sheet.classList.add('active');
   lockScroll();
-
-  // Fokus ke input jam
   setTimeout(() => jamInput?.focus(), 100);
 }
 
-/**
- * Tutup bottom sheet catat pulang.
- */
 function closeCatatPulang() {
   const sheet = document.getElementById('sheet-pulang');
   if (sheet) sheet.classList.remove('active');
@@ -363,9 +332,6 @@ function closeCatatPulang() {
   selectedTamuId = null;
 }
 
-/**
- * Konfirmasi dan kirim update jam pulang ke GAS.
- */
 async function confirmCatatPulang() {
   if (!selectedTamuId) return;
 
@@ -373,22 +339,10 @@ async function confirmCatatPulang() {
   const btnConfirm = document.getElementById('btn-confirm-pulang');
   const jamPulang  = jamInput?.value || '';
 
-  if (!jamPulang) {
-    showToast('Jam pulang wajib diisi.', 'danger');
-    jamInput?.focus();
-    return;
-  }
+  if (!jamPulang) { showToast('Jam pulang wajib diisi.', 'danger'); jamInput?.focus(); return; }
+  if (!/^\d{2}:\d{2}$/.test(jamPulang)) { showToast('Format jam tidak valid.', 'danger'); return; }
 
-  // Validasi format HH:MM
-  if (!/^\d{2}:\d{2}$/.test(jamPulang)) {
-    showToast('Format jam tidak valid. Gunakan HH:MM.', 'danger');
-    return;
-  }
-
-  // Bug #3 fix: simpan ID ke variabel lokal SEBELUM memanggil closeCatatPulang()
-  // agar filter di bawah masih bisa menggunakannya setelah selectedTamuId di-null-kan.
   const tamuIdToUpdate = selectedTamuId;
-
   setButtonLoading(btnConfirm);
 
   const result = await callGAS('updateJamPulang', {
@@ -398,17 +352,23 @@ async function confirmCatatPulang() {
   });
 
   if (result.status === 'ok') {
-    closeCatatPulang(); // selectedTamuId menjadi null di sini — sudah aman karena pakai tamuIdToUpdate
+    closeCatatPulang();
+    const d = result.data;
+    // ▶▶ Pesan berbeda untuk rombongan
+    const namaDisplay = d?.jumlahTamu > 1
+      ? `Rombongan ${d.jumlahTamu} orang`
+      : (d?.nama || 'Tamu');
+    const individu = d?.jumlahTamu || 1;
 
-    showToast(`${result.data?.nama || 'Tamu'} berhasil dicatat pulang jam ${jamPulang}. ✅`, 'success');
+    showToast(`${namaDisplay} berhasil dicatat pulang jam ${jamPulang}. ✅`, 'success');
 
-    // Hapus dari list lokal tanpa menunggu refresh — gunakan tamuIdToUpdate (Bug #3 fix)
-    allTamuAktif  = allTamuAktif.filter(t => t.id !== tamuIdToUpdate);
-    sudahPulangCount++;               // naikkan counter lokal untuk stat strip
-    lastCount     = allTamuAktif.length;
+    allTamuAktif    = allTamuAktif.filter(t => t.id !== tamuIdToUpdate);
+    sudahPulangCount += individu;
+    lastCount        = allTamuAktif.length;
     applySearch();
-    updateStatsStrip(allTamuAktif, sudahPulangCount);
-
+    // BUG C2 FIX: hitung individu aktif dari data lokal secara eksplisit
+    const individAktifSisa = allTamuAktif.reduce((s, t) => s + (t.jumlahTamu || 1), 0);
+    updateStatsStrip(allTamuAktif, sudahPulangCount, individAktifSisa);
   } else {
     showToast(result.message || 'Gagal mencatat jam pulang.', 'danger');
     resetButtonLoading(btnConfirm, false);
@@ -416,99 +376,375 @@ async function confirmCatatPulang() {
 }
 
 // ── Modal Detail ──────────────────────────────────────────────
-/**
- * Buka modal detail tamu dan fetch data lengkap (termasuk TTD).
- * @param {string} tamuId
- */
 async function openDetail(tamuId) {
   const modal   = document.getElementById('modal-detail');
   const content = document.getElementById('modal-detail-content');
   const title   = document.getElementById('modal-detail-title');
-
   if (!modal) return;
 
-  // Reset & buka modal
   if (content) content.innerHTML = `
     <div style="text-align:center;padding:var(--space-8);">
       <div class="spinner" style="margin:0 auto;"></div>
       <p class="text-sm text-muted" style="margin-top:var(--space-3);">Memuat detail...</p>
     </div>`;
 
-  // Bug #6 fix: reset scroll ke atas sebelum membuka modal
   const modalBox = modal.querySelector('.modal');
   if (modalBox) modalBox.scrollTop = 0;
-
   modal.classList.add('active');
   lockScroll();
 
-  // Fetch detail lengkap dari GAS
-  const result = await callGAS('getTamuById', {
-    token: getToken(),
-    id   : tamuId,
-  });
+  const result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
 
   if (result.status !== 'ok') {
-    if (content) content.innerHTML = `
-      <div class="alert alert--danger">${escapeHtml(result.message || 'Gagal memuat detail.')}</div>`;
+    if (content) content.innerHTML = `<div class="alert alert--danger">${escapeHtml(result.message || 'Gagal memuat detail.')}</div>`;
     return;
   }
 
   const t = result.data;
-  if (title) title.textContent = t.namaLengkap || 'Detail Tamu';
+  if (title) {
+    title.textContent = t.isRombongan
+      ? `Rombongan — ${t.jumlahTamu} Tamu`
+      : (t.namaLengkap || 'Detail Tamu');
+  }
 
-  // Render tanda tangan
+  const tanggalDisplay = formatTanggalDisplay(t.tanggal);
+  const instansiLabel  = t.jenisTamu === 'Orang Tua/Wali Murid' ? 'Orang Tua/Wali dari'
+    : t.jenisTamu === 'Alumni' ? 'Tahun Lulus' : 'Instansi / Asal';
+
+  // ▶▶ Render daftar anggota
+  let anggotaHtml = '';
+  const anggota = Array.isArray(t.dataAnggota) ? t.dataAnggota : [];
+
+  if (t.isRombongan && anggota.length > 0) {
+    anggotaHtml = `
+      <div class="detail-section-title">👥 Daftar Anggota (${anggota.length} orang)</div>
+      <ol class="detail-anggota-list">
+        ${anggota.map((a, i) => `
+          <li class="detail-anggota-item">
+            <div class="detail-anggota-item__header">
+              <span class="detail-anggota-item__nomor">${i + 1}</span>
+              <span class="detail-anggota-item__nama">${escapeHtml(a.namaLengkap || '—')}</span>
+              ${i === 0 ? '<span class="detail-anggota-item__wakil">Wakil</span>' : ''}
+              ${a.jabatan ? `<span class="detail-anggota-item__jabatan">${escapeHtml(a.jabatan)}</span>` : ''}
+            </div>
+            ${(a.noHp || a.email) ? `
+            <div class="detail-anggota-item__contact">
+              ${a.noHp  ? `<span>📱 ${escapeHtml(a.noHp)}</span>` : ''}
+              ${a.email ? `<span>✉️ ${escapeHtml(a.email)}</span>` : ''}
+            </div>` : ''}
+          </li>
+        `).join('')}
+      </ol>`;
+  }
+
+  // TTD
   const ttdHtml = t.tandaTangan
-    ? `<div class="detail-signature">
-         <img src="${t.tandaTangan}" alt="Tanda tangan ${escapeHtml(t.namaLengkap)}" />
-       </div>`
+    ? `<div class="detail-signature"><img src="${t.tandaTangan}" alt="Tanda tangan" /></div>`
     : '<span class="text-muted">—</span>';
 
-  // Format tanggal display
-  const tanggalDisplay = formatTanggalDisplay(t.tanggal);
-
-  // Label field instansi disesuaikan dengan jenis tamu
-  const instansiLabel = t.jenisTamu === 'Orang Tua/Wali Murid'
-    ? 'Orang Tua/Wali dari'
-    : t.jenisTamu === 'Alumni'
-      ? 'Tahun Lulus'
-      : 'Instansi / Asal';
+  // ▶▶ Tombol edit — hanya tampil jika user punya akses (satpam dan admin bisa edit)
+  const canEdit = typeof getRole === 'function'
+    ? (getRole() === 'admin' || getRole() === ROLES.SATPAM)
+    : true; // fallback: tampilkan jika getRole tidak tersedia
+  const editBtn = canEdit ? `
+    <div style="display:flex;gap:var(--space-3);margin-top:var(--space-5);">
+      <button class="btn btn--secondary btn--sm" onclick="openEditModal('${escapeHtml(t.id)}')">
+        ✏️ Edit Kunjungan
+      </button>
+    </div>` : '';
 
   if (content) content.innerHTML = `
     <div style="margin-bottom:var(--space-3);">
       <span class="badge badge--${t.status === 'Hadir' ? 'success' : 'gray'}">${escapeHtml(t.status)}</span>
       <span class="badge badge--primary" style="margin-left:var(--space-2);">${escapeHtml(t.jenisTamu)}</span>
+      ${t.isRombongan ? `<span class="badge-rombongan" style="margin-left:var(--space-2);">👥 ${t.jumlahTamu} Tamu</span>` : ''}
     </div>
     <div class="detail-row"><div class="detail-row__label">Tanggal</div><div class="detail-row__value">${tanggalDisplay}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Datang</div><div class="detail-row__value">${displayVal(t.jamDatang)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Pulang</div><div class="detail-row__value">${displayVal(t.jamPulang) || '<span class="text-muted">Belum pulang</span>'}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Nama</div><div class="detail-row__value">${displayVal(t.namaLengkap)}</div></div>
     <div class="detail-row"><div class="detail-row__label">${escapeHtml(instansiLabel)}</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">No. HP/WA</div><div class="detail-row__value">${displayVal(t.noHp)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Email</div><div class="detail-row__value">${displayVal(t.email)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value" style="white-space:pre-wrap;">${displayVal(t.keperluan)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Bertemu</div><div class="detail-row__value">${displayVal(t.bertemuDengan)}</div></div>
-    <div class="detail-row">
+    ${!t.isRombongan ? `
+    <div class="detail-row"><div class="detail-row__label">No. HP/WA</div><div class="detail-row__value">${displayVal(t.noHp)}</div></div>
+    <div class="detail-row"><div class="detail-row__label">Email</div><div class="detail-row__value">${displayVal(t.email)}</div></div>` : ''}
+    ${anggotaHtml}
+    <div class="detail-row" style="margin-top:var(--space-4);">
       <div class="detail-row__label">Tanda Tangan</div>
       <div class="detail-row__value">${ttdHtml}</div>
     </div>
     ${t.diupdateOleh ? `<div class="detail-row"><div class="detail-row__label">Dicatat oleh</div><div class="detail-row__value">${displayVal(t.diupdateOleh)}</div></div>` : ''}
+    ${editBtn}
   `;
 }
 
-/**
- * Tutup modal detail.
- */
 function closeDetail() {
   const modal = document.getElementById('modal-detail');
   if (modal) modal.classList.remove('active');
   unlockScroll();
 }
 
-// ── Notifikasi In-App ─────────────────────────────────────────
-/**
- * Tampilkan banner notifikasi tamu baru.
- * @param {string} message
- */
+// ── ▶▶ Edit Kunjungan ─────────────────────────────────────────
+async function openEditModal(tamuId) {
+  // Tutup detail dulu
+  closeDetail();
+
+  const modal   = document.getElementById('modal-edit');
+  const content = document.getElementById('modal-edit-content');
+  if (!modal) return;
+
+  // Reset & loading
+  if (content) content.innerHTML = `
+    <div style="text-align:center;padding:var(--space-8);">
+      <div class="spinner" style="margin:0 auto;"></div>
+      <p class="text-sm text-muted" style="margin-top:var(--space-3);">Memuat data...</p>
+    </div>`;
+  modal.classList.add('active');
+  lockScroll();
+
+  const result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
+  if (result.status !== 'ok') {
+    if (content) content.innerHTML = `<div class="alert alert--danger">${escapeHtml(result.message)}</div>`;
+    return;
+  }
+
+  editTamuData = result.data;
+  _renderEditForm(editTamuData);
+}
+
+function _renderEditForm(t) {
+  const content = document.getElementById('modal-edit-content');
+  if (!content) return;
+
+  const anggota = Array.isArray(t.dataAnggota) && t.dataAnggota.length > 0
+    ? t.dataAnggota
+    : [{ namaLengkap: t.namaLengkap, noHp: t.noHp, email: t.email, jabatan: '', jenisId: '', noId: '' }];
+
+  // Build anggota rows HTML
+  const anggotaRowsHtml = anggota.map((a, i) => _buildEditAnggotaRow(i, a)).join('');
+
+  content.innerHTML = `
+    <!-- Info Kunjungan (Bersama) -->
+    <div class="edit-section-title">📋 Info Kunjungan</div>
+
+    <div class="form-grid-2" style="margin-bottom:var(--space-4);">
+      <div class="form-group">
+        <label class="form-label" for="edit-jam-datang">Jam Datang</label>
+        <input type="time" id="edit-jam-datang" class="form-control" value="${escapeAttrVal(t.jamDatang)}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-jam-pulang">Jam Pulang</label>
+        <input type="time" id="edit-jam-pulang" class="form-control" value="${escapeAttrVal(t.jamPulang)}" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="edit-instansi">Instansi / Asal</label>
+      <input type="text" id="edit-instansi" class="form-control" value="${escapeAttrVal(t.instansi)}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="edit-keperluan">Keperluan</label>
+      <textarea id="edit-keperluan" class="form-control" rows="2">${escapeHtml(t.keperluan)}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="edit-bertemu">Bertemu Dengan</label>
+      <input type="text" id="edit-bertemu" class="form-control" value="${escapeAttrVal(t.bertemuDengan)}" />
+    </div>
+
+    <!-- Anggota -->
+    <div class="edit-section-title" style="margin-top:var(--space-2);">
+      👥 Anggota Rombongan
+      <span class="edit-anggota-count" id="edit-anggota-count">(${anggota.length} orang)</span>
+    </div>
+
+    <div id="edit-anggota-list">
+      ${anggotaRowsHtml}
+    </div>
+
+    <button type="button" class="btn-tambah-tamu" id="btn-edit-tambah-anggota"
+      style="margin-bottom:var(--space-4);">
+      ➕ Tambah Anggota
+    </button>
+
+    <!-- Footer aksi -->
+    <div class="edit-actions">
+      <button type="button" class="btn btn--secondary" id="btn-edit-batal">Batal</button>
+      <button type="button" class="btn btn--primary" id="btn-edit-simpan">
+        <span class="btn__spinner"></span>
+        <span class="btn__text">💾 Simpan Perubahan</span>
+      </button>
+    </div>
+  `;
+
+  // Pasang events
+  _attachEditFormEvents(t.id);
+}
+
+function _buildEditAnggotaRow(index, data) {
+  const isFirst = index === 0;
+  return `
+    <div class="edit-anggota-row" data-index="${index}" id="edit-row-${index}">
+      <div class="edit-anggota-row__header">
+        <span class="edit-anggota-row__nomor">${index + 1}</span>
+        <span class="edit-anggota-row__label">Tamu ${index + 1}${isFirst ? ' (Wakil)' : ''}</span>
+        ${!isFirst ? `<button type="button" class="btn-hapus-anggota" data-index="${index}"
+          title="Hapus tamu ini">🗑️</button>` : ''}
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Nama <span class="required">*</span></label>
+          <input type="text" class="form-control edit-anggota-nama"
+            data-index="${index}" value="${escapeAttrVal(data.namaLengkap)}"
+            placeholder="Nama lengkap" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">No. HP</label>
+          <input type="tel" class="form-control edit-anggota-nohp"
+            data-index="${index}" value="${escapeAttrVal(data.noHp)}"
+            placeholder="08xx-xxxx" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email ${isFirst ? '<span class="required">*</span>' : ''}</label>
+          <input type="email" class="form-control edit-anggota-email"
+            data-index="${index}" value="${escapeAttrVal(data.email)}"
+            placeholder="${isFirst ? 'nama@email.com' : 'Opsional'}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jabatan</label>
+          <input type="text" class="form-control edit-anggota-jabatan"
+            data-index="${index}" value="${escapeAttrVal(data.jabatan)}"
+            placeholder="Opsional" />
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Escape value untuk atribut HTML — BUG C4 FIX: tambahkan < dan >
+function escapeAttrVal(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function _attachEditFormEvents(tamuId) {
+  const modal = document.getElementById('modal-edit');
+  if (!modal) return;
+
+  // Tambah anggota
+  modal.querySelector('#btn-edit-tambah-anggota')?.addEventListener('click', () => {
+    const list  = modal.querySelector('#edit-anggota-list');
+    const count = list ? list.querySelectorAll('.edit-anggota-row').length : 0;
+    if (list) {
+      list.insertAdjacentHTML('beforeend',
+        _buildEditAnggotaRow(count, { namaLengkap: '', noHp: '', email: '', jabatan: '' })
+      );
+      _updateEditAnggotaCount();
+    }
+  });
+
+  // Event delegation untuk hapus anggota
+  modal.querySelector('#edit-anggota-list')?.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-hapus-anggota');
+    if (!btn) return;
+    const idx = parseInt(btn.getAttribute('data-index'), 10);
+    const rows = modal.querySelectorAll('.edit-anggota-row');
+    if (rows.length <= 1) { showToast('Minimal harus ada 1 anggota.', 'danger'); return; }
+    if (!confirm(`Hapus Tamu ${idx + 1}?`)) return;
+    rows[idx]?.remove();
+    // Re-index semua baris yang tersisa
+    modal.querySelectorAll('.edit-anggota-row').forEach((row, i) => {
+      row.setAttribute('data-index', i);
+      row.id = `edit-row-${i}`;
+      const nomor = row.querySelector('.edit-anggota-row__nomor');
+      const label = row.querySelector('.edit-anggota-row__label');
+      if (nomor) nomor.textContent = i + 1;
+      if (label) label.textContent = `Tamu ${i + 1}${i === 0 ? ' (Wakil)' : ''}`;
+      row.querySelectorAll('[data-index]').forEach(el => el.setAttribute('data-index', i));
+      // Hapus tombol hapus dari tamu pertama jika perlu
+      const hapusBtn = row.querySelector('.btn-hapus-anggota');
+      if (i === 0 && hapusBtn) hapusBtn.remove();
+      else if (i > 0 && !hapusBtn) {
+        const hdr = row.querySelector('.edit-anggota-row__header');
+        if (hdr) hdr.insertAdjacentHTML('beforeend',
+          `<button type="button" class="btn-hapus-anggota" data-index="${i}">🗑️</button>`);
+      }
+    });
+    _updateEditAnggotaCount();
+  });
+
+  // Simpan
+  modal.querySelector('#btn-edit-simpan')?.addEventListener('click', () => _submitEditForm(tamuId));
+  modal.querySelector('#btn-edit-batal')?.addEventListener('click', closeEditModal);
+}
+
+function _updateEditAnggotaCount() {
+  const modal = document.getElementById('modal-edit');
+  if (!modal) return;
+  const count = modal.querySelectorAll('.edit-anggota-row').length;
+  const el    = modal.querySelector('#edit-anggota-count');
+  if (el) el.textContent = `(${count} orang)`;
+}
+
+async function _submitEditForm(tamuId) {
+  const modal  = document.getElementById('modal-edit');
+  const btnSave= modal?.querySelector('#btn-edit-simpan');
+  if (!modal) return;
+
+  // Kumpulkan data anggota
+  const anggota = [];
+  const rows    = modal.querySelectorAll('.edit-anggota-row');
+  let valid     = true;
+
+  rows.forEach((row, i) => {
+    const nama  = row.querySelector('.edit-anggota-nama')?.value.trim()  || '';
+    const noHp  = row.querySelector('.edit-anggota-nohp')?.value.trim()  || '';
+    const email = row.querySelector('.edit-anggota-email')?.value.trim().toLowerCase() || '';
+    const jabatan= row.querySelector('.edit-anggota-jabatan')?.value.trim() || '';
+
+    if (!nama) { showToast(`Nama tamu ${i + 1} wajib diisi.`, 'danger'); valid = false; }
+    if (i === 0 && !email) { showToast('Email tamu pertama wajib diisi.', 'danger'); valid = false; }
+    anggota.push({ namaLengkap: nama, noHp, email, jabatan, jenisId: '', noId: '' });
+  });
+
+  if (!valid) return;
+
+  const payload = {
+    token        : getToken(),
+    id           : tamuId,
+    instansi     : modal.querySelector('#edit-instansi')?.value.trim()   || '',
+    keperluan    : modal.querySelector('#edit-keperluan')?.value.trim()   || '',
+    bertemuDengan: modal.querySelector('#edit-bertemu')?.value.trim()    || '',
+    jamDatang    : modal.querySelector('#edit-jam-datang')?.value || '',
+    jamPulang    : modal.querySelector('#edit-jam-pulang')?.value || '',
+    anggota,
+  };
+
+  setButtonLoading(btnSave);
+  const result = await callGAS('updateTamu', payload);
+
+  if (result.status === 'ok') {
+    closeEditModal();
+    showToast('Data kunjungan berhasil diperbarui. ✅', 'success');
+    await loadTamuAktif(true);
+  } else {
+    showToast(result.message || 'Gagal menyimpan perubahan.', 'danger');
+    resetButtonLoading(btnSave, false);
+  }
+}
+
+function closeEditModal() {
+  const modal = document.getElementById('modal-edit');
+  if (modal) modal.classList.remove('active');
+  unlockScroll();
+  editTamuData = null;
+}
+
+// ── Notifikasi ────────────────────────────────────────────────
 function showNotifBanner(message) {
   const banner = document.getElementById('notif-banner');
   if (!banner) return;
@@ -524,27 +760,21 @@ function hideNotifBanner() {
 // ── Auto Refresh ──────────────────────────────────────────────
 function startAutoRefresh() {
   stopAutoRefresh();
-  refreshTimer = setInterval(async () => {
-    await loadTamuAktif(true); // silent refresh
-  }, CONFIG.REFRESH_INTERVAL);
+  refreshTimer = setInterval(async () => { await loadTamuAktif(true); }, CONFIG.REFRESH_INTERVAL);
 }
 
 function stopAutoRefresh() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
 }
 
 function updateRefreshTime() {
-  const el = document.getElementById('last-refresh');
+  const el  = document.getElementById('last-refresh');
   if (!el) return;
   const now = new Date();
-  const jam = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  el.textContent = `Terakhir diperbarui: ${jam}`;
+  el.textContent = `Terakhir diperbarui: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 }
 
-// ── Skeleton Loader ───────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────
 function showSkeleton(show) {
   if (show) {
     const skeleton  = document.getElementById('skeleton-loader');
@@ -558,10 +788,6 @@ function showSkeleton(show) {
   }
 }
 
-/**
- * Bug #7 fix: sembunyikan skeleton TANPA memanggil renderTamu().
- * renderTamu() sudah dipanggil oleh applySearch() di loadTamuAktif().
- */
 function hideSkeleton() {
   const skeleton = document.getElementById('skeleton-loader');
   if (skeleton) skeleton.style.display = 'none';
@@ -569,13 +795,11 @@ function hideSkeleton() {
 
 // ── Attach Events ──────────────────────────────────────────────
 function attachEvents() {
-  // Search input — real-time filter
+  // Search
   const searchInput = document.getElementById('search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', applySearch);
-  }
+  if (searchInput) searchInput.addEventListener('input', applySearch);
 
-  // Refresh button
+  // Refresh
   const btnRefresh = document.getElementById('btn-refresh');
   if (btnRefresh) {
     btnRefresh.addEventListener('click', async () => {
@@ -583,56 +807,41 @@ function attachEvents() {
       setButtonLoading(btnRefresh);
       await loadTamuAktif();
       resetButtonLoading(btnRefresh, false);
-      startAutoRefresh(); // reset timer
-    });
-  }
-
-  // Bottom sheet: konfirmasi pulang
-  const btnConfirm = document.getElementById('btn-confirm-pulang');
-  if (btnConfirm) btnConfirm.addEventListener('click', confirmCatatPulang);
-
-  // Bottom sheet: batal
-  const btnBatal = document.getElementById('btn-batal-pulang');
-  if (btnBatal) btnBatal.addEventListener('click', closeCatatPulang);
-
-  // Bottom sheet: klik backdrop
-  const backdrop = document.getElementById('sheet-pulang-backdrop');
-  if (backdrop) backdrop.addEventListener('click', closeCatatPulang);
-
-  // Modal detail: close button
-  const btnCloseDetail = document.getElementById('btn-close-detail');
-  if (btnCloseDetail) btnCloseDetail.addEventListener('click', closeDetail);
-
-  // Modal detail: klik backdrop
-  const modalDetail = document.getElementById('modal-detail');
-  if (modalDetail) {
-    modalDetail.addEventListener('click', (e) => {
-      if (e.target === modalDetail) closeDetail();
-    });
-  }
-
-  // Notifikasi banner: klik untuk refresh
-  const notifBanner = document.getElementById('notif-banner');
-  if (notifBanner) {
-    notifBanner.addEventListener('click', async () => {
-      hideNotifBanner();
-      await loadTamuAktif();
       startAutoRefresh();
     });
   }
 
-  // Resize: re-render layout saat ukuran window berubah
+  // Bottom sheet pulang
+  document.getElementById('btn-confirm-pulang')?.addEventListener('click', confirmCatatPulang);
+  document.getElementById('btn-batal-pulang')?.addEventListener('click', closeCatatPulang);
+  document.getElementById('sheet-pulang-backdrop')?.addEventListener('click', closeCatatPulang);
+
+  // Modal detail
+  document.getElementById('btn-close-detail')?.addEventListener('click', closeDetail);
+  const modalDetail = document.getElementById('modal-detail');
+  if (modalDetail) modalDetail.addEventListener('click', e => { if (e.target === modalDetail) closeDetail(); });
+
+  // Modal edit
+  document.getElementById('btn-close-edit')?.addEventListener('click', closeEditModal);
+  const modalEdit = document.getElementById('modal-edit');
+  if (modalEdit) modalEdit.addEventListener('click', e => { if (e.target === modalEdit) closeEditModal(); });
+
+  // Notif banner
+  document.getElementById('notif-banner')?.addEventListener('click', async () => {
+    hideNotifBanner();
+    await loadTamuAktif();
+    startAutoRefresh();
+  });
+
+  // Resize
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(renderTamu, 200);
   });
 
-  // Keyboard: Escape untuk tutup modal/sheet
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeCatatPulang();
-      closeDetail();
-    }
+  // Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeCatatPulang(); closeDetail(); closeEditModal(); }
   });
 }
