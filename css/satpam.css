@@ -261,9 +261,12 @@
   gap: var(--space-3);
 }
 
+/* Bug #8 fix: definisi avatar & body yang hilang dari CSS asli
+   karena sebelumnya elemen ini tidak ada di HTML (Bug #1).
+   Sekarang keduanya hadir dan perlu styling yang tepat. */
 .catat-pulang-info__avatar {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-xl);
   background: linear-gradient(135deg, var(--clr-primary-light), var(--clr-primary-mid));
   display: flex;
@@ -271,9 +274,15 @@
   justify-content: center;
   font-size: 1.5rem;
   flex-shrink: 0;
+  line-height: 1;
 }
 
-.catat-pulang-info__body { min-width: 0; }
+/* Bug #8 fix: body perlu min-width: 0 agar text-overflow ellipsis bekerja
+   di dalam flex container */
+.catat-pulang-info__body {
+  min-width: 0;
+  flex: 1;
+}
 
 .catat-pulang-info__name {
   font-weight: 700;
