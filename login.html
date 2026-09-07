@@ -7,7 +7,7 @@
   <meta name="description" content="Login Petugas — Buku Tamu Digital Sekolah" />
   <title>Login — Buku Tamu Digital</title>
   <link rel="manifest" href="/manifest.json" />
-  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/assets/logobukutamu.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/assets/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,21 +20,20 @@
     sehingga tidak ada frame dengan HTML unstyled yang ter-render.
   -->
   <style>body { visibility: hidden; }</style>
-  <!--
-    Tampilkan body setelah CSS selesai di-parse.
-    - DOMContentLoaded terpicu setelah HTML + semua stylesheet render-blocking
-      selesai di-download dan di-parse (CSS memang memblok rendering).
-    - requestAnimationFrame memastikan browser sudah menyelesaikan satu
-      layout + paint cycle penuh sebelum body terlihat.
-  -->
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    // Tampilkan body setelah CSS render-blocking selesai di-parse.
+    // Cek readyState dulu — jika DOMContentLoaded sudah lewat, jalankan langsung.
+    function _showBody() {
       requestAnimationFrame(function() {
         document.body.style.visibility = '';
       });
-    });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', _showBody);
+    } else {
+      _showBody();
+    }
   </script>
-  <!-- Fallback jika JS dinonaktifkan: tampilkan body apa adanya -->
   <noscript><style>body { visibility: visible; }</style></noscript>
 </head>
 <body class="login-page">
