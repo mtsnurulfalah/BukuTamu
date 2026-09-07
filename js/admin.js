@@ -1265,20 +1265,28 @@ function _updateNavbarLogo(url) {
   const iconEl = document.querySelector('.navbar__brand-icon');
   if (!iconEl) return;
 
+  // Hapus img lama jika ada
   const oldImg = iconEl.querySelector('img');
   if (oldImg) oldImg.remove();
 
   if (url) {
     const img = document.createElement('img');
-    img.src   = url;
-    img.alt   = 'Logo';
+    img.src       = url;
+    img.alt       = 'Logo';
     img.className = 'navbar__brand-logo-img';
-    img.onerror = () => img.remove();
+
+    // BUG #5 FIX: .navbar__brand-icon berisi text node (emoji 🏫), bukan <span>.
+    // Sembunyikan dengan fontSize:0 agar emoji tidak muncul bersamaan dengan gambar.
+    img.onload  = () => { iconEl.style.fontSize = '0'; };
+    img.onerror = () => {
+      img.remove();
+      iconEl.style.fontSize = ''; // kembalikan emoji saat gambar gagal load
+    };
+
     iconEl.appendChild(img);
-    iconEl.querySelector('span') && (iconEl.querySelector('span').style.display = 'none');
   } else {
-    const span = iconEl.querySelector('span');
-    if (span) span.style.display = '';
+    // Hapus semua img dan kembalikan tampilan emoji
+    iconEl.style.fontSize = '';
   }
 }
 
