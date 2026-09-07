@@ -2,6 +2,22 @@
    login.css — Halaman Login v3 (Mobile First)
    ============================================================ */
 
+/* ── Anti-FOUC ────────────────────────────────────────────── */
+/*
+ * Sembunyikan konten body selama ~150ms pertama menggunakan animasi CSS murni.
+ * Tidak bergantung pada JavaScript sama sekali — aman jika JS lambat/gagal.
+ * Setelah 150ms, konten muncul otomatis tanpa perlu JS apapun.
+ * Ini cukup untuk menunggu CSS di-parse dan render pertama selesai.
+ */
+@keyframes fouc-guard {
+  0%   { visibility: hidden; }
+  100% { visibility: visible; }
+}
+
+.no-fouc {
+  animation: fouc-guard 1ms linear 150ms both;
+}
+
 /* ── Page Root ────────────────────────────────────────────── */
 .login-page {
   display: flex;
