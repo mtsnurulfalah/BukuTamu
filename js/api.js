@@ -201,3 +201,44 @@ function normalizeLogoUrl(url) {
 
   return url;
 }
+
+// ── Scroll Lock (anti-jumping saat modal dibuka) ──────────────
+/**
+ * Kunci scroll body saat modal/sheet dibuka.
+ *
+ * Strategi berlapis:
+ * 1. scrollbar-gutter: stable di <html> mencegah layout shift di browser modern
+ *    (Chrome 94+, Firefox 97+, Safari 15.4+) — tidak perlu kompensasi apapun.
+ * 2. Untuk browser yang tidak mendukung scrollbar-gutter, kita hitung lebar
+ *    scrollbar dan set --scrollbar-width sebagai padding-right kompensasi.
+ */
+function lockScroll() {
+  if (document.body.classList.contains('modal-open')) return;
+
+  // Hanya hitung dan set padding-right jika scrollbar-gutter belum di-support
+  const supportsScrollbarGutter = CSS.supports('scrollbar-gutter', 'stable');
+  if (!supportsScrollbarGutter) {
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.documentElement.style.setProperty('--scrollbar-width', scrollbarWidth + 'px');
+  } else {
+    document.documentElement.style.setProperty('--scrollbar-width', '0px');
+  }
+
+  document.body.classList.add('modal-open');
+}
+
+/**
+ * Lepas kunci scroll body saat semua modal/sheet ditutup.
+ */
+function unlockScroll() {
+  // Tunda cek hingga setelah DOM update (classList.remove sudah terjadi)
+  requestAnimationFrame(() => {
+    const stillOpen = document.querySelector(
+      '.modal-backdrop.active, .bottom-sheet.active'
+    );
+    if (stillOpen) return;
+
+    document.body.classList.remove('modal-open');
+    document.documentElement.style.removeProperty('--scrollbar-width');
+  });
+}
