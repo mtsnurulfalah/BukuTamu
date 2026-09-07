@@ -1,29 +1,36 @@
 /**
  * form-tamu.js — Halaman Form Tamu Publik
+ * ▶▶ v2: Mendukung Multi-Tamu / Rombongan
  * ─────────────────────────────────────────────────────────
  * Alur:
- *   1. Load config sekolah (nama, logo) + staf + siswa secara paralel dari GAS
+ *   1. Load config sekolah + staf + siswa secara paralel dari GAS
  *   2. Render pill selector jenis tamu
- *   3. Set tanggal otomatis (live) + input jam datang (editable, default sekarang)
- *   4. Inisialisasi signature_pad (DPR-aware, pointer events untuk desktop)
- *   5. Pasang validasi real-time per field
- *   6. Submit → callGAS('addTamu') → success screen
+ *   3. Set tanggal otomatis (live) + input jam datang (editable)
+ *   4. Inisialisasi signature_pad (DPR-aware)
+ *   5. ▶▶ Input jumlah tamu → repeater form dinamis per anggota
+ *   6. ▶▶ Review screen sebelum simpan
+ *   7. Submit → callGAS('addTamu') → success screen
  */
 
 'use strict';
 
 // ── Module State ──────────────────────────────────────────────
-let signaturePad   = null;   // instance SignaturePad
-let selectedJenis  = '';     // jenis tamu yang dipilih
-let clockInterval  = null;   // interval ID untuk live clock (tanggal)
-let isSubmitting   = false;  // guard double-submit
-let stafLoadFailed = false;  // flag kegagalan load staf
-let siswaList      = [];     // data siswa dari GAS
+let signaturePad   = null;
+let selectedJenis  = '';
+let clockInterval  = null;
+let isSubmitting   = false;
+let stafLoadFailed = false;
+let siswaList      = [];
+
+// ▶▶ MULTI-TAMU State
+let jumlahTamu     = 1;      // jumlah tamu dalam sesi ini
+let anggotaData    = [];     // [{namaLengkap, noHp, email, jabatan, jenisId, noId}]
 
 // ── Konstanta ─────────────────────────────────────────────────
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const JENIS_ORTU  = 'Orang Tua/Wali Murid';
+const EMAIL_REGEX  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const JENIS_ORTU   = 'Orang Tua/Wali Murid';
 const JENIS_ALUMNI = 'Alumni';
+const MAX_TAMU     = 50;   // batas wajar di form (backend max 100)
 
 // ═════════════════════════════════════════════════════════════
 // INISIALISASI
@@ -32,7 +39,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   showFormLoading(true);
 
   try {
-    // Load config, staf, dan siswa secara paralel
     const [configResult, stafResult, siswaResult] = await Promise.allSettled([
       callGAS('getConfig'),
       callGAS('getStaf'),
@@ -40,21 +46,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     ]);
 
     const config = configResult.status === 'fulfilled' && configResult.value?.status === 'ok'
-      ? (configResult.value.data || {})
-      : {};
+      ? (configResult.value.data || {}) : {};
 
     const stafData = stafResult.status === 'fulfilled' && stafResult.value?.status === 'ok'
-      ? (stafResult.value.data || [])
-      : [];
+      ? (stafResult.value.data || []) : [];
 
     stafLoadFailed = stafData.length === 0 &&
       (stafResult.status === 'rejected' || stafResult.value?.status !== 'ok');
 
     siswaList = siswaResult.status === 'fulfilled' && siswaResult.value?.status === 'ok'
-      ? (siswaResult.value.data || [])
-      : [];
+      ? (siswaResult.value.data || []) : [];
 
-    // Terapkan ke UI
     applySchoolConfig(config);
     populateStafDropdown(stafData);
     populateSiswaDropdown(siswaList);
@@ -62,14 +64,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     initClock();
     initSignaturePad();
     attachFormEvents();
+    initJumlahTamu();   // ▶▶
 
   } catch (err) {
-    // Fallback: tetap tampilkan form meski ada error
     console.error('Form init error:', err);
     renderJenisTamuPills();
     initClock();
     initSignaturePad();
     attachFormEvents();
+    initJumlahTamu();   // ▶▶
   }
 
   showFormLoading(false);
@@ -80,32 +83,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ═════════════════════════════════════════════════════════════
 function applySchoolConfig(config) {
   const namaSekolah = (config.nama_sekolah || '').trim() || CONFIG.APP_NAME;
-
   document.title = `Buku Tamu — ${namaSekolah}`;
 
   const nameEl = document.getElementById('school-name');
   if (nameEl) nameEl.textContent = namaSekolah;
 
   const subtitleEl = document.getElementById('school-subtitle');
-  if (subtitleEl && config.alamat_sekolah) {
-    subtitleEl.textContent = config.alamat_sekolah;
-  }
+  if (subtitleEl && config.alamat_sekolah) subtitleEl.textContent = config.alamat_sekolah;
 
   const logoWrap = document.getElementById('school-logo');
   const logoIcon = document.getElementById('school-logo-icon');
   if (logoWrap && config.logo_url && config.logo_url.trim()) {
     const existing = logoWrap.querySelector('img');
     if (existing) existing.remove();
-
     const img = document.createElement('img');
     img.src   = normalizeLogoUrl(config.logo_url.trim());
     img.alt   = `Logo ${namaSekolah}`;
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;';
     if (logoIcon) logoIcon.style.display = 'none';
-    img.onerror = () => {
-      img.remove();
-      if (logoIcon) logoIcon.style.display = '';
-    };
+    img.onerror = () => { img.remove(); if (logoIcon) logoIcon.style.display = ''; };
     logoWrap.appendChild(img);
   }
 }
@@ -124,31 +120,24 @@ function populateStafDropdown(stafData) {
     const opt = document.createElement('option');
     opt.value    = '';
     opt.disabled = true;
-    opt.textContent = stafLoadFailed
-      ? '— Gagal memuat daftar staf —'
-      : '— Belum ada data staf —';
+    opt.textContent = stafLoadFailed ? '— Gagal memuat daftar staf —' : '— Belum ada data staf —';
     select.appendChild(opt);
     if (retryWrap) retryWrap.style.display = stafLoadFailed ? '' : 'none';
     return;
   }
 
   if (retryWrap) retryWrap.style.display = 'none';
-
   stafData.forEach(staf => {
     const opt       = document.createElement('option');
     opt.value       = staf.nama || '';
-    opt.textContent = staf.jabatan
-      ? `${staf.nama} (${staf.jabatan})`
-      : staf.nama || '';
+    opt.textContent = staf.jabatan ? `${staf.nama} (${staf.jabatan})` : staf.nama || '';
     select.appendChild(opt);
   });
 }
 
-/** Retry load staf */
 async function retryLoadStaf() {
   const btn = document.getElementById('btn-retry-staf');
   if (btn) { btn.disabled = true; btn.textContent = 'Memuat...'; }
-
   try {
     const result = await callGAS('getStaf');
     stafLoadFailed = false;
@@ -167,17 +156,10 @@ async function retryLoadStaf() {
 // ═════════════════════════════════════════════════════════════
 // SISWA DROPDOWN
 // ═════════════════════════════════════════════════════════════
-/**
- * Isi dropdown siswa untuk field "Orang Tua/Wali dari".
- * @param {Array} list - data siswa dari GAS
- */
 function populateSiswaDropdown(list) {
   const select = document.getElementById('instansi-siswa');
   if (!select) return;
-
-  // Hapus opsi lama kecuali placeholder
   while (select.options.length > 1) select.remove(1);
-
   if (!Array.isArray(list) || list.length === 0) {
     const opt = document.createElement('option');
     opt.value    = '';
@@ -186,13 +168,10 @@ function populateSiswaDropdown(list) {
     select.appendChild(opt);
     return;
   }
-
   list.forEach(siswa => {
     const opt       = document.createElement('option');
     opt.value       = siswa.namaLengkap || '';
-    opt.textContent = siswa.kelas
-      ? `${siswa.namaLengkap} (${siswa.kelas})`
-      : siswa.namaLengkap || '';
+    opt.textContent = siswa.kelas ? `${siswa.namaLengkap} (${siswa.kelas})` : siswa.namaLengkap || '';
     select.appendChild(opt);
   });
 }
@@ -203,13 +182,12 @@ function populateSiswaDropdown(list) {
 function renderJenisTamuPills() {
   const container = document.getElementById('jenis-tamu-pills');
   if (!container) return;
-
   container.innerHTML = '';
   JENIS_TAMU.forEach(jenis => {
     const btn = document.createElement('button');
-    btn.type         = 'button';
-    btn.className    = 'pill-selector__item';
-    btn.textContent  = jenis;
+    btn.type          = 'button';
+    btn.className     = 'pill-selector__item';
+    btn.textContent   = jenis;
     btn.dataset.value = jenis;
     btn.setAttribute('aria-pressed', 'false');
     btn.addEventListener('click', () => selectJenisTamu(jenis));
@@ -219,43 +197,27 @@ function renderJenisTamuPills() {
 
 function selectJenisTamu(jenis) {
   selectedJenis = jenis;
-
   document.querySelectorAll('.pill-selector__item').forEach(btn => {
     const sel = btn.dataset.value === jenis;
     btn.classList.toggle('selected', sel);
     btn.setAttribute('aria-pressed', sel ? 'true' : 'false');
   });
-
   const hidden = document.getElementById('jenis-tamu');
   if (hidden) hidden.value = jenis;
-
-  // Tampilkan/sembunyikan field instansi sesuai jenis tamu
   _toggleInstansiField(jenis);
-
   hideFieldError('error-jenis-tamu');
   checkSubmitEligibility();
 }
 
-/**
- * Toggle tampilan field instansi sesuai jenis tamu:
- * - Orang Tua/Wali Murid → dropdown siswa
- * - Alumni               → input angka tahun lulus
- * - Lainnya              → input teks instansi/asal
- * @param {string} jenis
- */
 function _toggleInstansiField(jenis) {
-  const inputText     = document.getElementById('instansi');
-  const selectSiswa   = document.getElementById('instansi-siswa');
-  const inputTahun    = document.getElementById('instansi-tahun-lulus');
-  const labelEl       = document.getElementById('label-instansi');
-
+  const inputText   = document.getElementById('instansi');
+  const selectSiswa = document.getElementById('instansi-siswa');
+  const inputTahun  = document.getElementById('instansi-tahun-lulus');
+  const labelEl     = document.getElementById('label-instansi');
   if (!inputText) return;
 
-  // Sembunyikan dan non-required semua dulu
   const hide = (el) => { if (el) { el.style.display = 'none'; el.required = false; } };
-  hide(inputText);
-  hide(selectSiswa);
-  hide(inputTahun);
+  hide(inputText); hide(selectSiswa); hide(inputTahun);
 
   if (jenis === JENIS_ORTU) {
     if (selectSiswa) { selectSiswa.style.display = ''; selectSiswa.required = true; }
@@ -269,7 +231,6 @@ function _toggleInstansiField(jenis) {
     if (labelEl) labelEl.innerHTML = 'Instansi / Asal <span class="required">*</span>';
   }
 
-  // Bersihkan state validasi saat jenis berganti
   hideFieldError('error-instansi');
   [inputText, selectSiswa, inputTahun].forEach(el => {
     if (el) el.classList.remove('is-valid', 'is-invalid');
@@ -277,54 +238,36 @@ function _toggleInstansiField(jenis) {
 }
 
 // ═════════════════════════════════════════════════════════════
-// LIVE CLOCK (hanya tanggal; jam datang kini input editable)
+// LIVE CLOCK
 // ═════════════════════════════════════════════════════════════
 function initClock() {
-  if (clockInterval) {
-    clearInterval(clockInterval);
-    clockInterval = null;
-  }
+  if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
 
   function tick() {
-    const now = new Date();
-    const y   = now.getFullYear();
-    const mo  = String(now.getMonth() + 1).padStart(2, '0');
-    const d   = String(now.getDate()).padStart(2, '0');
-    const isoDate = `${y}-${mo}-${d}`;
-
+    const now     = new Date();
+    const isoDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const displayDate = now.toLocaleDateString('id-ID', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
-
     const safe = (id, val, prop = 'textContent') => {
       const el = document.getElementById(id);
       if (el) el[prop] = val;
     };
-
     safe('display-tanggal', displayDate);
     safe('header-date',     displayDate);
     safe('tanggal',         isoDate, 'value');
   }
 
   tick();
-  clockInterval = setInterval(tick, 60000); // update per menit cukup untuk tanggal
-
-  // Set default jam sekarang pada input jam-datang (hanya sekali, agar tidak
-  // menimpa nilai yang sudah diubah user)
+  clockInterval = setInterval(tick, 60000);
   _setDefaultJam();
 }
 
-/**
- * Isi input jam-datang dengan jam sekarang sebagai default.
- * Dipanggil sekali saat init/reset — tidak menimpa pilihan user.
- */
 function _setDefaultJam() {
   const jamInput = document.getElementById('jam-datang');
   if (!jamInput) return;
   const now = new Date();
-  const hh  = String(now.getHours()).padStart(2, '0');
-  const mm  = String(now.getMinutes()).padStart(2, '0');
-  jamInput.value = `${hh}:${mm}`;
+  jamInput.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -336,63 +279,39 @@ function initSignaturePad() {
   const placeholder = document.getElementById('signature-placeholder');
   const clearBtn    = document.getElementById('btn-clear-signature');
 
-  if (!canvas || typeof SignaturePad === 'undefined') {
-    console.warn('SignaturePad tidak tersedia atau canvas tidak ditemukan.');
-    return;
-  }
+  if (!canvas || typeof SignaturePad === 'undefined') return;
 
-  /**
-   * Resize canvas dengan memperhitungkan Device Pixel Ratio.
-   * Canvas kini position:absolute mengisi container, jadi kita baca
-   * dimensi dari container (offsetParent), bukan canvas itu sendiri.
-   * Simpan & restore data tanda tangan agar tidak hilang saat resize.
-   */
   function resizeCanvas() {
     const hadSignature = signaturePad && !signaturePad.isEmpty();
     const savedData    = hadSignature ? signaturePad.toData() : null;
-
     const ratio  = Math.max(window.devicePixelRatio || 1, 1);
-    // Baca dimensi dari container, bukan canvas (canvas sudah 100%x100%)
     const width  = container ? container.clientWidth  : canvas.offsetWidth;
     const height = container ? container.clientHeight : (canvas.offsetHeight || 160);
-
     canvas.width  = width  * ratio;
     canvas.height = height * ratio;
     canvas.getContext('2d').scale(ratio, ratio);
-
     if (signaturePad) signaturePad.clear();
-
     if (savedData && savedData.length > 0) {
-      try { signaturePad.fromData(savedData); } catch (_) { /* biarkan kosong */ }
+      try { signaturePad.fromData(savedData); } catch (_) {}
     }
   }
 
-  // ── Inisialisasi SignaturePad ───────────────────────────────
   signaturePad = new SignaturePad(canvas, {
-    minWidth       : 1,
-    maxWidth       : 3,
-    penColor       : '#1f2937',
+    minWidth: 1, maxWidth: 3,
+    penColor: '#1f2937',
     backgroundColor: 'rgba(255,255,255,0)',
   });
 
-  // Beri waktu sebentar agar browser menghitung layout (canvas sudah absolute)
-  requestAnimationFrame(() => {
-    resizeCanvas();
-  });
+  requestAnimationFrame(() => resizeCanvas());
 
-  // Debounced resize
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(resizeCanvas, 250);
   });
 
-  // touch-action: none wajib ada di canvas agar browser tidak scroll saat menggambar.
-  // Ini sudah di-set via CSS, tapi set juga via JS sebagai failsafe.
   canvas.style.touchAction = 'none';
-  // Jangan set position/zIndex via JS — sudah diatur di CSS dengan benar.
 
-  // Signature events
   signaturePad.addEventListener('beginStroke', () => {
     if (placeholder) placeholder.classList.add('hidden');
     if (container)   container.classList.add('active');
@@ -408,20 +327,16 @@ function initSignaturePad() {
     checkSubmitEligibility();
   });
 
-  if (clearBtn) {
-    clearBtn.addEventListener('click', clearSignature);
-  }
+  if (clearBtn) clearBtn.addEventListener('click', clearSignature);
 }
 
 function clearSignature() {
   if (!signaturePad) return;
   signaturePad.clear();
-
   const placeholder = document.getElementById('signature-placeholder');
   const container   = document.getElementById('signature-container');
   if (placeholder) placeholder.classList.remove('hidden');
   if (container)   container.classList.remove('has-signature', 'active');
-
   _setSignatureStatus(false);
   checkSubmitEligibility();
 }
@@ -435,26 +350,327 @@ function _setSignatureStatus(signed) {
 }
 
 // ═════════════════════════════════════════════════════════════
-// EVENT LISTENERS
+// ▶▶ MULTI-TAMU: JUMLAH TAMU & REPEATER ANGGOTA
+// ═════════════════════════════════════════════════════════════
+
+/**
+ * Inisialisasi kontrol jumlah tamu dan render repeater pertama kali.
+ */
+function initJumlahTamu() {
+  jumlahTamu  = 1;
+  anggotaData = [_emptyAnggota()];
+  renderAnggotaRepeater();
+
+  const minusBtn = document.getElementById('btn-tamu-minus');
+  const plusBtn  = document.getElementById('btn-tamu-plus');
+  const display  = document.getElementById('jumlah-tamu-display');
+
+  if (minusBtn) {
+    minusBtn.addEventListener('click', () => {
+      if (jumlahTamu <= 1) return;
+      jumlahTamu--;
+      anggotaData.pop();
+      updateJumlahTamuDisplay();
+      renderAnggotaRepeater();
+      checkSubmitEligibility();
+    });
+  }
+
+  if (plusBtn) {
+    plusBtn.addEventListener('click', () => {
+      if (jumlahTamu >= MAX_TAMU) {
+        showToast(`Maksimal ${MAX_TAMU} tamu per kunjungan.`, 'danger');
+        return;
+      }
+      jumlahTamu++;
+      anggotaData.push(_emptyAnggota());
+      updateJumlahTamuDisplay();
+      renderAnggotaRepeater();
+      checkSubmitEligibility();
+      // Scroll ke card tamu baru
+      setTimeout(() => {
+        const cards = document.querySelectorAll('.anggota-card');
+        if (cards.length > 0) {
+          cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    });
+  }
+}
+
+function _emptyAnggota() {
+  return { namaLengkap: '', noHp: '', email: '', jabatan: '', jenisId: '', noId: '' };
+}
+
+function updateJumlahTamuDisplay() {
+  const display  = document.getElementById('jumlah-tamu-display');
+  const minusBtn = document.getElementById('btn-tamu-minus');
+  const plusBtn  = document.getElementById('btn-tamu-plus');
+  const label    = document.getElementById('jumlah-tamu-label');
+
+  if (display)  display.textContent = jumlahTamu;
+  if (minusBtn) minusBtn.disabled   = jumlahTamu <= 1;
+  if (plusBtn)  plusBtn.disabled    = jumlahTamu >= MAX_TAMU;
+  if (label)    label.textContent   = jumlahTamu === 1 ? 'orang (kunjungan tunggal)' : `orang (rombongan)`;
+}
+
+/**
+ * Render semua card anggota ke container yang tepat:
+ * - jumlahTamu = 1 → #anggota-repeater-tunggal (di seksi "Data Diri Tamu")
+ * - jumlahTamu > 1 → #anggota-repeater (di seksi "Data Setiap Anggota")
+ */
+function renderAnggotaRepeater() {
+  updateJumlahTamuDisplay();
+
+  const isRombongan     = jumlahTamu > 1;
+  const sectionAnggota  = document.getElementById('section-anggota');
+  const sectionTunggal  = document.getElementById('section-tamu-tunggal');
+  const containerRomb   = document.getElementById('anggota-repeater');
+  const containerTunggal= document.getElementById('anggota-repeater-tunggal');
+
+  // Tunjukkan/sembunyikan seksi
+  if (sectionAnggota) sectionAnggota.style.display  = isRombongan ? '' : 'none';
+  if (sectionTunggal) sectionTunggal.style.display  = isRombongan ? 'none' : '';
+
+  // Update counter di badge seksi rombongan
+  const badge2 = document.getElementById('jumlah-tamu-display-2');
+  if (badge2) badge2.textContent = jumlahTamu;
+
+  // Render ke container aktif
+  const targetContainer = isRombongan ? containerRomb : containerTunggal;
+  if (!targetContainer) return;
+
+  // Kosongkan container yang tidak aktif juga agar tidak ada sisa DOM
+  if (containerRomb && !isRombongan)    containerRomb.innerHTML    = '';
+  if (containerTunggal && isRombongan)  containerTunggal.innerHTML = '';
+
+  targetContainer.innerHTML = '';
+  anggotaData.forEach((a, i) => {
+    const card = _buildAnggotaCard(i, a);
+    targetContainer.appendChild(card);
+  });
+}
+
+/**
+ * Bangun elemen DOM satu card anggota.
+ * @param {number}  index - 0-based
+ * @param {Object}  data  - data anggota saat ini
+ */
+function _buildAnggotaCard(index, data) {
+  const isFirst  = index === 0;
+  const nomor    = index + 1;
+  const cardId   = `anggota-card-${index}`;
+
+  const card = document.createElement('div');
+  card.className  = 'anggota-card';
+  card.id         = cardId;
+  card.setAttribute('data-index', index);
+
+  // Label kartu dengan nomor
+  const header = document.createElement('div');
+  header.className = 'anggota-card__header';
+  header.innerHTML = `
+    <div class="anggota-card__badge">${nomor}</div>
+    <div class="anggota-card__title">
+      Tamu ${nomor}${isFirst ? ' <span class="anggota-card__badge--wakil">(Wakil/Utama)</span>' : ''}
+    </div>
+    ${!isFirst ? `
+    <button type="button" class="anggota-card__remove" data-index="${index}"
+      aria-label="Hapus Tamu ${nomor}" title="Hapus tamu ini">
+      ✕
+    </button>` : ''}
+  `;
+  card.appendChild(header);
+
+  // Body form
+  const body = document.createElement('div');
+  body.className = 'anggota-card__body';
+
+  // Nama (wajib)
+  body.innerHTML += `
+    <div class="form-group">
+      <label class="form-label" for="anggota-nama-${index}">
+        Nama Lengkap <span class="required">*</span>
+      </label>
+      <input type="text" id="anggota-nama-${index}" class="form-control anggota-nama"
+        placeholder="Nama lengkap tamu ${nomor}"
+        value="${escapeAttr(data.namaLengkap)}"
+        data-index="${index}" autocomplete="name" required />
+      <span class="form-error" id="error-anggota-nama-${index}" role="alert"></span>
+    </div>
+  `;
+
+  // No HP
+  body.innerHTML += `
+    <div class="form-group">
+      <label class="form-label" for="anggota-nohp-${index}">
+        No. HP / WA ${isFirst ? '<span class="required">*</span>' : '<span class="form-optional">(opsional)</span>'}
+      </label>
+      <input type="tel" id="anggota-nohp-${index}" class="form-control anggota-nohp"
+        placeholder="08xx-xxxx-xxxx"
+        value="${escapeAttr(data.noHp)}"
+        data-index="${index}" inputmode="numeric" ${isFirst ? 'required' : ''} />
+      <span class="form-error" id="error-anggota-nohp-${index}" role="alert"></span>
+    </div>
+  `;
+
+  // Email (wajib hanya tamu pertama)
+  body.innerHTML += `
+    <div class="form-group">
+      <label class="form-label" for="anggota-email-${index}">
+        Email ${isFirst ? '<span class="required">*</span>' : '<span class="form-optional">(opsional)</span>'}
+      </label>
+      <input type="email" id="anggota-email-${index}" class="form-control anggota-email"
+        placeholder="${isFirst ? 'nama@email.com' : 'Opsional'}"
+        value="${escapeAttr(data.email)}"
+        data-index="${index}" inputmode="email" ${isFirst ? 'required' : ''} />
+      <span class="form-error" id="error-anggota-email-${index}" role="alert"></span>
+    </div>
+  `;
+
+  // Jabatan/Status (opsional)
+  body.innerHTML += `
+    <div class="form-group">
+      <label class="form-label" for="anggota-jabatan-${index}">
+        Jabatan / Status <span class="form-optional">(opsional)</span>
+      </label>
+      <input type="text" id="anggota-jabatan-${index}" class="form-control anggota-jabatan"
+        placeholder="Misal: Ketua, Anggota, Guru"
+        value="${escapeAttr(data.jabatan)}"
+        data-index="${index}" />
+    </div>
+  `;
+
+  card.appendChild(body);
+
+  // Pasang event listener setelah card masuk ke DOM (via delegation di container)
+  return card;
+}
+
+/**
+ * Escape nilai untuk atribut HTML (mencegah XSS di value="").
+ */
+function escapeAttr(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/**
+ * Sinkronisasi data dari input card anggota ke array anggotaData.
+ * Dipanggil sebelum validasi dan submit.
+ */
+function syncAnggotaFromDOM() {
+  anggotaData.forEach((_, i) => {
+    const nama    = document.getElementById(`anggota-nama-${i}`);
+    const noHp    = document.getElementById(`anggota-nohp-${i}`);
+    const email   = document.getElementById(`anggota-email-${i}`);
+    const jabatan = document.getElementById(`anggota-jabatan-${i}`);
+    if (nama)    anggotaData[i].namaLengkap = nama.value.trim();
+    if (noHp)    anggotaData[i].noHp        = noHp.value.trim();
+    if (email)   anggotaData[i].email       = email.value.trim().toLowerCase();
+    if (jabatan) anggotaData[i].jabatan     = jabatan.value.trim();
+  });
+}
+
+/**
+ * Event delegation untuk input di dalam anggota-repeater (rombongan & tunggal).
+ * Dipanggil sekali saat init; karena delegation tidak perlu ulang saat re-render.
+ */
+function attachAnggotaRepeaterEvents() {
+  // Delegasikan ke parent statis yang selalu ada di DOM
+  const container = document.getElementById('main-content');
+  if (!container) return;
+
+  // Input changes — update anggotaData realtime
+  container.addEventListener('input', (e) => {
+    const el    = e.target;
+    const idx   = parseInt(el.getAttribute('data-index') ?? '-1', 10);
+    if (idx < 0 || idx >= anggotaData.length) return;
+
+    if (el.classList.contains('anggota-nama')) {
+      anggotaData[idx].namaLengkap = el.value.trim();
+      // Validasi nama
+      if (el.value.trim()) {
+        el.classList.remove('is-invalid');
+        el.classList.add('is-valid');
+        hideFieldError(`error-anggota-nama-${idx}`);
+      } else {
+        el.classList.remove('is-valid');
+      }
+    } else if (el.classList.contains('anggota-nohp')) {
+      anggotaData[idx].noHp = el.value.trim();
+    } else if (el.classList.contains('anggota-email')) {
+      anggotaData[idx].email = el.value.trim().toLowerCase();
+      if (idx === 0 && el.value.trim()) {
+        const ok = EMAIL_REGEX.test(el.value.trim());
+        el.classList.toggle('is-valid',   ok);
+        el.classList.toggle('is-invalid', !ok);
+        if (!ok) showFieldError(`error-anggota-email-${idx}`, 'Format email tidak valid.');
+        else     hideFieldError(`error-anggota-email-${idx}`);
+      } else {
+        el.classList.remove('is-valid', 'is-invalid');
+        hideFieldError(`error-anggota-email-${idx}`);
+      }
+    } else if (el.classList.contains('anggota-jabatan')) {
+      anggotaData[idx].jabatan = el.value.trim();
+    }
+
+    checkSubmitEligibility();
+  });
+
+  // Blur validasi nama
+  container.addEventListener('blur', (e) => {
+    const el  = e.target;
+    const idx = parseInt(el.getAttribute('data-index') ?? '-1', 10);
+    if (idx < 0) return;
+    if (el.classList.contains('anggota-nama') && !el.value.trim()) {
+      el.classList.add('is-invalid');
+      showFieldError(`error-anggota-nama-${idx}`, `Nama tamu ${idx + 1} wajib diisi.`);
+    }
+  }, true); // useCapture agar blur bubbles
+
+  // Hapus tamu (tombol ✕)
+  container.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.anggota-card__remove');
+    if (!removeBtn) return;
+
+    const idx = parseInt(removeBtn.getAttribute('data-index'), 10);
+    if (isNaN(idx) || idx === 0) return; // tidak bisa hapus tamu pertama
+
+    if (jumlahTamu <= 1) return;
+
+    jumlahTamu--;
+    anggotaData.splice(idx, 1);
+    updateJumlahTamuDisplay();
+    renderAnggotaRepeater();
+    // Re-attach karena innerHTML baru
+    checkSubmitEligibility();
+  });
+}
+
+// ═════════════════════════════════════════════════════════════
+// EVENT LISTENERS FORM UTAMA
 // ═════════════════════════════════════════════════════════════
 function attachFormEvents() {
   const form = document.getElementById('form-tamu');
   if (!form) return;
 
-  // Validasi real-time field text wajib
+  // Validasi real-time field kunjungan
   [
-    ['nama-lengkap', 'error-nama',       'Nama lengkap wajib diisi.'],
-    ['no-hp',        'error-no-hp',      'Nomor HP/WA wajib diisi.'],
-    ['keperluan',    'error-keperluan',  'Keperluan wajib diisi.'],
+    ['keperluan', 'error-keperluan', 'Keperluan wajib diisi.'],
   ].forEach(([id, errId, msg]) => attachRequiredValidation(id, errId, msg));
 
-  // Validasi instansi teks
+  // Instansi teks
   const instansiInput = document.getElementById('instansi');
   if (instansiInput) {
     instansiInput.addEventListener('input', () => {
       if (instansiInput.value.trim()) {
-        instansiInput.classList.remove('is-invalid');
-        instansiInput.classList.add('is-valid');
+        instansiInput.classList.replace('is-invalid', 'is-valid') || instansiInput.classList.add('is-valid');
         hideFieldError('error-instansi');
       } else {
         instansiInput.classList.remove('is-valid');
@@ -469,13 +685,12 @@ function attachFormEvents() {
     });
   }
 
-  // Validasi dropdown siswa
+  // Dropdown siswa
   const siswaSelect = document.getElementById('instansi-siswa');
   if (siswaSelect) {
     siswaSelect.addEventListener('change', () => {
       if (siswaSelect.value) {
-        siswaSelect.classList.remove('is-invalid');
-        siswaSelect.classList.add('is-valid');
+        siswaSelect.classList.replace('is-invalid', 'is-valid') || siswaSelect.classList.add('is-valid');
         hideFieldError('error-instansi');
       } else {
         siswaSelect.classList.remove('is-valid');
@@ -484,26 +699,21 @@ function attachFormEvents() {
     });
   }
 
-  // Validasi input tahun lulus (Alumni)
+  // Tahun lulus Alumni
   const tahunInput = document.getElementById('instansi-tahun-lulus');
   if (tahunInput) {
     tahunInput.addEventListener('input', () => {
-      const val = tahunInput.value.trim();
-      const yr  = parseInt(val, 10);
-      if (val && yr >= 1900 && yr <= 2099) {
-        tahunInput.classList.remove('is-invalid');
-        tahunInput.classList.add('is-valid');
-        hideFieldError('error-instansi');
-      } else {
-        tahunInput.classList.remove('is-valid');
-      }
+      const yr = parseInt(tahunInput.value.trim(), 10);
+      const ok = tahunInput.value.trim() && yr >= 1900 && yr <= 2099;
+      tahunInput.classList.toggle('is-valid', !!ok);
+      tahunInput.classList.toggle('is-invalid', !ok && !!tahunInput.value.trim());
+      if (ok) hideFieldError('error-instansi');
       checkSubmitEligibility();
     });
     tahunInput.addEventListener('blur', () => {
       if (selectedJenis === JENIS_ALUMNI) {
-        const val = tahunInput.value.trim();
-        const yr  = parseInt(val, 10);
-        if (!val || yr < 1900 || yr > 2099) {
+        const yr = parseInt(tahunInput.value.trim(), 10);
+        if (!tahunInput.value.trim() || yr < 1900 || yr > 2099) {
           tahunInput.classList.add('is-invalid');
           showFieldError('error-instansi', 'Masukkan tahun lulus yang valid.');
         }
@@ -511,23 +721,12 @@ function attachFormEvents() {
     });
   }
 
-  // Validasi email
-  const emailInput = document.getElementById('email');
-  if (emailInput) {
-    emailInput.addEventListener('input', () => {
-      validateEmail(emailInput);
-      checkSubmitEligibility();
-    });
-    emailInput.addEventListener('blur', () => validateEmail(emailInput, true));
-  }
-
   // Dropdown bertemu dengan
   const bertemuSelect = document.getElementById('bertemu-dengan');
   if (bertemuSelect) {
     bertemuSelect.addEventListener('change', () => {
       if (bertemuSelect.value) {
-        bertemuSelect.classList.remove('is-invalid');
-        bertemuSelect.classList.add('is-valid');
+        bertemuSelect.classList.replace('is-invalid', 'is-valid') || bertemuSelect.classList.add('is-valid');
         hideFieldError('error-bertemu');
       } else {
         bertemuSelect.classList.remove('is-valid');
@@ -536,6 +735,9 @@ function attachFormEvents() {
     });
   }
 
+  // ▶▶ Pasang event delegation repeater anggota
+  attachAnggotaRepeaterEvents();
+
   // Submit form
   form.addEventListener('submit', handleSubmit);
 
@@ -543,9 +745,36 @@ function attachFormEvents() {
   const btnNew = document.getElementById('btn-new-entry');
   if (btnNew) btnNew.addEventListener('click', resetForm);
 
-  // Tombol retry staf
+  // Retry staf
   const btnRetry = document.getElementById('btn-retry-staf');
   if (btnRetry) btnRetry.addEventListener('click', retryLoadStaf);
+
+  // ▶▶ Tombol navigasi review
+  const btnEdit = document.getElementById('btn-review-edit');
+  if (btnEdit) btnEdit.addEventListener('click', closeReviewScreen);
+
+  const btnConfirm = document.getElementById('btn-review-confirm');
+  if (btnConfirm) btnConfirm.addEventListener('click', submitFromReview);
+
+  // ▶▶ Tombol Tambah Tamu Manual (di seksi anggota)
+  const btnTambahManual = document.getElementById('btn-tambah-tamu-manual');
+  if (btnTambahManual) {
+    btnTambahManual.addEventListener('click', () => {
+      if (jumlahTamu >= MAX_TAMU) {
+        showToast(`Maksimal ${MAX_TAMU} tamu per kunjungan.`, 'danger');
+        return;
+      }
+      jumlahTamu++;
+      anggotaData.push(_emptyAnggota());
+      updateJumlahTamuDisplay();
+      renderAnggotaRepeater();
+      checkSubmitEligibility();
+      setTimeout(() => {
+        const cards = document.querySelectorAll('.anggota-card');
+        if (cards.length > 0) cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    });
+  }
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -554,7 +783,6 @@ function attachFormEvents() {
 function attachRequiredValidation(inputId, errorId, errorMsg) {
   const input = document.getElementById(inputId);
   if (!input) return;
-
   input.addEventListener('input', () => {
     if (input.value.trim()) {
       input.classList.remove('is-invalid');
@@ -565,7 +793,6 @@ function attachRequiredValidation(inputId, errorId, errorMsg) {
     }
     checkSubmitEligibility();
   });
-
   input.addEventListener('blur', () => {
     if (!input.value.trim()) {
       input.classList.add('is-invalid');
@@ -573,34 +800,6 @@ function attachRequiredValidation(inputId, errorId, errorMsg) {
       showFieldError(errorId, errorMsg);
     }
   });
-}
-
-function validateEmail(input, strict = false) {
-  if (!input) return false;
-
-  const val = input.value.trim();
-
-  if (!val) {
-    input.classList.remove('is-valid', 'is-invalid');
-    hideFieldError('error-email');
-    if (strict) {
-      input.classList.add('is-invalid');
-      showFieldError('error-email', 'Email wajib diisi.');
-    }
-    return false;
-  }
-
-  if (!EMAIL_REGEX.test(val)) {
-    input.classList.add('is-invalid');
-    input.classList.remove('is-valid');
-    showFieldError('error-email', 'Format email tidak valid. Contoh: nama@domain.com');
-    return false;
-  }
-
-  input.classList.add('is-valid');
-  input.classList.remove('is-invalid');
-  hideFieldError('error-email');
-  return true;
 }
 
 function showFieldError(errorId, message) {
@@ -618,20 +817,18 @@ function hideFieldError(errorId) {
 function checkSubmitEligibility() {
   const btn = document.getElementById('btn-submit');
   if (!btn) return;
+  // BUG A2 FIX: update teks tombol sesuai jumlah tamu
+  const textEl = btn.querySelector('.btn__text');
+  if (textEl) {
+    textEl.textContent = jumlahTamu > 1 ? 'Tinjau & Simpan' : 'Daftarkan Kunjungan';
+  }
   btn.disabled = !isFormValid() || isSubmitting;
 }
 
 function isFormValid() {
   if (!selectedJenis) return false;
 
-  // Field teks wajib
-  const textFields = ['nama-lengkap', 'no-hp', 'keperluan'];
-  for (const id of textFields) {
-    const el = document.getElementById(id);
-    if (!el || !el.value.trim()) return false;
-  }
-
-  // Instansi: teks, dropdown siswa, atau tahun lulus tergantung jenis tamu
+  // Instansi
   if (selectedJenis === JENIS_ORTU) {
     const siswaEl = document.getElementById('instansi-siswa');
     if (!siswaEl || !siswaEl.value) return false;
@@ -644,42 +841,77 @@ function isFormValid() {
     if (!instansiEl || !instansiEl.value.trim()) return false;
   }
 
-  // Email
-  const emailEl = document.getElementById('email');
-  if (!emailEl || !EMAIL_REGEX.test(emailEl.value.trim())) return false;
+  // Keperluan
+  const keperluanEl = document.getElementById('keperluan');
+  if (!keperluanEl || !keperluanEl.value.trim()) return false;
 
   // Bertemu dengan
   const bertemuEl = document.getElementById('bertemu-dengan');
   if (!bertemuEl || !bertemuEl.value) return false;
 
-  // Jam datang (harus terisi)
+  // Jam datang
   const jamEl = document.getElementById('jam-datang');
   if (!jamEl || !jamEl.value) return false;
 
   // Tanda tangan
   if (!signaturePad || signaturePad.isEmpty()) return false;
 
+  // ▶▶ Validasi anggota pertama: selalu baca dari DOM sebagai source of truth
+  const namaEl0  = document.getElementById('anggota-nama-0');
+  const email0El = document.getElementById('anggota-email-0');
+  if (!namaEl0 || !namaEl0.value.trim()) return false;
+  const email0 = email0El ? email0El.value.trim() : '';
+  if (!EMAIL_REGEX.test(email0)) return false;
+
   return true;
 }
 
 // ═════════════════════════════════════════════════════════════
-// SUBMIT
+// SUBMIT & REVIEW
 // ═════════════════════════════════════════════════════════════
 async function handleSubmit(e) {
   e.preventDefault();
   if (isSubmitting) return;
 
+  // Sync final dari DOM sebelum validasi
+  syncAnggotaFromDOM();
+
   if (!validateAllFields()) return;
 
+  // ▶▶ Jika rombongan (>1 tamu), tampilkan review screen sebelum simpan
+  if (jumlahTamu > 1) {
+    showReviewScreen();
+    return;
+  }
+
+  // Satu tamu — langsung simpan
+  await _doSubmit();
+}
+
+/**
+ * Dipanggil dari tombol "Simpan Kunjungan" di review screen.
+ */
+async function submitFromReview() {
+  // Pastikan data anggota tersync (form tersembunyi, tapi data tidak berubah)
+  syncAnggotaFromDOM();
+  await _doSubmit();
+}
+
+async function _doSubmit() {
+  if (isSubmitting) return;
   isSubmitting = true;
-  const btn = document.getElementById('btn-submit');
-  if (btn) setButtonLoading(btn);
+
+  const btnSubmit  = document.getElementById('btn-submit');
+  const btnConfirm = document.getElementById('btn-review-confirm');
+  if (btnSubmit)  setButtonLoading(btnSubmit);
+  if (btnConfirm) setButtonLoading(btnConfirm);
 
   const payload = collectFormData();
   if (!payload) {
-    showToast('Terjadi kesalahan internal. Refresh halaman dan coba lagi.', 'danger', 5000);
+    showToast('Terjadi kesalahan internal. Refresh dan coba lagi.', 'danger', 5000);
     isSubmitting = false;
-    if (btn) resetButtonLoading(btn, false);
+    if (btnSubmit)  resetButtonLoading(btnSubmit, false);
+    if (btnConfirm) resetButtonLoading(btnConfirm, false);
     return;
   }
 
@@ -688,19 +920,22 @@ async function handleSubmit(e) {
 
     if (result.status === 'ok') {
       if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
-      // Reset tombol loading sebelum berpindah ke success screen
-      if (btn) resetButtonLoading(btn, false);
+      if (btnSubmit)  resetButtonLoading(btnSubmit, false);
+      if (btnConfirm) resetButtonLoading(btnConfirm, false);
+      closeReviewScreen();
       showSuccessScreen(payload);
     } else {
       showToast(result.message || 'Gagal menyimpan data. Coba lagi.', 'danger', 4000);
       isSubmitting = false;
-      if (btn) resetButtonLoading(btn, false);
+      if (btnSubmit)  resetButtonLoading(btnSubmit, false);
+      if (btnConfirm) resetButtonLoading(btnConfirm, false);
     }
 
   } catch (_) {
     showToast('Terjadi kesalahan koneksi. Silakan coba lagi.', 'danger', 4000);
     isSubmitting = false;
-    if (btn) resetButtonLoading(btn, false);
+    if (btnSubmit)  resetButtonLoading(btnSubmit, false);
+    if (btnConfirm) resetButtonLoading(btnConfirm, false);
   }
 }
 
@@ -713,15 +948,7 @@ function validateAllFields() {
     firstInvalid = firstInvalid || document.getElementById('jenis-tamu-pills');
   }
 
-  // Nama
-  const namaEl = document.getElementById('nama-lengkap');
-  if (!namaEl || !namaEl.value.trim()) {
-    if (namaEl) namaEl.classList.add('is-invalid');
-    showFieldError('error-nama', 'Nama lengkap wajib diisi.');
-    if (!firstInvalid) firstInvalid = namaEl;
-  }
-
-  // Instansi (teks, dropdown siswa, atau tahun lulus)
+  // Instansi
   if (selectedJenis === JENIS_ORTU) {
     const siswaEl = document.getElementById('instansi-siswa');
     if (!siswaEl || !siswaEl.value) {
@@ -746,20 +973,6 @@ function validateAllFields() {
     }
   }
 
-  // No HP
-  const noHpEl = document.getElementById('no-hp');
-  if (!noHpEl || !noHpEl.value.trim()) {
-    if (noHpEl) noHpEl.classList.add('is-invalid');
-    showFieldError('error-no-hp', 'Nomor HP/WA wajib diisi.');
-    if (!firstInvalid) firstInvalid = noHpEl;
-  }
-
-  // Email
-  const emailEl = document.getElementById('email');
-  if (!validateEmail(emailEl, true)) {
-    if (!firstInvalid) firstInvalid = emailEl;
-  }
-
   // Keperluan
   const keperluanEl = document.getElementById('keperluan');
   if (!keperluanEl || !keperluanEl.value.trim()) {
@@ -776,6 +989,29 @@ function validateAllFields() {
     if (!firstInvalid) firstInvalid = bertemuEl;
   }
 
+  // ▶▶ Validasi setiap anggota
+  for (let i = 0; i < anggotaData.length; i++) {
+    const namaEl  = document.getElementById(`anggota-nama-${i}`);
+    const emailEl = document.getElementById(`anggota-email-${i}`);
+
+    // Nama wajib semua tamu
+    if (!namaEl || !namaEl.value.trim()) {
+      if (namaEl) namaEl.classList.add('is-invalid');
+      showFieldError(`error-anggota-nama-${i}`, `Nama tamu ${i + 1} wajib diisi.`);
+      if (!firstInvalid) firstInvalid = namaEl;
+    }
+
+    // Email wajib tamu pertama
+    if (i === 0) {
+      const emailVal = emailEl ? emailEl.value.trim() : '';
+      if (!emailVal || !EMAIL_REGEX.test(emailVal)) {
+        if (emailEl) emailEl.classList.add('is-invalid');
+        showFieldError('error-anggota-email-0', 'Email tamu pertama wajib diisi dengan format yang valid.');
+        if (!firstInvalid) firstInvalid = emailEl;
+      }
+    }
+  }
+
   // Tanda tangan
   if (!signaturePad || signaturePad.isEmpty()) {
     showFieldError('error-ttd', 'Tanda tangan wajib diisi.');
@@ -786,25 +1022,21 @@ function validateAllFields() {
     firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return false;
   }
-
   return true;
 }
 
 function collectFormData() {
   const tanggalEl   = document.getElementById('tanggal');
   const jamEl       = document.getElementById('jam-datang');
-  const namaEl      = document.getElementById('nama-lengkap');
-  const noHpEl      = document.getElementById('no-hp');
-  const emailEl     = document.getElementById('email');
   const keperluanEl = document.getElementById('keperluan');
   const bertemuEl   = document.getElementById('bertemu-dengan');
 
-  if (!tanggalEl || !jamEl || !namaEl || !noHpEl || !emailEl || !keperluanEl || !bertemuEl) {
-    console.error('collectFormData: satu atau lebih elemen DOM tidak ditemukan.');
+  if (!tanggalEl || !jamEl || !keperluanEl || !bertemuEl) {
+    console.error('collectFormData: elemen DOM tidak ditemukan.');
     return null;
   }
 
-  // Instansi: ambil dari teks, dropdown siswa, atau tahun lulus
+  // Instansi
   let instansiVal = '';
   if (selectedJenis === JENIS_ORTU) {
     const siswaEl = document.getElementById('instansi-siswa');
@@ -817,26 +1049,89 @@ function collectFormData() {
     instansiVal      = instansiEl ? instansiEl.value.trim() : '';
   }
 
-  const ttdBase64 = signaturePad && !signaturePad.isEmpty()
-    ? signaturePad.toDataURL('image/png')
-    : '';
+  const ttdBase64  = signaturePad && !signaturePad.isEmpty() ? signaturePad.toDataURL('image/png') : '';
+  const jamRaw     = jamEl.value || '';
+  const jamDatang  = jamRaw.length >= 5 ? jamRaw.substring(0, 5) : jamRaw;
 
-  // Format jam dari input[type=time] → "HH:MM"
-  const jamRaw = jamEl.value || '';
-  const jamDatang = jamRaw.length >= 5 ? jamRaw.substring(0, 5) : jamRaw;
-
+  // ▶▶ collectFormData hanya membaca dari anggotaData (sudah disync di handleSubmit/submitFromReview)
   return {
     tanggal      : tanggalEl.value,
     jenisTamu    : selectedJenis,
     jamDatang    : jamDatang,
-    namaLengkap  : namaEl.value.trim(),
     instansi     : instansiVal,
-    noHp         : noHpEl.value.trim(),
-    email        : emailEl.value.trim().toLowerCase(),
     keperluan    : keperluanEl.value.trim(),
     bertemuDengan: bertemuEl.value,
     tandaTangan  : ttdBase64,
+    anggota      : anggotaData,  // ▶▶ array anggota
   };
+}
+
+// ═════════════════════════════════════════════════════════════
+// ▶▶ REVIEW SCREEN (Ringkasan Sebelum Simpan)
+// ═════════════════════════════════════════════════════════════
+
+function showReviewScreen() {
+  const wrapper = document.getElementById('form-wrapper');
+  const review  = document.getElementById('review-screen');
+  if (!review) return;
+
+  const bertemuEl   = document.getElementById('bertemu-dengan');
+  const keperluanEl = document.getElementById('keperluan');
+  const tanggalEl   = document.getElementById('tanggal');
+  const jamEl       = document.getElementById('jam-datang');
+
+  // Isi ringkasan kunjungan
+  const elJumlah   = document.getElementById('review-jumlah');
+  const elBertemu  = document.getElementById('review-bertemu');
+  const elKep      = document.getElementById('review-keperluan');
+  const elJenis    = document.getElementById('review-jenis');
+  const elWaktu    = document.getElementById('review-waktu');
+  const elDaftar   = document.getElementById('review-daftar-anggota');
+
+  if (elJumlah)  elJumlah.textContent  = `${jumlahTamu} orang`;
+  if (elBertemu) elBertemu.textContent = bertemuEl?.value || '—';
+  if (elKep)     elKep.textContent     = keperluanEl?.value.trim() || '—';
+  if (elJenis)   elJenis.textContent   = selectedJenis || '—';
+
+  // Format waktu
+  const tanggalDisplay = tanggalEl?.value
+    ? new Date(tanggalEl.value + 'T00:00:00').toLocaleDateString('id-ID', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      })
+    : '—';
+  if (elWaktu) elWaktu.textContent = `${tanggalDisplay} · ${jamEl?.value || '—'}`;
+
+  // Daftar anggota
+  if (elDaftar) {
+    elDaftar.innerHTML = anggotaData.map((a, i) => `
+      <li class="review-anggota-item">
+        <span class="review-anggota-item__nomor">${i + 1}</span>
+        <span class="review-anggota-item__nama">${escapeHtml(a.namaLengkap || '—')}</span>
+        ${a.jabatan ? `<span class="review-anggota-item__jabatan">${escapeHtml(a.jabatan)}</span>` : ''}
+      </li>
+    `).join('');
+  }
+
+  // Reset tombol konfirmasi
+  const btnConfirm = document.getElementById('btn-review-confirm');
+  if (btnConfirm) {
+    btnConfirm.disabled = false;
+    btnConfirm.classList.remove('loading');
+  }
+
+  if (wrapper) wrapper.style.display = 'none';
+  review.style.display = '';
+  void review.offsetHeight;
+  review.classList.add('visible');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeReviewScreen() {
+  const wrapper = document.getElementById('form-wrapper');
+  const review  = document.getElementById('review-screen');
+  if (review)  { review.classList.remove('visible'); review.style.display = 'none'; }
+  if (wrapper) wrapper.style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -849,17 +1144,24 @@ function showSuccessScreen(payload) {
   if (formWrapper)   formWrapper.style.display = 'none';
   if (successScreen) {
     successScreen.classList.remove('visible');
-    void successScreen.offsetHeight; // trigger reflow
+    void successScreen.offsetHeight;
     successScreen.classList.add('visible');
   }
 
-  const timeEl = document.getElementById('success-time');
-  const dateEl = document.getElementById('success-date');
+  const timeEl   = document.getElementById('success-time');
+  const dateEl   = document.getElementById('success-date');
+  const countEl  = document.getElementById('success-count');
+
   if (timeEl) timeEl.textContent = payload?.jamDatang || '';
   if (dateEl) {
     dateEl.textContent = new Date().toLocaleDateString('id-ID', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
+  }
+  // ▶▶ Tampilkan jumlah tamu
+  if (countEl) {
+    const jml = payload?.anggota?.length || 1;
+    countEl.textContent = jml > 1 ? `${jml} tamu terdaftar` : '1 tamu terdaftar';
   }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -873,65 +1175,65 @@ function resetForm() {
 
   isSubmitting  = false;
   selectedJenis = '';
+  jumlahTamu    = 1;
+  anggotaData   = [_emptyAnggota()];
 
   const form = document.getElementById('form-tamu');
   if (form) form.reset();
 
-  // Reset hidden input jenis tamu
   const hidJenis = document.getElementById('jenis-tamu');
   if (hidJenis) hidJenis.value = '';
 
-  // Reset pill selector
   document.querySelectorAll('.pill-selector__item').forEach(btn => {
     btn.classList.remove('selected');
     btn.setAttribute('aria-pressed', 'false');
   });
 
-  // Reset state validasi semua input
   document.querySelectorAll('.form-control').forEach(el => {
     el.classList.remove('is-valid', 'is-invalid');
   });
 
-  // Sembunyikan semua pesan error
   document.querySelectorAll('.form-error').forEach(el => {
     el.classList.remove('visible');
   });
 
-  // Reset field instansi ke teks (jenis belum dipilih)
-  const instansiInput   = document.getElementById('instansi');
-  const instansiSiswa   = document.getElementById('instansi-siswa');
-  const instansiTahun   = document.getElementById('instansi-tahun-lulus');
-  const labelInstansi   = document.getElementById('label-instansi');
+  // Reset instansi field
+  const instansiInput = document.getElementById('instansi');
+  const instansiSiswa = document.getElementById('instansi-siswa');
+  const instansiTahun = document.getElementById('instansi-tahun-lulus');
+  const labelInstansi = document.getElementById('label-instansi');
   if (instansiInput) { instansiInput.style.display = ''; instansiInput.required = true; }
   if (instansiSiswa) { instansiSiswa.style.display = 'none'; instansiSiswa.required = false; }
   if (instansiTahun) { instansiTahun.style.display = 'none'; instansiTahun.required = false; }
   if (labelInstansi) labelInstansi.innerHTML = 'Instansi / Asal <span class="required">*</span>';
 
-  // Reset signature pad
   clearSignature();
 
-  // Tampilkan form, sembunyikan success screen
+  // Tampilkan form, sembunyikan layar lain
   const formWrapper   = document.getElementById('form-wrapper');
   const successScreen = document.getElementById('success-screen');
+  const reviewScreen  = document.getElementById('review-screen');
   if (formWrapper)   formWrapper.style.display = '';
   if (successScreen) successScreen.classList.remove('visible');
+  if (reviewScreen)  { reviewScreen.classList.remove('visible'); reviewScreen.style.display = 'none'; }
 
-  // Fix #3: Reset tombol submit ke state default (disabled, teks normal, tanpa loading)
+  // Reset tombol submit
   const btn = document.getElementById('btn-submit');
   if (btn) {
     btn.disabled = true;
-    btn.classList.remove('loading');   // class yang diset oleh setButtonLoading()
+    btn.classList.remove('loading');
     const textEl = btn.querySelector('.btn__text');
-    if (textEl) textEl.textContent = 'Daftarkan Kunjungan';
+    if (textEl) textEl.textContent = jumlahTamu > 1 ? 'Tinjau & Simpan' : 'Daftarkan Kunjungan';
   }
 
-  // Restart clock (tanggal) dan set default jam
-  initClock();
+  // ▶▶ Reset repeater anggota
+  renderAnggotaRepeater();
 
+  initClock();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   setTimeout(() => {
-    const namaInput = document.getElementById('nama-lengkap');
+    const namaInput = document.getElementById('anggota-nama-0');
     if (namaInput) namaInput.focus();
   }, 500);
 }
@@ -942,7 +1244,6 @@ function resetForm() {
 function showFormLoading(show) {
   const loader  = document.getElementById('form-loading');
   const wrapper = document.getElementById('form-wrapper');
-
   if (show) {
     if (loader)  loader.classList.add('visible');
     if (wrapper) wrapper.style.display = 'none';
