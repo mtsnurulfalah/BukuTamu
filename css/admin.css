@@ -782,3 +782,76 @@
   margin-bottom: var(--space-4);
   flex-wrap: wrap;
 }
+
+/* ============================================================
+   ▶▶ MULTI-TAMU: Tambahan admin.css
+   ============================================================ */
+
+/* ── Stats Grid 6 kolom ──────────────────────────────────── */
+.stats-grid--6 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 768px) {
+  .stats-grid--6 { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1200px) {
+  .stats-grid--6 { grid-template-columns: repeat(6, 1fr); }
+}
+
+/* Stat card warna baru */
+.stat-card--purple {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-color: #c4b5fd;
+}
+.stat-card--purple .stat-card__value { color: #7c3aed; }
+
+.stat-card--orange {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border-color: #fdba74;
+}
+.stat-card--orange .stat-card__value { color: #ea580c; }
+
+/* ── Badge rombongan kecil (tabel rekap) ─────────────────── */
+.badge-rombongan-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.badge-sisa-rekap {
+  display: inline-flex;
+  align-items: center;
+  background: var(--clr-gray-200);
+  color: var(--clr-gray-600);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: 2px;
+}
+
+/* ── Tabel rekap: baris rombongan ────────────────────────── */
+.tr--rombongan td:first-child {
+  border-left: 3px solid var(--clr-primary);
+}
+
+/* ── Detail section title (reuse dari satpam) ────────────── */
+.detail-section-title {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--clr-primary);
+}
