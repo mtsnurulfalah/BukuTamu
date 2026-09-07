@@ -82,6 +82,15 @@
       </button>
       <button
         class="tab-btn"
+        id="tab-siswa"
+        role="tab"
+        aria-selected="false"
+        aria-controls="pane-siswa"
+      >
+        🎓 Siswa
+      </button>
+      <button
+        class="tab-btn"
         id="tab-pengaturan"
         role="tab"
         aria-selected="false"
@@ -354,6 +363,107 @@
       </div>
 
     </div>
+
+    <!-- ── TAB: SISWA ─────────────────────────────────────── -->
+    <div
+      class="tab-pane admin-section"
+      id="pane-siswa"
+      role="tabpanel"
+      aria-labelledby="tab-siswa"
+    >
+      <div class="staf-header">
+        <div>
+          <div class="section-title">Data Siswa</div>
+          <div class="section-subtitle">Kelola daftar siswa untuk dropdown "Orang Tua/Wali Murid" di form tamu.</div>
+        </div>
+        <button class="btn btn--primary btn--sm" id="btn-tambah-siswa" aria-expanded="false">
+          ➕ Tambah Siswa
+        </button>
+      </div>
+
+      <!-- Form Tambah / Edit Siswa -->
+      <div class="staf-form-card" id="siswa-form-card">
+        <div class="staf-form-card__title" id="siswa-form-title">Tambah Siswa Baru</div>
+        <form id="siswa-form" novalidate>
+          <input type="hidden" id="siswa-id" />
+          <div class="staf-form-row">
+            <div class="form-group">
+              <label class="form-label" for="siswa-nama">
+                Nama Lengkap <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="siswa-nama"
+                class="form-control"
+                placeholder="Nama lengkap siswa"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="siswa-kelas">
+                Kelas <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="siswa-kelas"
+                class="form-control"
+                placeholder="Contoh: VII A, VIII B, IX C"
+                required
+              />
+            </div>
+          </div>
+          <div style="display:flex;gap:var(--space-3);margin-top:var(--space-4);">
+            <button type="submit" class="btn btn--primary btn--sm" id="btn-save-siswa">
+              <span class="btn__spinner"></span>
+              <span class="btn__text">💾 Simpan</span>
+            </button>
+            <button type="button" class="btn btn--secondary btn--sm" id="btn-cancel-siswa">
+              Batal
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Filter kelas -->
+      <div class="siswa-filter-bar" id="siswa-filter-bar">
+        <input
+          type="search"
+          id="siswa-search"
+          class="form-control"
+          placeholder="🔍 Cari nama atau kelas..."
+          aria-label="Cari siswa"
+          style="max-width:300px;"
+        />
+      </div>
+
+      <!-- Siswa List -->
+      <div class="staf-list" id="siswa-list" role="list">
+        <!-- Skeleton -->
+        <div class="staf-card" aria-hidden="true">
+          <div class="skeleton skeleton--avatar"></div>
+          <div style="flex:1;">
+            <div class="skeleton skeleton--text" style="width:55%;height:1em;"></div>
+            <div class="skeleton skeleton--text-sm" style="margin-top:6px;width:30%;"></div>
+          </div>
+        </div>
+        <div class="staf-card" aria-hidden="true">
+          <div class="skeleton skeleton--avatar"></div>
+          <div style="flex:1;">
+            <div class="skeleton skeleton--text" style="width:65%;height:1em;"></div>
+            <div class="skeleton skeleton--text-sm" style="margin-top:6px;width:25%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="empty-state" id="siswa-empty" style="display:none;">
+        <div class="empty-state__icon" aria-hidden="true">🎓</div>
+        <div class="empty-state__title">Belum ada data siswa</div>
+        <div class="empty-state__desc">Tambahkan siswa untuk ditampilkan di dropdown form tamu.</div>
+      </div>
+
+    </div>
+    <!-- ── end pane-siswa ───────────────────────────────────── -->
 
     <!-- ── TAB: PENGATURAN ──────────────────────────────────── -->
     <div
