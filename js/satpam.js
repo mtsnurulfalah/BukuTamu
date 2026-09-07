@@ -15,12 +15,13 @@
  */
 
 // ── State ─────────────────────────────────────────────────────
-let allTamuAktif   = [];    // semua data tamu aktif dari GAS
-let filteredTamu   = [];    // setelah filter search
-let refreshTimer   = null;  // interval auto-refresh
-let lastCount      = -1;    // jumlah tamu saat terakhir fetch (untuk notif)
-let selectedTamuId = null;  // ID tamu yang dipilih untuk catat pulang
-let session        = null;  // session user
+let allTamuAktif    = [];    // semua data tamu aktif dari GAS
+let filteredTamu    = [];    // setelah filter search
+let refreshTimer    = null;  // interval auto-refresh
+let lastCount       = -1;    // jumlah tamu saat terakhir fetch (untuk notif)
+let sudahPulangCount = 0;    // Bug #2 fix: counter lokal tamu yang sudah pulang hari ini
+let selectedTamuId  = null;  // ID tamu yang dipilih untuk catat pulang
+let session         = null;  // session user
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -92,7 +93,7 @@ async function loadTamuAktif(silent = false) {
   const result = await callGAS('getTamuAktif', { token: getToken() });
 
   if (result.status === 'ok') {
-    const newData  = result.data.tamu || [];
+    const newData  = result.data?.tamu || [];
     const newCount = newData.length;
 
     // Deteksi tamu baru untuk notifikasi
@@ -104,33 +105,41 @@ async function loadTamuAktif(silent = false) {
     lastCount    = newCount;
     allTamuAktif = newData;
 
-    // Terapkan filter search yang aktif
+    // Bug #7 fix: terapkan filter & render DI SINI saja.
+    // showSkeleton(false) di bawah tidak boleh memanggil renderTamu() lagi.
     applySearch();
 
-    // Update statistik strip
-    updateStatsStrip(newData);
+    // Bug #2 fix: teruskan counter pulang ke stats strip
+    updateStatsStrip(allTamuAktif, sudahPulangCount);
 
   } else if (result.status === 'error') {
     showToast('Gagal memuat data: ' + (result.message || 'Coba lagi'), 'danger');
   }
 
-  showSkeleton(false);
+  // Bug #7 fix: hanya sembunyikan skeleton, jangan render ulang
+  if (!silent) hideSkeleton();
   updateRefreshTime();
 }
 
 // ── Update Stats Strip ────────────────────────────────────────
-function updateStatsStrip(data) {
-  const aktif    = data.length;
-  const pulang   = 0; // getTamuAktif hanya return yg Hadir
-  const hariIni  = aktif; // di dashboard satpam kita hanya tahu yg sedang hadir
+/**
+ * @param {Array}  data       - daftar tamu yang sedang hadir
+ * @param {number} [sudahPulang=0] - jumlah tamu yang sudah pulang hari ini
+ *   (opsional; GAS endpoint getTamuAktif tidak mengembalikan nilai ini,
+ *    sehingga kita pertahankan counter lokal dari sesi sebelumnya)
+ */
+function updateStatsStrip(data, sudahPulang = 0) {
+  const aktif = data.length;
 
   const elAktif   = document.getElementById('stat-aktif');
   const elHariIni = document.getElementById('stat-hari-ini');
-  const elPulang  = document.getElementById('stat-pulang');
+  const elPulang  = document.getElementById('stat-pulang');   // Bug #2 fix: sekarang diisi
   const elBadge   = document.getElementById('active-count');
 
   if (elAktif)   elAktif.textContent   = aktif;
-  if (elHariIni) elHariIni.textContent = aktif;
+  // Total hari ini = hadir sekarang + yang sudah pulang
+  if (elHariIni) elHariIni.textContent = aktif + sudahPulang;
+  if (elPulang)  elPulang.textContent  = sudahPulang;         // Bug #2 fix
   if (elBadge)   elBadge.textContent   = aktif;
 
   // Sembunyikan badge jika tidak ada tamu aktif
@@ -144,10 +153,12 @@ function applySearch() {
   if (!searchVal) {
     filteredTamu = [...allTamuAktif];
   } else {
-    filteredTamu = allTamuAktif.filter(t =>
-      t.namaLengkap.toLowerCase().includes(searchVal) ||
-      t.instansi.toLowerCase().includes(searchVal)
-    );
+    // Bug #4 fix: null-safe toLowerCase untuk instansi
+    filteredTamu = allTamuAktif.filter(t => {
+      const nama     = (t.namaLengkap || '').toLowerCase();
+      const instansi = (t.instansi || '').toLowerCase();
+      return nama.includes(searchVal) || instansi.includes(searchVal);
+    });
   }
 
   renderTamu();
@@ -305,6 +316,17 @@ function openCatatPulang(tamuId) {
   // Isi info tamu di bottom sheet
   const namEl  = document.getElementById('pulang-nama');
   const metaEl = document.getElementById('pulang-meta');
+  // Update avatar emoji berdasarkan jenis tamu (opsional, fallback ke 👤)
+  const avatarEl = document.querySelector('#sheet-pulang .catat-pulang-info__avatar');
+  const avatarMap = {
+    'Orang Tua/Wali Murid': '👨‍👩‍👧',
+    'Dinas/Instansi'      : '🏛️',
+    'Mitra'               : '🤝',
+    'Alumni'              : '🎓',
+    'Vendor/Penyedia'     : '📦',
+  };
+  if (avatarEl) avatarEl.textContent = avatarMap[tamu.jenisTamu] || '👤';
+
   if (namEl)  namEl.textContent  = tamu.namaLengkap;
   if (metaEl) metaEl.textContent = `${tamu.jenisTamu} • Datang: ${tamu.jamDatang} • ${tamu.bertemuDengan}`;
 
@@ -315,9 +337,12 @@ function openCatatPulang(tamuId) {
     jamInput.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   }
 
-  // Reset tombol konfirmasi
+  // Bug #5 fix: pastikan tombol dalam keadaan normal (enabled, tidak loading)
   const btnConfirm = document.getElementById('btn-confirm-pulang');
-  if (btnConfirm) resetButtonLoading(btnConfirm, false);
+  if (btnConfirm) {
+    btnConfirm.classList.remove('loading');
+    btnConfirm.disabled = false;
+  }
 
   // Buka bottom sheet
   const sheet = document.getElementById('sheet-pulang');
@@ -342,9 +367,9 @@ function closeCatatPulang() {
 async function confirmCatatPulang() {
   if (!selectedTamuId) return;
 
-  const jamInput  = document.getElementById('input-jam-pulang');
+  const jamInput   = document.getElementById('input-jam-pulang');
   const btnConfirm = document.getElementById('btn-confirm-pulang');
-  const jamPulang = jamInput?.value || '';
+  const jamPulang  = jamInput?.value || '';
 
   if (!jamPulang) {
     showToast('Jam pulang wajib diisi.', 'danger');
@@ -358,23 +383,29 @@ async function confirmCatatPulang() {
     return;
   }
 
+  // Bug #3 fix: simpan ID ke variabel lokal SEBELUM memanggil closeCatatPulang()
+  // agar filter di bawah masih bisa menggunakannya setelah selectedTamuId di-null-kan.
+  const tamuIdToUpdate = selectedTamuId;
+
   setButtonLoading(btnConfirm);
 
   const result = await callGAS('updateJamPulang', {
     token    : getToken(),
-    id       : selectedTamuId,
+    id       : tamuIdToUpdate,
     jamPulang: jamPulang,
   });
 
   if (result.status === 'ok') {
-    closeCatatPulang();
-    showToast(`${result.data.nama} berhasil dicatat pulang jam ${jamPulang}. ✅`, 'success');
+    closeCatatPulang(); // selectedTamuId menjadi null di sini — sudah aman karena pakai tamuIdToUpdate
 
-    // Hapus dari list lokal tanpa menunggu refresh
-    allTamuAktif = allTamuAktif.filter(t => t.id !== selectedTamuId);
-    lastCount    = allTamuAktif.length;
+    showToast(`${result.data?.nama || 'Tamu'} berhasil dicatat pulang jam ${jamPulang}. ✅`, 'success');
+
+    // Hapus dari list lokal tanpa menunggu refresh — gunakan tamuIdToUpdate (Bug #3 fix)
+    allTamuAktif  = allTamuAktif.filter(t => t.id !== tamuIdToUpdate);
+    sudahPulangCount++;               // naikkan counter lokal untuk stat strip
+    lastCount     = allTamuAktif.length;
     applySearch();
-    updateStatsStrip(allTamuAktif);
+    updateStatsStrip(allTamuAktif, sudahPulangCount);
 
   } else {
     showToast(result.message || 'Gagal mencatat jam pulang.', 'danger');
@@ -400,6 +431,11 @@ async function openDetail(tamuId) {
       <div class="spinner" style="margin:0 auto;"></div>
       <p class="text-sm text-muted" style="margin-top:var(--space-3);">Memuat detail...</p>
     </div>`;
+
+  // Bug #6 fix: reset scroll ke atas sebelum membuka modal
+  const modalBox = modal.querySelector('.modal');
+  if (modalBox) modalBox.scrollTop = 0;
+
   modal.classList.add('active');
 
   // Fetch detail lengkap dari GAS
@@ -499,19 +535,25 @@ function updateRefreshTime() {
 
 // ── Skeleton Loader ───────────────────────────────────────────
 function showSkeleton(show) {
-  const skeleton  = document.getElementById('skeleton-loader');
-  const cardList  = document.getElementById('tamu-card-list');
-  const tableWrap = document.getElementById('tamu-table-wrap');
-
   if (show) {
+    const skeleton  = document.getElementById('skeleton-loader');
+    const cardList  = document.getElementById('tamu-card-list');
+    const tableWrap = document.getElementById('tamu-table-wrap');
     if (skeleton)  skeleton.style.display  = '';
     if (cardList)  cardList.style.display  = 'none';
     if (tableWrap) tableWrap.style.display = 'none';
   } else {
-    if (skeleton) skeleton.style.display = 'none';
-    // renderTamu() akan menentukan mana yang tampil
-    renderTamu();
+    hideSkeleton();
   }
+}
+
+/**
+ * Bug #7 fix: sembunyikan skeleton TANPA memanggil renderTamu().
+ * renderTamu() sudah dipanggil oleh applySearch() di loadTamuAktif().
+ */
+function hideSkeleton() {
+  const skeleton = document.getElementById('skeleton-loader');
+  if (skeleton) skeleton.style.display = 'none';
 }
 
 // ── Attach Events ──────────────────────────────────────────────
