@@ -1229,3 +1229,22 @@
     z-index: 10;
   }
 }
+
+/* ── Rombongan Lock Notice ───────────────────────────────── */
+.jumlah-tamu-hint--lock {
+  background: #fef9ec;
+  border-color: #fbbf24;
+  color: #92400e;
+}
+
+.jumlah-tamu-hint--lock strong {
+  color: #78350f;
+}
+
+/* Tombol stepper saat dikunci: tampilan visual berbeda */
+.jumlah-tamu-control__btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
