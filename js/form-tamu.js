@@ -102,12 +102,13 @@ function applySchoolConfig(config) {
     img.src   = config.logo_url.trim();
     img.alt   = `Logo ${namaSekolah}`;
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:inherit;';
-    img.onload  = () => {
-      if (logoIcon) logoIcon.style.display = 'none';
-    };
+    // BUG #2 FIX: sembunyikan icon segera sebelum gambar mulai load,
+    // restore di onerror jika gambar gagal. Ini mencegah flash emoji+gambar bersamaan.
+    if (logoIcon) logoIcon.style.display = 'none';
+    img.onload  = () => { /* icon sudah disembunyikan di atas */ };
     img.onerror = () => {
       img.remove();
-      if (logoIcon) logoIcon.style.display = '';
+      if (logoIcon) logoIcon.style.display = ''; // tampilkan kembali icon default
     };
     logoWrap.appendChild(img);
   }
