@@ -429,8 +429,10 @@ function renderAnggotaRepeater() {
   const containerTunggal= document.getElementById('anggota-repeater-tunggal');
 
   // Tunjukkan/sembunyikan seksi
-  if (sectionAnggota) sectionAnggota.style.display  = isRombongan ? '' : 'none';
-  if (sectionTunggal) sectionTunggal.style.display  = isRombongan ? 'none' : '';
+  // BUG FIX: set 'block' bukan '' karena CSS #section-anggota { display:none }
+  // menggunakan ID selector (specificity tinggi) yang mengalahkan inline style kosong.
+  if (sectionAnggota) sectionAnggota.style.display  = isRombongan ? 'block' : 'none';
+  if (sectionTunggal) sectionTunggal.style.display  = isRombongan ? 'none'  : 'block';
 
   // Update counter di badge seksi rombongan
   const badge2 = document.getElementById('jumlah-tamu-display-2');
