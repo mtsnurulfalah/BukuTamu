@@ -146,3 +146,58 @@ function displayVal(val) {
   if (val === null || val === undefined || val === '') return '—';
   return escapeHtml(String(val));
 }
+
+/**
+ * Normalisasi URL Google Drive agar bisa dimuat sebagai <img src>.
+ *
+ * Google Drive mengembalikan halaman HTML (bukan binary gambar) untuk format:
+ *   - drive.google.com/file/d/FILE_ID/view
+ *   - drive.google.com/open?id=FILE_ID
+ *   - drive.google.com/uc?id=FILE_ID
+ *
+ * Format yang bisa dimuat langsung sebagai <img>:
+ *   https://lh3.googleusercontent.com/d/FILE_ID
+ *
+ * URL non-Drive dikembalikan apa adanya.
+ *
+ * @param {string} url
+ * @returns {string} URL yang sudah dinormalisasi
+ */
+function normalizeLogoUrl(url) {
+  if (!url) return url;
+
+  try {
+    const u = new URL(url);
+
+    // Hanya proses URL Google Drive
+    if (!u.hostname.includes('drive.google.com') &&
+        !u.hostname.includes('docs.google.com')) {
+      return url;
+    }
+
+    let fileId = null;
+
+    // Format: /file/d/FILE_ID/view  atau  /file/d/FILE_ID
+    const fileMatch = u.pathname.match(/\/file\/d\/([^\/]+)/);
+    if (fileMatch) fileId = fileMatch[1];
+
+    // Format: ?id=FILE_ID  atau  uc?id=FILE_ID
+    if (!fileId && u.searchParams.get('id')) {
+      fileId = u.searchParams.get('id');
+    }
+
+    // Format: /d/FILE_ID (Google Docs/Sheets share link)
+    if (!fileId) {
+      const dMatch = u.pathname.match(/\/d\/([^\/]+)/);
+      if (dMatch) fileId = dMatch[1];
+    }
+
+    if (fileId) {
+      return `https://lh3.googleusercontent.com/d/${fileId}`;
+    }
+  } catch (_) {
+    // URL tidak valid — kembalikan apa adanya
+  }
+
+  return url;
+}
