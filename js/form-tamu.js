@@ -23,6 +23,7 @@ let siswaList      = [];     // data siswa dari GAS
 // ── Konstanta ─────────────────────────────────────────────────
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const JENIS_ORTU  = 'Orang Tua/Wali Murid';
+const JENIS_ALUMNI = 'Alumni';
 
 // ═════════════════════════════════════════════════════════════
 // INISIALISASI
@@ -236,38 +237,43 @@ function selectJenisTamu(jenis) {
 }
 
 /**
- * Toggle tampilan field instansi:
- * - Jika Orang Tua/Wali Murid → dropdown siswa
- * - Lainnya → input teks biasa
+ * Toggle tampilan field instansi sesuai jenis tamu:
+ * - Orang Tua/Wali Murid → dropdown siswa
+ * - Alumni               → input angka tahun lulus
+ * - Lainnya              → input teks instansi/asal
  * @param {string} jenis
  */
 function _toggleInstansiField(jenis) {
-  const inputText   = document.getElementById('instansi');
-  const selectSiswa = document.getElementById('instansi-siswa');
-  const labelEl     = document.getElementById('label-instansi');
+  const inputText     = document.getElementById('instansi');
+  const selectSiswa   = document.getElementById('instansi-siswa');
+  const inputTahun    = document.getElementById('instansi-tahun-lulus');
+  const labelEl       = document.getElementById('label-instansi');
 
-  if (!inputText || !selectSiswa) return;
+  if (!inputText) return;
 
-  const isOrtu = jenis === JENIS_ORTU;
+  // Sembunyikan dan non-required semua dulu
+  const hide = (el) => { if (el) { el.style.display = 'none'; el.required = false; } };
+  hide(inputText);
+  hide(selectSiswa);
+  hide(inputTahun);
 
-  if (isOrtu) {
-    inputText.style.display   = 'none';
-    inputText.required        = false;
-    selectSiswa.style.display = '';
-    selectSiswa.required      = true;
+  if (jenis === JENIS_ORTU) {
+    if (selectSiswa) { selectSiswa.style.display = ''; selectSiswa.required = true; }
     if (labelEl) labelEl.innerHTML = 'Orang Tua/Wali dari <span class="required">*</span>';
+  } else if (jenis === JENIS_ALUMNI) {
+    if (inputTahun) { inputTahun.style.display = ''; inputTahun.required = true; }
+    if (labelEl) labelEl.innerHTML = 'Tahun Lulus <span class="required">*</span>';
   } else {
-    inputText.style.display   = '';
-    inputText.required        = true;
-    selectSiswa.style.display = 'none';
-    selectSiswa.required      = false;
+    inputText.style.display = '';
+    inputText.required = true;
     if (labelEl) labelEl.innerHTML = 'Instansi / Asal <span class="required">*</span>';
   }
 
-  // Bersihkan validasi error saat jenis berganti
+  // Bersihkan state validasi saat jenis berganti
   hideFieldError('error-instansi');
-  inputText.classList.remove('is-valid', 'is-invalid');
-  selectSiswa.classList.remove('is-valid', 'is-invalid');
+  [inputText, selectSiswa, inputTahun].forEach(el => {
+    if (el) el.classList.remove('is-valid', 'is-invalid');
+  });
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -337,15 +343,18 @@ function initSignaturePad() {
 
   /**
    * Resize canvas dengan memperhitungkan Device Pixel Ratio.
-   * Simpan & restore data tanda tangan agar tidak hilang saat orientasi berubah.
+   * Canvas kini position:absolute mengisi container, jadi kita baca
+   * dimensi dari container (offsetParent), bukan canvas itu sendiri.
+   * Simpan & restore data tanda tangan agar tidak hilang saat resize.
    */
   function resizeCanvas() {
     const hadSignature = signaturePad && !signaturePad.isEmpty();
     const savedData    = hadSignature ? signaturePad.toData() : null;
 
     const ratio  = Math.max(window.devicePixelRatio || 1, 1);
-    const width  = canvas.offsetWidth;
-    const height = canvas.offsetHeight || 160;
+    // Baca dimensi dari container, bukan canvas (canvas sudah 100%x100%)
+    const width  = container ? container.clientWidth  : canvas.offsetWidth;
+    const height = container ? container.clientHeight : (canvas.offsetHeight || 160);
 
     canvas.width  = width  * ratio;
     canvas.height = height * ratio;
@@ -354,9 +363,7 @@ function initSignaturePad() {
     if (signaturePad) signaturePad.clear();
 
     if (savedData && savedData.length > 0) {
-      try {
-        signaturePad.fromData(savedData);
-      } catch (_) { /* biarkan kosong jika restore gagal */ }
+      try { signaturePad.fromData(savedData); } catch (_) { /* biarkan kosong */ }
     }
   }
 
@@ -368,7 +375,10 @@ function initSignaturePad() {
     backgroundColor: 'rgba(255,255,255,0)',
   });
 
-  resizeCanvas();
+  // Beri waktu sebentar agar browser menghitung layout (canvas sudah absolute)
+  requestAnimationFrame(() => {
+    resizeCanvas();
+  });
 
   // Debounced resize
   let resizeTimer;
@@ -377,16 +387,10 @@ function initSignaturePad() {
     resizeTimer = setTimeout(resizeCanvas, 250);
   });
 
-  // ── FIX DESKTOP: Dukung pointer events (mouse + stylus + touch) ──
-  // SignaturePad v4 sudah mendukung PointerEvent secara native, namun
-  // beberapa versi atau konfigurasi memerlukan `touch-action: none` pada
-  // canvas DAN pada semua ancestor yang bisa mengonsumsi event.
-  // Kita pastikan canvas benar-benar menerima pointer event di desktop.
+  // touch-action: none wajib ada di canvas agar browser tidak scroll saat menggambar.
+  // Ini sudah di-set via CSS, tapi set juga via JS sebagai failsafe.
   canvas.style.touchAction = 'none';
-  canvas.style.userSelect  = 'none';
-  // Pastikan canvas tidak terhalang pointer-events dari elemen lain
-  canvas.style.position    = 'relative';
-  canvas.style.zIndex      = '1';
+  // Jangan set position/zIndex via JS — sudah diatur di CSS dengan benar.
 
   // Signature events
   signaturePad.addEventListener('beginStroke', () => {
@@ -458,7 +462,7 @@ function attachFormEvents() {
       checkSubmitEligibility();
     });
     instansiInput.addEventListener('blur', () => {
-      if (selectedJenis !== JENIS_ORTU && !instansiInput.value.trim()) {
+      if (selectedJenis !== JENIS_ORTU && selectedJenis !== JENIS_ALUMNI && !instansiInput.value.trim()) {
         instansiInput.classList.add('is-invalid');
         showFieldError('error-instansi', 'Instansi/asal wajib diisi.');
       }
@@ -477,6 +481,33 @@ function attachFormEvents() {
         siswaSelect.classList.remove('is-valid');
       }
       checkSubmitEligibility();
+    });
+  }
+
+  // Validasi input tahun lulus (Alumni)
+  const tahunInput = document.getElementById('instansi-tahun-lulus');
+  if (tahunInput) {
+    tahunInput.addEventListener('input', () => {
+      const val = tahunInput.value.trim();
+      const yr  = parseInt(val, 10);
+      if (val && yr >= 1900 && yr <= 2099) {
+        tahunInput.classList.remove('is-invalid');
+        tahunInput.classList.add('is-valid');
+        hideFieldError('error-instansi');
+      } else {
+        tahunInput.classList.remove('is-valid');
+      }
+      checkSubmitEligibility();
+    });
+    tahunInput.addEventListener('blur', () => {
+      if (selectedJenis === JENIS_ALUMNI) {
+        const val = tahunInput.value.trim();
+        const yr  = parseInt(val, 10);
+        if (!val || yr < 1900 || yr > 2099) {
+          tahunInput.classList.add('is-invalid');
+          showFieldError('error-instansi', 'Masukkan tahun lulus yang valid.');
+        }
+      }
     });
   }
 
@@ -600,10 +631,14 @@ function isFormValid() {
     if (!el || !el.value.trim()) return false;
   }
 
-  // Instansi: teks atau dropdown siswa tergantung jenis tamu
+  // Instansi: teks, dropdown siswa, atau tahun lulus tergantung jenis tamu
   if (selectedJenis === JENIS_ORTU) {
     const siswaEl = document.getElementById('instansi-siswa');
     if (!siswaEl || !siswaEl.value) return false;
+  } else if (selectedJenis === JENIS_ALUMNI) {
+    const tahunEl = document.getElementById('instansi-tahun-lulus');
+    const yr = parseInt(tahunEl?.value || '', 10);
+    if (!tahunEl || isNaN(yr) || yr < 1900 || yr > 2099) return false;
   } else {
     const instansiEl = document.getElementById('instansi');
     if (!instansiEl || !instansiEl.value.trim()) return false;
@@ -653,6 +688,8 @@ async function handleSubmit(e) {
 
     if (result.status === 'ok') {
       if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
+      // Reset tombol loading sebelum berpindah ke success screen
+      if (btn) resetButtonLoading(btn, false);
       showSuccessScreen(payload);
     } else {
       showToast(result.message || 'Gagal menyimpan data. Coba lagi.', 'danger', 4000);
@@ -684,13 +721,21 @@ function validateAllFields() {
     if (!firstInvalid) firstInvalid = namaEl;
   }
 
-  // Instansi (teks atau dropdown siswa)
+  // Instansi (teks, dropdown siswa, atau tahun lulus)
   if (selectedJenis === JENIS_ORTU) {
     const siswaEl = document.getElementById('instansi-siswa');
     if (!siswaEl || !siswaEl.value) {
       if (siswaEl) siswaEl.classList.add('is-invalid');
       showFieldError('error-instansi', 'Pilih nama siswa terlebih dahulu.');
       if (!firstInvalid) firstInvalid = siswaEl;
+    }
+  } else if (selectedJenis === JENIS_ALUMNI) {
+    const tahunEl = document.getElementById('instansi-tahun-lulus');
+    const yr = parseInt(tahunEl?.value || '', 10);
+    if (!tahunEl || isNaN(yr) || yr < 1900 || yr > 2099) {
+      if (tahunEl) tahunEl.classList.add('is-invalid');
+      showFieldError('error-instansi', 'Masukkan tahun lulus yang valid.');
+      if (!firstInvalid) firstInvalid = tahunEl;
     }
   } else {
     const instansiEl = document.getElementById('instansi');
@@ -759,11 +804,14 @@ function collectFormData() {
     return null;
   }
 
-  // Instansi: ambil dari teks atau dropdown siswa
+  // Instansi: ambil dari teks, dropdown siswa, atau tahun lulus
   let instansiVal = '';
   if (selectedJenis === JENIS_ORTU) {
     const siswaEl = document.getElementById('instansi-siswa');
     instansiVal   = siswaEl ? siswaEl.value.trim() : '';
+  } else if (selectedJenis === JENIS_ALUMNI) {
+    const tahunEl = document.getElementById('instansi-tahun-lulus');
+    instansiVal   = tahunEl ? tahunEl.value.trim() : '';
   } else {
     const instansiEl = document.getElementById('instansi');
     instansiVal      = instansiEl ? instansiEl.value.trim() : '';
@@ -852,9 +900,11 @@ function resetForm() {
   // Reset field instansi ke teks (jenis belum dipilih)
   const instansiInput   = document.getElementById('instansi');
   const instansiSiswa   = document.getElementById('instansi-siswa');
+  const instansiTahun   = document.getElementById('instansi-tahun-lulus');
   const labelInstansi   = document.getElementById('label-instansi');
   if (instansiInput) { instansiInput.style.display = ''; instansiInput.required = true; }
   if (instansiSiswa) { instansiSiswa.style.display = 'none'; instansiSiswa.required = false; }
+  if (instansiTahun) { instansiTahun.style.display = 'none'; instansiTahun.required = false; }
   if (labelInstansi) labelInstansi.innerHTML = 'Instansi / Asal <span class="required">*</span>';
 
   // Reset signature pad
@@ -866,16 +916,13 @@ function resetForm() {
   if (formWrapper)   formWrapper.style.display = '';
   if (successScreen) successScreen.classList.remove('visible');
 
-  // FIX #1: Reset tombol submit ke state default (disabled, teks normal)
+  // Fix #3: Reset tombol submit ke state default (disabled, teks normal, tanpa loading)
   const btn = document.getElementById('btn-submit');
   if (btn) {
     btn.disabled = true;
-    // Hapus state loading jika masih aktif (misalnya submit sukses sebelumnya)
-    btn.classList.remove('btn--loading');
+    btn.classList.remove('loading');   // class yang diset oleh setButtonLoading()
     const textEl = btn.querySelector('.btn__text');
     if (textEl) textEl.textContent = 'Daftarkan Kunjungan';
-    const spinnerEl = btn.querySelector('.btn__spinner');
-    if (spinnerEl) spinnerEl.style.display = '';
   }
 
   // Restart clock (tanggal) dan set default jam
