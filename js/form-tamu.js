@@ -149,7 +149,7 @@ async function retryLoadStaf() {
   } catch {
     showToast('Gagal memuat staf. Coba lagi.', 'danger');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 Coba Lagi'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Coba Lagi'; }
   }
 }
 
@@ -530,7 +530,7 @@ function _buildAnggotaCard(index, data) {
     ${!isFirst ? `
     <button type="button" class="anggota-card__remove" data-index="${index}"
       aria-label="Hapus Tamu ${nomor}" title="Hapus tamu ini">
-      ✕
+      ${_icon('x','0.85rem')}
     </button>` : ''}
   `;
   card.appendChild(header);
@@ -687,7 +687,7 @@ function attachAnggotaRepeaterEvents() {
     }
   }, true); // useCapture agar blur bubbles
 
-  // Hapus tamu (tombol ✕)
+  // Hapus tamu (tombol remove)
   container.addEventListener('click', (e) => {
     const removeBtn = e.target.closest('.anggota-card__remove');
     if (!removeBtn) return;
@@ -860,7 +860,7 @@ function attachRequiredValidation(inputId, errorId, errorMsg) {
 function showFieldError(errorId, message) {
   const el = document.getElementById(errorId);
   if (!el) return;
-  if (message) el.textContent = `⚠️ ${message}`;
+  if (message) el.textContent = message;
   el.classList.add('visible');
 }
 
