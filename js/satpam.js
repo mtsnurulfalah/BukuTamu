@@ -80,7 +80,7 @@ async function loadTamuAktif(silent = false) {
 
     if (lastCount >= 0 && newCount > lastCount) {
       const diff = newCount - lastCount;
-      showNotifBanner(`🔔 ${diff} tamu baru masuk. Klik untuk memperbarui.`);
+      showNotifBanner(`Ada ${diff} tamu baru masuk. Klik untuk memperbarui.`);
     }
 
     lastCount    = newCount;
@@ -183,7 +183,7 @@ function _namaRombongan(tamu) {
 /** Badge jumlah tamu untuk rombongan */
 function _badgeTamu(tamu) {
   if (!tamu.isRombongan) return '';
-  return `<span class="badge-rombongan">👥 ${tamu.jumlahTamu} Tamu</span>`;
+  return `<span class="badge-rombongan">${_icon('users','0.75rem')} ${tamu.jumlahTamu} Tamu</span>`;
 }
 
 // ── Render Cards (Mobile) ─────────────────────────────────────
@@ -225,12 +225,12 @@ function renderCards() {
         <button class="btn btn-pulang btn--sm"
           onclick="openCatatPulang('${escapeHtml(tamu.id)}')"
           aria-label="Catat pulang ${escapeHtml(tamu.namaLengkap)}">
-          ✅ Catat Pulang
+          ${_icon('check','0.85rem')} Catat Pulang
         </button>
         <button class="btn btn-detail btn--sm"
           onclick="openDetail('${escapeHtml(tamu.id)}')"
           aria-label="Lihat detail ${escapeHtml(tamu.namaLengkap)}">
-          🔍 Detail
+          ${_icon('search','0.85rem')} Detail
         </button>
       </div>
     </article>
@@ -268,12 +268,12 @@ function renderTable() {
           <button class="btn btn--success btn--sm"
             onclick="openCatatPulang('${escapeHtml(tamu.id)}')"
             aria-label="Catat pulang">
-            ✅ Pulang
+            ${_icon('check','0.85rem')} Pulang
           </button>
           <button class="btn btn--secondary btn--sm"
             onclick="openDetail('${escapeHtml(tamu.id)}')"
             aria-label="Detail">
-            🔍
+            ${_icon('search','0.85rem')}
           </button>
         </div>
       </td>
@@ -292,12 +292,11 @@ function openCatatPulang(tamuId) {
   const metaEl   = document.getElementById('pulang-meta');
   const avatarEl = document.querySelector('#sheet-pulang .catat-pulang-info__avatar');
 
-  // ▶▶ Avatar & nama: rombongan tampil berbeda
-  const avatarMap = {
-    'Orang Tua/Wali Murid': '👨‍👩‍👧', 'Dinas/Instansi': '🏛️',
-    'Mitra': '🤝', 'Alumni': '🎓', 'Vendor/Penyedia': '📦',
-  };
-  if (avatarEl) avatarEl.textContent = tamu.isRombongan ? '👥' : (avatarMap[tamu.jenisTamu] || '👤');
+  // Avatar berdasarkan jenis tamu — gunakan SVG icon
+  const avatarIconName = tamu.isRombongan ? 'users' : 'user';
+  if (avatarEl) {
+    avatarEl.innerHTML = _icon(avatarIconName, '1.4rem');
+  }
 
   if (namEl) {
     namEl.textContent = tamu.isRombongan
@@ -360,7 +359,7 @@ async function confirmCatatPulang() {
       : (d?.nama || 'Tamu');
     const individu = d?.jumlahTamu || 1;
 
-    showToast(`${namaDisplay} berhasil dicatat pulang jam ${jamPulang}. ✅`, 'success');
+    showToast(`${namaDisplay} berhasil dicatat pulang jam ${jamPulang}.`, 'success');
 
     allTamuAktif    = allTamuAktif.filter(t => t.id !== tamuIdToUpdate);
     sudahPulangCount += individu;
@@ -417,7 +416,7 @@ async function openDetail(tamuId) {
 
   if (t.isRombongan && anggota.length > 0) {
     anggotaHtml = `
-      <div class="detail-section-title">👥 Daftar Anggota (${anggota.length} orang)</div>
+      <div class="detail-section-title">${_icon('users','0.8rem')} Daftar Anggota (${anggota.length} orang)</div>
       <ol class="detail-anggota-list">
         ${anggota.map((a, i) => `
           <li class="detail-anggota-item">
@@ -429,8 +428,8 @@ async function openDetail(tamuId) {
             </div>
             ${(a.noHp || a.email) ? `
             <div class="detail-anggota-item__contact">
-              ${a.noHp  ? `<span>📱 ${escapeHtml(a.noHp)}</span>` : ''}
-              ${a.email ? `<span>✉️ ${escapeHtml(a.email)}</span>` : ''}
+              ${a.noHp  ? `<span style="display:flex;align-items:center;gap:3px;">${_icon('phone','0.75rem')} ${escapeHtml(a.noHp)}</span>` : ''}
+              ${a.email ? `<span style="display:flex;align-items:center;gap:3px;">${_icon('mail','0.75rem')} ${escapeHtml(a.email)}</span>` : ''}
             </div>` : ''}
           </li>
         `).join('')}
@@ -449,7 +448,7 @@ async function openDetail(tamuId) {
   const editBtn = canEdit ? `
     <div style="display:flex;gap:var(--space-3);margin-top:var(--space-5);">
       <button class="btn btn--secondary btn--sm" onclick="openEditModal('${escapeHtml(t.id)}')">
-        ✏️ Edit Kunjungan
+        ${_icon('pencil','0.85rem')} Edit Kunjungan
       </button>
     </div>` : '';
 
@@ -457,7 +456,7 @@ async function openDetail(tamuId) {
     <div style="margin-bottom:var(--space-3);">
       <span class="badge badge--${t.status === 'Hadir' ? 'success' : 'gray'}">${escapeHtml(t.status)}</span>
       <span class="badge badge--primary" style="margin-left:var(--space-2);">${escapeHtml(t.jenisTamu)}</span>
-      ${t.isRombongan ? `<span class="badge-rombongan" style="margin-left:var(--space-2);">👥 ${t.jumlahTamu} Tamu</span>` : ''}
+      ${t.isRombongan ? `<span class="badge-rombongan" style="margin-left:var(--space-2);">${_icon('users','0.75rem')} ${t.jumlahTamu} Tamu</span>` : ''}
     </div>
     <div class="detail-row"><div class="detail-row__label">Tanggal</div><div class="detail-row__value">${tanggalDisplay}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Datang</div><div class="detail-row__value">${displayVal(t.jamDatang)}</div></div>
@@ -525,7 +524,7 @@ function _renderEditForm(t) {
 
   content.innerHTML = `
     <!-- Info Kunjungan (Bersama) -->
-    <div class="edit-section-title">📋 Info Kunjungan</div>
+    <div class="edit-section-title">${_icon('clipboard-list','0.85rem')} Info Kunjungan</div>
 
     <div class="form-grid-2" style="margin-bottom:var(--space-4);">
       <div class="form-group">
@@ -553,7 +552,7 @@ function _renderEditForm(t) {
 
     <!-- Anggota -->
     <div class="edit-section-title" style="margin-top:var(--space-2);">
-      👥 Anggota Rombongan
+      ${_icon('users','0.85rem')} Anggota Rombongan
       <span class="edit-anggota-count" id="edit-anggota-count">(${anggota.length} orang)</span>
     </div>
 
@@ -563,7 +562,7 @@ function _renderEditForm(t) {
 
     <button type="button" class="btn-tambah-tamu" id="btn-edit-tambah-anggota"
       style="margin-bottom:var(--space-4);">
-      ➕ Tambah Anggota
+      ${_icon('plus','0.85rem')} Tambah Anggota
     </button>
 
     <!-- Footer aksi -->
@@ -571,7 +570,7 @@ function _renderEditForm(t) {
       <button type="button" class="btn btn--secondary" id="btn-edit-batal">Batal</button>
       <button type="button" class="btn btn--primary" id="btn-edit-simpan">
         <span class="btn__spinner"></span>
-        <span class="btn__text">💾 Simpan Perubahan</span>
+        <span class="btn__text">Simpan Perubahan</span>
       </button>
     </div>
   `;
@@ -588,7 +587,7 @@ function _buildEditAnggotaRow(index, data) {
         <span class="edit-anggota-row__nomor">${index + 1}</span>
         <span class="edit-anggota-row__label">Tamu ${index + 1}${isFirst ? ' (Wakil)' : ''}</span>
         ${!isFirst ? `<button type="button" class="btn-hapus-anggota" data-index="${index}"
-          title="Hapus tamu ini">🗑️</button>` : ''}
+          title="Hapus tamu ini">${_icon('trash-2','0.85rem')}</button>` : ''}
       </div>
       <div class="form-grid-2">
         <div class="form-group">
@@ -671,7 +670,7 @@ function _attachEditFormEvents(tamuId) {
       else if (i > 0 && !hapusBtn) {
         const hdr = row.querySelector('.edit-anggota-row__header');
         if (hdr) hdr.insertAdjacentHTML('beforeend',
-          `<button type="button" class="btn-hapus-anggota" data-index="${i}">🗑️</button>`);
+          `<button type="button" class="btn-hapus-anggota" data-index="${i}">${_icon('trash-2','0.85rem')}</button>`);
       }
     });
     _updateEditAnggotaCount();
@@ -729,7 +728,7 @@ async function _submitEditForm(tamuId) {
 
   if (result.status === 'ok') {
     closeEditModal();
-    showToast('Data kunjungan berhasil diperbarui. ✅', 'success');
+    showToast('Data kunjungan berhasil diperbarui.', 'success');
     await loadTamuAktif(true);
   } else {
     showToast(result.message || 'Gagal menyimpan perubahan.', 'danger');
