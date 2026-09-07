@@ -3,225 +3,67 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <meta name="theme-color" content="#1e3a8a" />
-  <meta
-    name="description"
-    content="Login Petugas — Buku Tamu Digital Sekolah"
-  />
-
+  <meta name="description" content="Login Petugas — Buku Tamu Digital Sekolah" />
   <title>Login — Buku Tamu Digital</title>
-
-  <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
-
-  <!-- Favicon -->
-  <link
-    rel="icon"
-    href="/assets/logobukutamu.svg"
-    type="image/svg+xml"
-  />
-
-  <link
-    rel="apple-touch-icon"
-    href="/assets/icon-192.png"
-  />
-
-  <!-- Google Fonts -->
+  <link rel="icon" href="/assets/logobukutamu.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link
-    rel="preconnect"
-    href="https://fonts.gstatic.com"
-    crossorigin
-  />
-
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  />
-
-  <!-- CSS -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/global.css" />
   <link rel="stylesheet" href="/css/login.css" />
-
-  <!--
-    Anti-FOUC:
-    Sembunyikan body sampai CSS selesai diproses.
-    Inline style diproses sebelum resource eksternal.
-  -->
-  <style>
-    body {
-      visibility: hidden;
-    }
-  </style>
-
-  <script>
-    // Tampilkan body setelah DOM siap.
-    function showBody() {
-      requestAnimationFrame(function () {
-        document.body.style.visibility = "";
-      });
-    }
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", showBody);
-    } else {
-      showBody();
-    }
-  </script>
-
-  <noscript>
-    <style>
-      body {
-        visibility: visible;
-      }
-    </style>
-  </noscript>
 </head>
-
-<body class="login-page">
+<body class="login-page no-fouc">
 
   <!-- Toast Container -->
-  <div
-    id="toast-container"
-    role="alert"
-    aria-live="polite"
-  ></div>
+  <div id="toast-container" role="alert" aria-live="polite"></div>
 
-  <!--
-    =========================================================
-    PANEL KIRI
-    Tampil pada tablet dan desktop
-    =========================================================
-  -->
-  <aside
-    class="login-panel-left"
-    aria-hidden="true"
-  >
+  <!-- ── Panel Kiri — tampil di tablet+ ──────────────────── -->
+  <aside class="login-panel-left" aria-hidden="true">
     <div class="login-brand">
 
-      <div
-        class="login-brand__logo"
-        id="login-brand-logo"
-        aria-hidden="true"
-      >
-        🏫
-      </div>
+      <div class="login-brand__logo" id="login-brand-logo" aria-hidden="true">🏫</div>
 
-      <h1
-        class="login-brand__title"
-        id="brand-school-name"
-      >
-        Buku Tamu Digital
-      </h1>
-
-      <p
-        class="login-brand__sub"
-        id="login-brand-sub"
-      >
-        Sistem pencatatan kunjungan tamu sekolah
-        yang modern dan efisien.
+      <h1 class="login-brand__title" id="brand-school-name">Buku Tamu Digital</h1>
+      <p class="login-brand__sub" id="login-brand-sub">
+        Sistem pencatatan kunjungan tamu sekolah yang modern dan efisien.
       </p>
 
-      <ul
-        class="login-brand__features"
-        role="list"
-      >
+      <ul class="login-brand__features" role="list">
         <li class="login-feature">
-          <span
-            class="login-feature__icon"
-            aria-hidden="true"
-          >
-            📋
-          </span>
-
-          <span>
-            Catat tamu dengan tanda tangan digital
-          </span>
+          <span class="login-feature__icon" aria-hidden="true">📋</span>
+          <span>Catat tamu dengan tanda tangan digital</span>
         </li>
-
         <li class="login-feature">
-          <span
-            class="login-feature__icon"
-            aria-hidden="true"
-          >
-            📊
-          </span>
-
-          <span>
-            Laporan &amp; statistik kunjungan real-time
-          </span>
+          <span class="login-feature__icon" aria-hidden="true">📊</span>
+          <span>Laporan &amp; statistik kunjungan real-time</span>
         </li>
-
         <li class="login-feature">
-          <span
-            class="login-feature__icon"
-            aria-hidden="true"
-          >
-            🔒
-          </span>
-
-          <span>
-            Akses aman berbasis peran pengguna
-          </span>
+          <span class="login-feature__icon" aria-hidden="true">🔒</span>
+          <span>Akses aman berbasis peran pengguna</span>
         </li>
       </ul>
 
     </div>
   </aside>
 
-  <!--
-    =========================================================
-    PANEL KANAN
-    Form Login
-    =========================================================
-  -->
-  <main
-    class="login-panel-right"
-    id="login-main"
-  >
-    <div
-      class="login-card"
-      role="region"
-      aria-label="Form masuk petugas"
-    >
+  <!-- ── Panel Kanan — Form Login ────────────────────────── -->
+  <main class="login-panel-right" id="login-main">
+    <div class="login-card" role="region" aria-label="Form masuk petugas">
 
-      <!-- Logo Mobile -->
-      <div
-        class="login-logo-mobile"
-        aria-hidden="false"
-      >
-        <div
-          class="login-logo-mobile__icon"
-          id="login-mobile-logo"
-          aria-hidden="true"
-        >
-          🏫
-        </div>
-
-        <p
-          class="login-logo-mobile__title"
-          id="app-name"
-        >
-          Buku Tamu Digital
-        </p>
-
-        <p class="login-logo-mobile__sub">
-          Sistem pencatatan tamu sekolah
-        </p>
+      <!-- Logo (mobile only) -->
+      <div class="login-logo-mobile" aria-hidden="false">
+        <div class="login-logo-mobile__icon" id="login-mobile-logo">🏫</div>
+        <p class="login-logo-mobile__title" id="app-name">Buku Tamu Digital</p>
+        <p class="login-logo-mobile__sub">Sistem pencatatan tamu sekolah</p>
       </div>
 
       <!-- Heading -->
       <div class="login-heading">
-
-        <h2 class="login-heading__title">
-          Selamat datang
-        </h2>
-
-        <p class="login-heading__sub">
-          Masuk untuk mengakses dashboard petugas
-        </p>
-
+        <h2 class="login-heading__title">Selamat datang</h2>
+        <p class="login-heading__sub">Masuk untuk mengakses dashboard petugas</p>
       </div>
 
       <!-- Error Message -->
@@ -231,18 +73,9 @@
         role="alert"
         aria-live="assertive"
         aria-atomic="true"
-        hidden
       >
-        <span
-          class="login-error__icon"
-          aria-hidden="true"
-        >
-          ⚠️
-        </span>
-
-        <span id="login-error-text">
-          Username atau password salah.
-        </span>
+        <span class="login-error__icon" aria-hidden="true">⚠️</span>
+        <span id="login-error-text">Username atau password salah.</span>
       </div>
 
       <!-- Login Form -->
@@ -255,23 +88,9 @@
 
         <!-- Username -->
         <div class="form-group">
-
-          <label
-            class="form-label"
-            for="username"
-          >
-            Username
-          </label>
-
+          <label class="form-label" for="username">Username</label>
           <div class="input-icon-wrap">
-
-            <span
-              class="input-icon-wrap__icon"
-              aria-hidden="true"
-            >
-              👤
-            </span>
-
+            <span class="input-icon-wrap__icon" aria-hidden="true">👤</span>
             <input
               type="text"
               id="username"
@@ -284,30 +103,15 @@
               spellcheck="false"
               required
             />
-
           </div>
-
         </div>
 
         <!-- Password -->
         <div class="form-group">
-
-          <label
-            class="form-label"
-            for="password"
-          >
-            Password
-          </label>
-
+          <label class="form-label" for="password">Password</label>
+          <!-- FIX L6: pisahkan class, tidak lagi gabung input-icon-wrap + password-wrapper -->
           <div class="login-password-wrap">
-
-            <span
-              class="login-password-wrap__icon"
-              aria-hidden="true"
-            >
-              🔑
-            </span>
-
+            <span class="login-password-wrap__icon" aria-hidden="true">🔑</span>
             <input
               type="password"
               id="password"
@@ -317,25 +121,15 @@
               autocomplete="current-password"
               required
             />
-
             <button
               type="button"
               class="password-toggle"
               id="toggle-password"
               aria-label="Tampilkan password"
-              aria-controls="password"
-              aria-pressed="false"
             >
-              <span
-                id="toggle-icon"
-                aria-hidden="true"
-              >
-                👁️
-              </span>
+              <span id="toggle-icon" aria-hidden="true">👁️</span>
             </button>
-
           </div>
-
         </div>
 
         <!-- Submit -->
@@ -344,45 +138,27 @@
           class="btn btn--primary btn--full login-submit-btn"
           id="btn-login"
         >
-          <span
-            class="btn__spinner"
-            aria-hidden="true"
-          ></span>
-
-          <span class="btn__text">
-            Masuk ke Dashboard
-          </span>
+          <span class="btn__spinner" aria-hidden="true"></span>
+          <span class="btn__text">Masuk ke Dashboard</span>
         </button>
 
       </form>
 
       <!-- Footer -->
       <footer class="login-footer">
-
-        <a
-          href="/"
-          class="login-footer__back"
-        >
+        <a href="/" class="login-footer__back">
           <span aria-hidden="true">←</span>
           Kembali ke Form Tamu
         </a>
-
         <span class="login-footer__copy">
-          Buku Tamu Digital &copy;
-          <span id="year"></span>
+          Buku Tamu Digital &copy; <span id="year"></span>
         </span>
-
       </footer>
 
     </div>
   </main>
 
-  <!--
-    =========================================================
-    JAVASCRIPT
-    =========================================================
-  -->
-
+  <!-- Scripts -->
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
