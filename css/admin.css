@@ -773,3 +773,12 @@
   border-radius: var(--radius-md);
   object-fit: cover;
 }
+
+/* ── Siswa Filter Bar ─────────────────────────────────────── */
+.siswa-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
