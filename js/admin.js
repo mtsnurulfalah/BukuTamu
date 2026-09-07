@@ -79,8 +79,14 @@ function attachTabEvents() {
   });
 }
 
+// FIX A7: guard race condition — cegah concurrent tab switch
+let _isTabSwitching = false;
+
 async function switchTab(tabId) {
   if (activeTab === tabId) return;
+  if (_isTabSwitching) return;
+
+  _isTabSwitching = true;
 
   // Update button states
   document.querySelectorAll('.tab-btn').forEach(b => {
@@ -95,11 +101,14 @@ async function switchTab(tabId) {
 
   activeTab = tabId;
 
-  // Load data sesuai tab
-  if (tabId === 'ringkasan') await loadRingkasan();
-  if (tabId === 'rekap')     await loadRekap();
-  if (tabId === 'staf')      await loadStaf();
-  if (tabId === 'pengaturan') await loadPengaturan();
+  try {
+    if (tabId === 'ringkasan')  await loadRingkasan();
+    if (tabId === 'rekap')      await loadRekap();
+    if (tabId === 'staf')       await loadStaf();
+    if (tabId === 'pengaturan') await loadPengaturan();
+  } finally {
+    _isTabSwitching = false;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -123,34 +132,49 @@ async function loadRingkasan() {
     return;
   }
 
+  // FIX A5: null/undefined guard — GAS mungkin return struktur tidak lengkap
   const d = result.data;
+  if (!d) {
+    showToast('Data statistik tidak valid. Coba lagi.', 'danger');
+    return;
+  }
+
+  const hariIni  = d.hariIni  || { total: 0, hadir: 0, pulang: 0 };
+  const bulanIni = d.bulanIni || { total: 0, bulan: '' };
+  const terbanyak = d.terbanyak || { jenis: '—', total: 0 };
+  const perJenis  = d.perJenis  || [];
+  const tren7Hari = d.tren7Hari || [];
+  const totalSemua = d.totalSemua || 0;
 
   // ── Stat Cards ──────────────────────────────────────────────
-  setStatCard('stat-hari-ini',    d.hariIni.total,
-    `${d.hariIni.hadir} hadir, ${d.hariIni.pulang} pulang`);
+  setStatCard('stat-hari-ini',
+    hariIni.total,
+    `${hariIni.hadir} hadir, ${hariIni.pulang} pulang`);
 
-  setStatCard('stat-aktif',       d.hariIni.hadir,    'tamu aktif saat ini');
+  setStatCard('stat-aktif',
+    hariIni.hadir,
+    'tamu aktif saat ini');
 
-  setStatCard('stat-bulan-ini',   d.bulanIni.total,
-    `Bulan ${_formatBulan(d.bulanIni.bulan)}`);
+  setStatCard('stat-bulan-ini',
+    bulanIni.total,
+    `Bulan ${_formatBulan(bulanIni.bulan)}`);
 
-  setStatCard('stat-terbanyak',   d.terbanyak.jenis,
-    `${d.terbanyak.total} kunjungan`, true);
+  setStatCard('stat-terbanyak',
+    terbanyak.jenis,
+    `${terbanyak.total} kunjungan`, true);
 
   // ── Bar Chart Jenis Tamu ────────────────────────────────────
-  renderBarChart(d.perJenis, d.totalSemua);
+  renderBarChart(perJenis, totalSemua);
 
-  // Update total label
   const jenisTotalEl = document.getElementById('chart-jenis-total');
-  if (jenisTotalEl) jenisTotalEl.textContent = `${d.totalSemua} total`;
+  if (jenisTotalEl) jenisTotalEl.textContent = `${totalSemua} total`;
 
   // ── Trend Chart 7 Hari ──────────────────────────────────────
-  renderTrendChart(d.tren7Hari);
+  renderTrendChart(tren7Hari);
 
-  // Update total trend label
   const trendTotalEl = document.getElementById('chart-trend-total');
   if (trendTotalEl) {
-    const sum7 = d.tren7Hari.reduce((a, b) => a + b.total, 0);
+    const sum7 = tren7Hari.reduce((acc, item) => acc + (item.total || 0), 0);
     trendTotalEl.textContent = `${sum7} / 7 hari`;
   }
 }
@@ -210,20 +234,21 @@ function renderTrendChart(tren7Hari) {
     return;
   }
 
-  const max = Math.max(...tren7Hari.map(d => d.total), 1);
+  // FIX A10: ganti nama variabel 'd' agar tidak shadow outer scope
+  const max = Math.max(...tren7Hari.map(item => item.total), 1);
 
-  chartEl.innerHTML = tren7Hari.map(d => {
-    const heightPct = Math.round((d.total / max) * 100);
+  chartEl.innerHTML = tren7Hari.map(item => {
+    const heightPct = Math.round((item.total / max) * 100);
     return `<div class="trend-chart__bar"
                style="height:${Math.max(heightPct, 4)}%;"
-               data-count="${d.total}"
+               data-count="${item.total}"
                role="img"
-               aria-label="${d.label}: ${d.total} tamu">
+               aria-label="${escapeHtml(item.label)}: ${item.total} tamu">
             </div>`;
   }).join('');
 
-  labelsEl.innerHTML = tren7Hari.map(d =>
-    `<div class="trend-chart__label">${escapeHtml(d.label)}</div>`
+  labelsEl.innerHTML = tren7Hari.map(item =>
+    `<div class="trend-chart__label">${escapeHtml(item.label)}</div>`
   ).join('');
 }
 
@@ -248,9 +273,12 @@ function setDefaultFilterDates() {
 function populateFilterJenis() {
   const sel = document.getElementById('filter-jenis');
   if (!sel) return;
+  // FIX A11: cek duplikasi — hanya tambahkan jika belum ada opsinya
+  if (sel.options.length > 1) return; // sudah pernah diisi
   JENIS_TAMU.forEach(j => {
     const opt = document.createElement('option');
-    opt.value = j; opt.textContent = j;
+    opt.value = j;
+    opt.textContent = j;
     sel.appendChild(opt);
   });
 }
@@ -277,6 +305,30 @@ function attachRekapEvents() {
   document.getElementById('filter-search')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') { rekapPage = 1; loadRekap(); }
   });
+
+  // FIX A14: event delegation untuk tombol detail di tabel rekap
+  const tbody = document.getElementById('rekap-table-body');
+  if (tbody) {
+    tbody.addEventListener('click', e => {
+      const btn = e.target.closest('.rekap-detail-btn');
+      if (btn) {
+        const id = btn.dataset.id;
+        if (id) openRekapDetail(id);
+      }
+    });
+  }
+
+  // FIX A14: event delegation untuk pagination
+  const pagination = document.getElementById('rekap-pagination');
+  if (pagination) {
+    pagination.addEventListener('click', e => {
+      const btn = e.target.closest('.pagination__btn');
+      if (btn && !btn.disabled) {
+        const page = parseInt(btn.dataset.page, 10);
+        if (!isNaN(page)) goToPage(page);
+      }
+    });
+  }
 }
 
 async function loadRekap() {
@@ -299,6 +351,13 @@ async function loadRekap() {
 
   if (result.status !== 'ok') {
     showToast('Gagal memuat rekap: ' + result.message, 'danger');
+    // FIX A6: pastikan tabel kembali terlihat (tidak stuck di skeleton)
+    const tableEl = document.getElementById('rekap-table-wrapper');
+    const emptyEl = document.getElementById('rekap-empty');
+    if (tableEl) tableEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = '';
+    const countEl = document.getElementById('rekap-count');
+    if (countEl) countEl.textContent = 'Gagal memuat data.';
     return;
   }
 
@@ -329,7 +388,7 @@ function renderRekapTable(data) {
   if (!tbody) return;
 
   tbody.innerHTML = data.map(t => `
-    <tr>
+    <tr data-id="${escapeHtml(t.id)}">
       <td>${escapeHtml(formatTanggalDisplay(t.tanggal))}</td>
       <td>
         <div style="font-weight:600;white-space:normal;min-width:120px;">${escapeHtml(t.namaLengkap)}</div>
@@ -345,8 +404,8 @@ function renderRekapTable(data) {
         </span>
       </td>
       <td>
-        <button class="btn btn--secondary btn--sm"
-                onclick="openRekapDetail('${escapeHtml(t.id)}')"
+        <button class="btn btn--secondary btn--sm rekap-detail-btn"
+                data-id="${escapeHtml(t.id)}"
                 aria-label="Detail ${escapeHtml(t.namaLengkap)}">
           🔍 Detail
         </button>
@@ -364,7 +423,7 @@ function renderPagination(currentPage, totalPages) {
 
   // Prev
   html += `<button class="pagination__btn" ${currentPage <= 1 ? 'disabled' : ''}
-             onclick="goToPage(${currentPage - 1})" aria-label="Halaman sebelumnya">‹</button>`;
+             data-page="${currentPage - 1}" aria-label="Halaman sebelumnya">‹</button>`;
 
   // Page numbers — tampilkan max 5 halaman di sekitar current
   const range = _pageRange(currentPage, totalPages);
@@ -373,14 +432,14 @@ function renderPagination(currentPage, totalPages) {
       html += `<span style="padding:0 var(--space-2);color:var(--clr-gray-400);">…</span>`;
     } else {
       html += `<button class="pagination__btn ${p === currentPage ? 'active' : ''}"
-                 onclick="goToPage(${p})" aria-label="Halaman ${p}"
+                 data-page="${p}" aria-label="Halaman ${p}"
                  aria-current="${p === currentPage ? 'page' : 'false'}">${p}</button>`;
     }
   });
 
   // Next
   html += `<button class="pagination__btn" ${currentPage >= totalPages ? 'disabled' : ''}
-             onclick="goToPage(${currentPage + 1})" aria-label="Halaman berikutnya">›</button>`;
+             data-page="${currentPage + 1}" aria-label="Halaman berikutnya">›</button>`;
 
   container.innerHTML = html;
 }
@@ -462,18 +521,19 @@ function closeRekapDetail() {
 
 // ── Export CSV ─────────────────────────────────────────────────
 async function handleExport() {
+  // FIX A13: null guard — btn bisa null jika elemen tidak ditemukan
   const btn    = document.getElementById('btn-export');
+  if (btn) setButtonLoading(btn);
+
   const dari   = document.getElementById('filter-dari')?.value   || '';
   const sampai = document.getElementById('filter-sampai')?.value || '';
   const jenis  = document.getElementById('filter-jenis')?.value  || '';
-
-  setButtonLoading(btn);
 
   const result = await callGAS('exportData', {
     token: getToken(), dari, sampai, jenisTamu: jenis,
   });
 
-  resetButtonLoading(btn, false);
+  if (btn) resetButtonLoading(btn, false);
 
   if (result.status !== 'ok') {
     showToast('Gagal export: ' + result.message, 'danger');
@@ -542,6 +602,24 @@ function attachStafEvents() {
 
   // Submit form staf
   document.getElementById('staf-form')?.addEventListener('submit', handleStafSubmit);
+
+  // FIX A14: event delegation untuk tombol edit & toggle staf
+  // Dipasang sekali di container, bukan per-card (aman meski list di-render ulang)
+  const stafList = document.getElementById('staf-list');
+  if (stafList) {
+    stafList.addEventListener('click', e => {
+      const editBtn   = e.target.closest('.staf-edit-btn');
+      const toggleBtn = e.target.closest('.staf-toggle-btn');
+
+      if (editBtn) {
+        const id = editBtn.dataset.id;
+        if (id) openStafForm(id);
+      } else if (toggleBtn) {
+        const id = toggleBtn.dataset.id;
+        if (id) toggleStaf(id);
+      }
+    });
+  }
 }
 
 async function loadStaf() {
@@ -589,13 +667,13 @@ function renderStafList(stafList) {
         ${!s.aktif ? '<span class="badge badge--gray" style="margin-top:4px;">Nonaktif</span>' : ''}
       </div>
       <div class="staf-card__actions">
-        <button class="btn btn--secondary btn--sm"
-                onclick="openStafForm('${escapeHtml(s.id)}')"
+        <button class="btn btn--secondary btn--sm staf-edit-btn"
+                data-id="${escapeHtml(s.id)}"
                 aria-label="Edit ${escapeHtml(s.nama)}">
           ✏️
         </button>
-        <button class="btn btn--sm ${s.aktif ? 'btn--outline' : 'btn--success'}"
-                onclick="toggleStaf('${escapeHtml(s.id)}')"
+        <button class="btn btn--sm staf-toggle-btn ${s.aktif ? 'btn--outline' : 'btn--success'}"
+                data-id="${escapeHtml(s.id)}"
                 aria-label="${s.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${escapeHtml(s.nama)}">
           ${s.aktif ? '🔴' : '🟢'}
         </button>
@@ -761,6 +839,16 @@ function attachModalEvents() {
       const countEl = document.getElementById('notif-count');
       if (countEl) countEl.style.display = 'none';
       await switchTab('rekap');
+    });
+    // FIX A12: keyboard handler agar bisa diaktifkan via Enter/Space
+    notifBanner.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        notifBanner.classList.remove('visible');
+        const countEl = document.getElementById('notif-count');
+        if (countEl) countEl.style.display = 'none';
+        await switchTab('rekap');
+      }
     });
   }
 
