@@ -270,7 +270,7 @@ function _applyLoginLogo(containerId, url, hideFontSize = '0') {
   if (oldImg) oldImg.remove();
 
   const img = document.createElement('img');
-  img.src   = url;
+  img.src   = normalizeLogoUrl(url);
   img.alt   = 'Logo sekolah';
   img.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:inherit;';
   img.onload  = () => { container.style.fontSize = hideFontSize; };
