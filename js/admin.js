@@ -440,7 +440,7 @@ function renderRekapTable(data) {
     }
 
     const badgeRomb = t.isRombongan
-      ? `<span class="badge-rombongan-sm">👥 ${t.jumlahTamu}</span>`
+      ? `<span class="badge-rombongan-sm">${_icon('users','0.75rem')} ${t.jumlahTamu}</span>`
       : '';
 
     return `
@@ -466,7 +466,7 @@ function renderRekapTable(data) {
         <button class="btn btn--secondary btn--sm rekap-detail-btn"
                 data-id="${escapeHtml(t.id)}"
                 aria-label="Detail ${escapeHtml(t.namaLengkap)}">
-          🔍 Detail
+          ${_icon('search','0.85rem')} Detail
         </button>
       </td>
     </tr>`;
@@ -555,7 +555,7 @@ async function openRekapDetail(tamuId) {
   if (badges) badges.innerHTML = `
     <span class="badge badge--${t.status === 'Hadir' ? 'success' : 'gray'}">${escapeHtml(t.status)}</span>
     <span class="badge badge--primary">${escapeHtml(t.jenisTamu)}</span>
-    ${t.isRombongan ? `<span class="badge-rombongan-sm" style="margin-left:4px;">👥 ${t.jumlahTamu} Tamu</span>` : ''}`;
+    ${t.isRombongan ? `<span class="badge-rombongan-sm" style="margin-left:4px;">${_icon('users','0.75rem')} ${t.jumlahTamu} Tamu</span>` : ''}`;
 
   const ttdHtml = t.tandaTangan
     ? `<div class="detail-signature"><img src="${t.tandaTangan}" alt="Tanda tangan" /></div>`
@@ -571,7 +571,7 @@ async function openRekapDetail(tamuId) {
   if (t.isRombongan && anggota.length > 0) {
     anggotaHtml = `
       <div class="detail-section-title" style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--clr-gray-100);">
-        👥 Daftar Anggota (${anggota.length} orang)
+        ${_icon('users','0.8rem')} Daftar Anggota (${anggota.length} orang)
       </div>
       <ol style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:var(--space-2);">
         ${anggota.map((a, i) => `
@@ -583,8 +583,8 @@ async function openRekapDetail(tamuId) {
               ${a.jabatan?`<span style="font-size:11px;color:var(--clr-gray-500);background:var(--clr-gray-200);padding:1px 7px;border-radius:999px;">${escapeHtml(a.jabatan)}</span>`:''}
             </div>
             ${(a.noHp||a.email)?`<div style="font-size:var(--font-size-xs);color:var(--clr-gray-500);margin-top:4px;display:flex;gap:var(--space-3);flex-wrap:wrap;">
-              ${a.noHp?`<span>📱 ${escapeHtml(a.noHp)}</span>`:''}
-              ${a.email?`<span>✉️ ${escapeHtml(a.email)}</span>`:''}
+              ${a.noHp?`<span style="display:flex;align-items:center;gap:3px;">${_icon('phone','0.75rem')} ${escapeHtml(a.noHp)}</span>`:''}
+              ${a.email?`<span style="display:flex;align-items:center;gap:3px;">${_icon('mail','0.75rem')} ${escapeHtml(a.email)}</span>`:''}
             </div>`:''}
           </li>`).join('')}
       </ol>`;
@@ -643,7 +643,7 @@ async function handleExport() {
   const totalInd = result.data.totalIndividu ?? data.length;
   const csv = generateCSV(data);
   downloadCSV(csv, `buku-tamu-${dari || 'semua'}-${sampai || 'semua'}.csv`);
-  showToast(`${data.length} sesi (${totalInd} individu) berhasil diexport ke CSV. ✅`, 'success');
+  showToast(`${data.length} sesi (${totalInd} individu) berhasil diexport ke CSV.`, 'success');
 }
 
 /**
@@ -774,12 +774,12 @@ function renderStafList(stafList) {
         <button class="btn btn--secondary btn--sm staf-edit-btn"
                 data-id="${escapeHtml(s.id)}"
                 aria-label="Edit ${escapeHtml(s.nama)}">
-          ✏️
+          ${_icon('pencil','0.85rem')}
         </button>
         <button class="btn btn--sm staf-toggle-btn ${s.aktif ? 'btn--outline' : 'btn--success'}"
                 data-id="${escapeHtml(s.id)}"
                 aria-label="${s.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${escapeHtml(s.nama)}">
-          ${s.aktif ? '🔴' : '🟢'}
+          ${s.aktif ? _icon('toggle-right','1rem') : _icon('toggle-left','1rem')}
         </button>
       </div>
     </div>`).join('');
@@ -914,7 +914,7 @@ async function checkNotif() {
     // Banner
     const banner = document.getElementById('notif-banner');
     if (banner) {
-      banner.textContent = `🔔 ${diff} tamu baru masuk. Klik untuk melihat di tab Rekap.`;
+      banner.textContent = `Ada tamu baru masuk. Klik untuk melihat di tab Rekap.`;
       banner.classList.add('visible');
     }
   }
@@ -1087,12 +1087,12 @@ function renderSiswaList(list) {
         <button class="btn btn--secondary btn--sm siswa-edit-btn"
                 data-id="${escapeHtml(s.id)}"
                 aria-label="Edit ${escapeHtml(s.namaLengkap)}">
-          ✏️
+          ${_icon('pencil','0.85rem')}
         </button>
         <button class="btn btn--sm siswa-toggle-btn ${s.aktif ? 'btn--outline' : 'btn--success'}"
                 data-id="${escapeHtml(s.id)}"
                 aria-label="${s.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${escapeHtml(s.namaLengkap)}">
-          ${s.aktif ? '🔴' : '🟢'}
+          ${s.aktif ? _icon('toggle-right','1rem') : _icon('toggle-left','1rem')}
         </button>
       </div>
     </div>`).join('');
@@ -1272,7 +1272,7 @@ function _initPengaturanEvents() {
       resetButtonLoading(btn, false);
 
       if (result.status === 'ok') {
-        showToast('Identitas sekolah berhasil disimpan ✅', 'success');
+        showToast('Identitas sekolah berhasil disimpan.', 'success');
         _showSavedIndicator('form-identitas');
 
         // Update live preview header & navbar
@@ -1334,7 +1334,7 @@ function _initPengaturanEvents() {
       resetButtonLoading(btn, false);
 
       if (result.status === 'ok') {
-        showToast(url ? 'Logo sekolah berhasil disimpan ✅' : 'Logo sekolah berhasil dihapus.', 'success');
+        showToast(url ? 'Logo sekolah berhasil disimpan.' : 'Logo sekolah berhasil dihapus.', 'success');
         _applyLogoPreview('sekolah', url);
         _updatePreviewHeader({
           nama_sekolah  : _getVal('set-nama-sekolah'),
@@ -1408,7 +1408,7 @@ function _initPengaturanEvents() {
       resetButtonLoading(btn, false);
 
       if (result.status === 'ok') {
-        showToast(url ? 'Logo aplikasi berhasil disimpan ✅' : 'Logo aplikasi berhasil dihapus.', 'success');
+        showToast(url ? 'Logo aplikasi berhasil disimpan.' : 'Logo aplikasi berhasil dihapus.', 'success');
         _applyLogoPreview('app', url);
         // Update navbar logo live
         _updateNavbarLogo(url);
@@ -1485,7 +1485,7 @@ function _applyLogoPreview(type, url) {
     box.classList.remove('error');
     if (fallback) fallback.style.display = 'none';
     if (status) {
-      status.textContent = '✅ Gambar berhasil dimuat';
+      status.textContent = 'Gambar berhasil dimuat';
       status.className   = 'logo-preview-box__desc success';
     }
   };
@@ -1496,7 +1496,7 @@ function _applyLogoPreview(type, url) {
     box.classList.remove('has-image');
     if (fallback) fallback.style.display = '';
     if (status) {
-      status.textContent = '❌ Gagal memuat gambar';
+      status.textContent = 'Gagal memuat gambar';
       status.className   = 'logo-preview-box__desc error';
     }
   };
@@ -1592,8 +1592,7 @@ function _updateNavbarLogo(url) {
     img.alt       = 'Logo';
     img.className = 'navbar__brand-logo-img';
 
-    // BUG #5 FIX: .navbar__brand-icon berisi text node (emoji 🏫), bukan <span>.
-    // Sembunyikan dengan fontSize:0 agar emoji tidak muncul bersamaan dengan gambar.
+    // Sembunyikan icon default saat logo dimuat agar tidak tampil bersamaan.
     img.onload  = () => { iconEl.style.fontSize = '0'; };
     img.onerror = () => {
       img.remove();
@@ -1620,7 +1619,7 @@ function _showSavedIndicator(formId) {
   if (!indicator) {
     indicator = document.createElement('div');
     indicator.className = 'settings-saved-indicator';
-    indicator.innerHTML = '<span>✅</span><span>Tersimpan</span>';
+    indicator.innerHTML = `${_icon('check','0.85rem')}<span>Tersimpan</span>`;
     const actionsEl = form.querySelector('.settings-actions');
     if (actionsEl) actionsEl.appendChild(indicator);
   }
