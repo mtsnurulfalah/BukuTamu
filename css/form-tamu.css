@@ -805,3 +805,427 @@
 .auto-field__time-input::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
+
+/* ============================================================
+   ▶▶ MULTI-TAMU: Komponen tambahan
+   ============================================================ */
+
+/* ── Kontrol Jumlah Tamu ─────────────────────────────────── */
+.jumlah-tamu-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.jumlah-tamu-control__stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--clr-gray-50);
+  border: 1.5px solid var(--clr-gray-200);
+  border-radius: var(--radius-full);
+  padding: 4px 6px;
+}
+
+.jumlah-tamu-control__btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--clr-white);
+  color: var(--clr-primary);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  box-shadow: var(--shadow-xs);
+  min-height: unset;
+  line-height: 1;
+}
+
+.jumlah-tamu-control__btn:hover:not(:disabled) {
+  background: var(--clr-primary);
+  color: var(--clr-white);
+  box-shadow: var(--shadow-primary);
+  transform: scale(1.08);
+}
+
+.jumlah-tamu-control__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.jumlah-tamu-control__display {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  color: var(--clr-primary-dark);
+  min-width: 2ch;
+  text-align: center;
+  letter-spacing: -0.04em;
+}
+
+.jumlah-tamu-control__label {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-500);
+  font-weight: 500;
+}
+
+/* Badge rombongan */
+.rombongan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--clr-primary-light);
+  border: 1px solid var(--clr-primary-mid);
+  color: var(--clr-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+}
+
+/* ── Section Anggota Rombongan ──────────────────────────── */
+#section-anggota {
+  display: none; /* Ditampilkan via JS saat jumlahTamu > 1 */
+}
+
+/* ── Card Anggota ────────────────────────────────────────── */
+.anggota-card {
+  background: var(--clr-white);
+  border: 1.5px solid var(--clr-gray-200);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-4);
+  overflow: hidden;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  animation: slideInCard 0.2s ease;
+}
+
+@keyframes slideInCard {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.anggota-card:focus-within {
+  border-color: var(--clr-primary-mid);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.07);
+}
+
+/* Tamu pertama = wakil utama → warna border berbeda */
+.anggota-card:first-child {
+  border-color: var(--clr-primary-mid);
+  border-width: 2px;
+}
+
+.anggota-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-gray-50);
+  border-bottom: 1px solid var(--clr-gray-100);
+}
+
+.anggota-card:first-child .anggota-card__header {
+  background: var(--clr-primary-light);
+  border-bottom-color: var(--clr-primary-mid);
+}
+
+.anggota-card__badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--clr-gray-200);
+  color: var(--clr-gray-600);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.anggota-card:first-child .anggota-card__badge {
+  background: var(--clr-primary);
+  color: var(--clr-white);
+}
+
+.anggota-card__title {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--clr-gray-700);
+}
+
+.anggota-card:first-child .anggota-card__title {
+  color: var(--clr-primary-dark);
+}
+
+.anggota-card__badge--wakil {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--clr-primary);
+  background: transparent;
+  padding: 0;
+}
+
+.anggota-card__remove {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--clr-gray-300);
+  background: var(--clr-white);
+  color: var(--clr-gray-400);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.anggota-card__remove:hover {
+  background: var(--clr-danger-light);
+  border-color: var(--clr-danger-mid);
+  color: var(--clr-danger);
+}
+
+.anggota-card__body {
+  padding: var(--space-4) var(--space-4) var(--space-1);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+@media (min-width: 600px) {
+  .anggota-card__body {
+    grid-template-columns: 1fr 1fr;
+    gap: 0 var(--space-4);
+  }
+}
+
+/* Form optional label */
+.form-optional {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+/* ── Review Screen ────────────────────────────────────────── */
+.review-screen {
+  display: none;
+  animation: fadeIn 0.3s ease;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-16);
+}
+
+.review-screen.visible {
+  display: block;
+}
+
+.review-screen__header {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.review-screen__icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-3);
+}
+
+.review-screen__title {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  color: var(--clr-gray-900);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-1);
+}
+
+.review-screen__subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-500);
+}
+
+.review-card {
+  background: var(--clr-white);
+  border: 1.5px solid var(--clr-gray-200);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.review-card__title {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clr-primary);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--clr-gray-100);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.review-row {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--clr-gray-50);
+  font-size: var(--font-size-sm);
+}
+
+.review-row:last-child { border-bottom: none; }
+
+.review-row__label {
+  flex-shrink: 0;
+  width: 130px;
+  color: var(--clr-gray-500);
+  font-weight: 500;
+}
+
+.review-row__value {
+  color: var(--clr-gray-800);
+  font-weight: 600;
+  flex: 1;
+}
+
+/* Daftar anggota di review */
+.review-anggota-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.review-anggota-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  transition: background var(--transition);
+}
+
+.review-anggota-item:hover {
+  background: var(--clr-gray-50);
+}
+
+.review-anggota-item__nomor {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.review-anggota-item__nama {
+  font-weight: 600;
+  color: var(--clr-gray-800);
+  font-size: var(--font-size-sm);
+  flex: 1;
+}
+
+.review-anggota-item__jabatan {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+  background: var(--clr-gray-100);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+/* Actions di review screen */
+.review-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-direction: column;
+  margin-top: var(--space-4);
+}
+
+@media (min-width: 480px) {
+  .review-actions {
+    flex-direction: row;
+  }
+  .review-actions .btn {
+    flex: 1;
+  }
+}
+
+/* ── Success screen: tambahan info jumlah tamu ───────────── */
+.success-screen__count {
+  font-size: var(--font-size-sm);
+  color: var(--clr-success);
+  font-weight: 600;
+  margin-top: var(--space-2);
+}
+
+/* ── Anggota repeater: Tambah Tamu button ────────────────── */
+.btn-tambah-tamu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--clr-primary);
+  background: var(--clr-primary-light);
+  border: 1.5px dashed var(--clr-primary-mid);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  width: 100%;
+  font-weight: 600;
+  transition: all var(--transition);
+  justify-content: center;
+}
+
+.btn-tambah-tamu:hover {
+  background: var(--clr-primary-mid);
+  border-color: var(--clr-primary);
+  color: var(--clr-primary-dark);
+}
+
+/* ── Jumlah tamu hint strip ──────────────────────────────── */
+.jumlah-tamu-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-primary-light);
+  border: 1px solid var(--clr-primary-mid);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xs);
+  color: var(--clr-primary);
+  font-weight: 500;
+  margin-top: var(--space-3);
+}
+
+/* Responsive submit button text update */
+@media (max-width: 639px) {
+  .review-actions {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      var(--clr-gray-50) 30%
+    );
+    padding: var(--space-5) var(--space-4);
+    margin: 0 calc(-1 * var(--space-4));
+    z-index: 10;
+  }
+}
