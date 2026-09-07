@@ -745,3 +745,52 @@
     z-index: 10;
   }
 }
+
+/* ── Auto Field Editable (Jam Datang) ─────────────────────── */
+.auto-field--editable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.auto-field--editable label.auto-field__label {
+  cursor: default;
+}
+
+.auto-field__time-input {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--clr-primary-mid);
+  border-radius: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--clr-primary-dark);
+  font-family: var(--font-sans);
+  text-align: center;
+  width: 100%;
+  max-width: 140px;
+  cursor: pointer;
+  transition: border-color var(--transition);
+  -webkit-appearance: none;
+}
+
+.auto-field__time-input:hover,
+.auto-field__time-input:focus {
+  border-bottom-color: var(--clr-primary);
+  outline: none;
+  background: rgba(255,255,255,0.5);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+/* Warna teks picker native (Chrome/Edge/Safari) */
+.auto-field__time-input::-webkit-calendar-picker-indicator {
+  filter: invert(27%) sepia(89%) saturate(2578%) hue-rotate(213deg) brightness(92%) contrast(91%);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.auto-field__time-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
