@@ -26,7 +26,7 @@
     <!-- Tombol Login Petugas -->
     <div class="school-header__login-wrap">
       <a href="/login" class="school-header__login-btn" aria-label="Login untuk petugas">
-        🔐 Login Petugas
+        🔐
       </a>
     </div>
 
@@ -144,7 +144,7 @@
               <label class="form-label" for="instansi" id="label-instansi">
                 Instansi / Asal <span class="required">*</span>
               </label>
-              <!-- Input teks — default untuk semua jenis kecuali Orang Tua/Wali Murid -->
+              <!-- Input teks — default untuk semua jenis kecuali Orang Tua/Wali Murid & Alumni -->
               <input
                 type="text"
                 id="instansi"
@@ -163,6 +163,18 @@
               >
                 <option value="">— Pilih nama siswa —</option>
               </select>
+              <!-- Input tahun lulus — muncul hanya saat jenis = Alumni -->
+              <input
+                type="number"
+                id="instansi-tahun-lulus"
+                name="instansiTahunLulus"
+                class="form-control"
+                placeholder="Contoh: 2020"
+                min="1900"
+                max="2099"
+                style="display:none;"
+                aria-label="Tahun lulus"
+              />
               <span class="form-error" id="error-instansi" role="alert">
                 ⚠️ Instansi/asal wajib diisi
               </span>
