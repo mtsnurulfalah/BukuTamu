@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   attachTabEvents();
   attachRekapEvents();
   attachStafEvents();
+  attachSiswaEvents();
   attachModalEvents();
 
   // Mulai polling notifikasi
@@ -105,6 +106,7 @@ async function switchTab(tabId) {
     if (tabId === 'ringkasan')  await loadRingkasan();
     if (tabId === 'rekap')      await loadRekap();
     if (tabId === 'staf')       await loadStaf();
+    if (tabId === 'siswa')      await loadSiswa();
     if (tabId === 'pengaturan') await loadPengaturan();
   } finally {
     _isTabSwitching = false;
@@ -893,6 +895,204 @@ function _pageRange(current, total) {
   return pages;
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// TAB: MANAJEMEN SISWA
+// ══════════════════════════════════════════════════════════════
+
+let allSiswa        = [];
+let editingSiswaId  = null;
+let _siswaSearchVal = '';
+
+function attachSiswaEvents() {
+  document.getElementById('btn-tambah-siswa')?.addEventListener('click', () => {
+    openSiswaForm(null);
+  });
+
+  document.getElementById('btn-cancel-siswa')?.addEventListener('click', closeSiswaForm);
+
+  document.getElementById('siswa-form')?.addEventListener('submit', handleSiswaSubmit);
+
+  // Event delegation untuk list siswa
+  const siswaListEl = document.getElementById('siswa-list');
+  if (siswaListEl) {
+    siswaListEl.addEventListener('click', e => {
+      const editBtn   = e.target.closest('.siswa-edit-btn');
+      const toggleBtn = e.target.closest('.siswa-toggle-btn');
+      if (editBtn)   openSiswaForm(editBtn.dataset.id);
+      else if (toggleBtn) toggleSiswa(toggleBtn.dataset.id);
+    });
+  }
+
+  // Pencarian live
+  const searchEl = document.getElementById('siswa-search');
+  if (searchEl) {
+    searchEl.addEventListener('input', () => {
+      _siswaSearchVal = searchEl.value.trim().toLowerCase();
+      _renderFilteredSiswa();
+    });
+  }
+}
+
+async function loadSiswa() {
+  const result = await callGAS('getAllSiswa', { token: getToken() });
+
+  if (result.status !== 'ok') {
+    showToast('Gagal memuat siswa: ' + result.message, 'danger');
+    return;
+  }
+
+  allSiswa = result.data || [];
+  _renderFilteredSiswa();
+}
+
+function _renderFilteredSiswa() {
+  const filtered = _siswaSearchVal
+    ? allSiswa.filter(s =>
+        s.namaLengkap.toLowerCase().includes(_siswaSearchVal) ||
+        s.kelas.toLowerCase().includes(_siswaSearchVal)
+      )
+    : allSiswa;
+
+  renderSiswaList(filtered);
+}
+
+function renderSiswaList(list) {
+  const listEl  = document.getElementById('siswa-list');
+  const emptyEl = document.getElementById('siswa-empty');
+
+  if (!listEl) return;
+
+  if (list.length === 0) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = '';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  listEl.innerHTML = list.map(s => `
+    <div class="staf-card ${s.aktif ? '' : 'inactive'}" role="listitem" data-id="${escapeHtml(s.id)}">
+      <div class="staf-card__avatar" aria-hidden="true">
+        ${escapeHtml((s.namaLengkap || '?').charAt(0).toUpperCase())}
+      </div>
+      <div class="staf-card__info">
+        <div class="staf-card__name">${escapeHtml(s.namaLengkap)}</div>
+        <div class="staf-card__jabatan">Kelas ${escapeHtml(s.kelas)}</div>
+        ${!s.aktif ? '<span class="badge badge--gray" style="margin-top:4px;">Nonaktif</span>' : ''}
+      </div>
+      <div class="staf-card__actions">
+        <button class="btn btn--secondary btn--sm siswa-edit-btn"
+                data-id="${escapeHtml(s.id)}"
+                aria-label="Edit ${escapeHtml(s.namaLengkap)}">
+          ✏️
+        </button>
+        <button class="btn btn--sm siswa-toggle-btn ${s.aktif ? 'btn--outline' : 'btn--success'}"
+                data-id="${escapeHtml(s.id)}"
+                aria-label="${s.aktif ? 'Nonaktifkan' : 'Aktifkan'} ${escapeHtml(s.namaLengkap)}">
+          ${s.aktif ? '🔴' : '🟢'}
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+function openSiswaForm(siswaId) {
+  editingSiswaId = siswaId;
+
+  const formCard  = document.getElementById('siswa-form-card');
+  const formTitle = document.getElementById('siswa-form-title');
+  const idInput   = document.getElementById('siswa-id');
+  const namaInput = document.getElementById('siswa-nama');
+  const kelasInput = document.getElementById('siswa-kelas');
+  const btnTambah = document.getElementById('btn-tambah-siswa');
+
+  if (siswaId) {
+    const siswa = allSiswa.find(s => s.id === siswaId);
+    if (!siswa) return;
+    if (formTitle)  formTitle.textContent = `Edit Siswa: ${siswa.namaLengkap}`;
+    if (idInput)    idInput.value    = siswa.id;
+    if (namaInput)  namaInput.value  = siswa.namaLengkap;
+    if (kelasInput) kelasInput.value = siswa.kelas;
+  } else {
+    if (formTitle)  formTitle.textContent = 'Tambah Siswa Baru';
+    if (idInput)    idInput.value    = '';
+    if (namaInput)  namaInput.value  = '';
+    if (kelasInput) kelasInput.value = '';
+  }
+
+  if (formCard) {
+    formCard.classList.add('visible');
+    formCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  if (btnTambah) btnTambah.setAttribute('aria-expanded', 'true');
+  namaInput?.focus();
+}
+
+function closeSiswaForm() {
+  editingSiswaId = null;
+  const formCard  = document.getElementById('siswa-form-card');
+  const btnTambah = document.getElementById('btn-tambah-siswa');
+  if (formCard)  formCard.classList.remove('visible');
+  if (btnTambah) btnTambah.setAttribute('aria-expanded', 'false');
+  document.getElementById('siswa-form')?.reset();
+}
+
+async function handleSiswaSubmit(e) {
+  e.preventDefault();
+
+  const btn        = document.getElementById('btn-save-siswa');
+  const nama       = document.getElementById('siswa-nama')?.value.trim()  || '';
+  const kelas      = document.getElementById('siswa-kelas')?.value.trim() || '';
+
+  if (!nama || !kelas) {
+    showToast('Nama lengkap dan kelas wajib diisi.', 'danger');
+    return;
+  }
+
+  setButtonLoading(btn);
+
+  let result;
+  if (editingSiswaId) {
+    result = await callGAS('updateSiswa', {
+      token: getToken(), id: editingSiswaId, namaLengkap: nama, kelas,
+    });
+  } else {
+    result = await callGAS('addSiswa', {
+      token: getToken(), namaLengkap: nama, kelas,
+    });
+  }
+
+  resetButtonLoading(btn, false);
+
+  if (result.status === 'ok') {
+    showToast(result.message, 'success');
+    closeSiswaForm();
+    await loadSiswa();
+  } else {
+    showToast(result.message || 'Gagal menyimpan siswa.', 'danger');
+  }
+}
+
+async function toggleSiswa(siswaId) {
+  const siswa = allSiswa.find(s => s.id === siswaId);
+  if (!siswa) return;
+
+  const konfirmasi = confirm(
+    `${siswa.aktif ? 'Nonaktifkan' : 'Aktifkan'} siswa "${siswa.namaLengkap}" (${siswa.kelas})?`
+  );
+  if (!konfirmasi) return;
+
+  const result = await callGAS('toggleSiswaAktif', {
+    token: getToken(), id: siswaId,
+  });
+
+  if (result.status === 'ok') {
+    showToast(result.message, 'success');
+    await loadSiswa();
+  } else {
+    showToast(result.message || 'Gagal mengubah status siswa.', 'danger');
+  }
+}
 
 // ══════════════════════════════════════════════════════════════
 // TAB: PENGATURAN SEKOLAH
