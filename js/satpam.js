@@ -52,6 +52,32 @@ async function loadSchoolConfig() {
     const navName = document.getElementById('nav-school-name');
     if (navName) navName.textContent = nama;
     document.title = `Dashboard Satpam — ${nama}`;
+
+    // BUG #4 FIX: muat logo_app_url ke navbar, sama seperti admin.js
+    if (result.data.logo_app_url) {
+      _updateNavbarLogo(result.data.logo_app_url);
+    }
+  }
+}
+
+// ── Helper: update logo navbar (identik dengan admin.js) ──────
+function _updateNavbarLogo(url) {
+  const iconEl = document.querySelector('.navbar__brand-icon');
+  if (!iconEl) return;
+
+  const oldImg = iconEl.querySelector('img');
+  if (oldImg) oldImg.remove();
+
+  if (url) {
+    const img     = document.createElement('img');
+    img.src       = url;
+    img.alt       = 'Logo';
+    img.className = 'navbar__brand-logo-img';
+    img.onload    = () => { iconEl.style.fontSize = '0'; };
+    img.onerror   = () => { img.remove(); iconEl.style.fontSize = ''; };
+    iconEl.appendChild(img);
+  } else {
+    iconEl.style.fontSize = '';
   }
 }
 
