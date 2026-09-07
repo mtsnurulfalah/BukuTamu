@@ -22,27 +22,19 @@
 
   <!-- ── Hero Header ─────────────────────────────────────── -->
   <header class="school-header" id="school-header">
-
-    <!-- Tombol Login Petugas -->
     <div class="school-header__login-wrap">
       <a href="/login" class="school-header__login-btn" aria-label="Login untuk petugas">
         🔐
       </a>
     </div>
-
-    <!-- Logo -->
     <div class="school-header__logo" id="school-logo">
       <span id="school-logo-icon">🏫</span>
     </div>
-
-    <!-- Info Sekolah -->
     <h1 class="school-header__title" id="school-name">Buku Tamu Digital</h1>
     <p class="school-header__subtitle" id="school-subtitle">
       Selamat datang, silakan isi data kunjungan Anda
     </p>
     <p class="school-header__date" id="header-date"></p>
-
-    <!-- Wave SVG -->
     <div class="school-header__wave" aria-hidden="true">
       <svg viewBox="0 0 1440 54" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
         <path d="M0 27C240 54 480 0 720 27C960 54 1200 0 1440 27V54H0V27Z" fill="#f8fafc"/>
@@ -59,7 +51,9 @@
       <p class="form-loading__text">Memuat formulir...</p>
     </div>
 
-    <!-- Form Tamu -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- Form Tamu                                          -->
+    <!-- ═══════════════════════════════════════════════════ -->
     <div class="form-tamu-container" id="form-wrapper">
       <form id="form-tamu" novalidate autocomplete="off">
 
@@ -73,12 +67,7 @@
             <label class="form-label" id="label-jenis">
               Pilih kategori kunjungan Anda <span class="required">*</span>
             </label>
-            <div
-              class="pill-selector"
-              id="jenis-tamu-pills"
-              role="group"
-              aria-labelledby="label-jenis"
-            >
+            <div class="pill-selector" id="jenis-tamu-pills" role="group" aria-labelledby="label-jenis">
               <!-- Diisi oleh JS -->
             </div>
             <input type="hidden" id="jenis-tamu" name="jenisTamu" required />
@@ -114,119 +103,85 @@
           </div>
         </div>
 
-        <!-- ── Seksi 3: Data Diri ────────────────────────── -->
+        <!-- ▶▶ Seksi 3: Jumlah Tamu ─────────────────────── -->
         <div class="form-section">
           <p class="form-section__title">
-            <span class="form-section__title-icon">📋</span>
-            Data Diri
+            <span class="form-section__title-icon">👥</span>
+            Jumlah Tamu
           </p>
-          <div class="form-grid-2">
-
-            <div class="form-group">
-              <label class="form-label" for="nama-lengkap">
-                Nama Lengkap <span class="required">*</span>
-              </label>
-              <input
-                type="text"
-                id="nama-lengkap"
-                name="namaLengkap"
-                class="form-control"
-                placeholder="Masukkan nama lengkap"
-                autocomplete="name"
-                required
-              />
-              <span class="form-error" id="error-nama" role="alert">
-                ⚠️ Nama lengkap wajib diisi
-              </span>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Berapa orang yang hadir dalam kunjungan ini?</label>
+            <div class="jumlah-tamu-control">
+              <div class="jumlah-tamu-control__stepper">
+                <button
+                  type="button"
+                  class="jumlah-tamu-control__btn"
+                  id="btn-tamu-minus"
+                  aria-label="Kurangi jumlah tamu"
+                  disabled
+                >−</button>
+                <span class="jumlah-tamu-control__display" id="jumlah-tamu-display">1</span>
+                <button
+                  type="button"
+                  class="jumlah-tamu-control__btn"
+                  id="btn-tamu-plus"
+                  aria-label="Tambah jumlah tamu"
+                >+</button>
+              </div>
+              <span class="jumlah-tamu-control__label" id="jumlah-tamu-label">orang (kunjungan tunggal)</span>
             </div>
-
-            <div class="form-group" id="group-instansi">
-              <label class="form-label" for="instansi" id="label-instansi">
-                Instansi / Asal <span class="required">*</span>
-              </label>
-              <!-- Input teks — default untuk semua jenis kecuali Orang Tua/Wali Murid & Alumni -->
-              <input
-                type="text"
-                id="instansi"
-                name="instansi"
-                class="form-control"
-                placeholder="Contoh: SDN 01, Dinas Pendidikan"
-                required
-              />
-              <!-- Dropdown siswa — muncul hanya saat jenis = Orang Tua/Wali Murid -->
-              <select
-                id="instansi-siswa"
-                name="instansiSiswa"
-                class="form-control"
-                style="display:none;"
-                aria-label="Pilih siswa"
-              >
-                <option value="">— Pilih nama siswa —</option>
-              </select>
-              <!-- Input tahun lulus — muncul hanya saat jenis = Alumni -->
-              <input
-                type="number"
-                id="instansi-tahun-lulus"
-                name="instansiTahunLulus"
-                class="form-control"
-                placeholder="Contoh: 2020"
-                min="1900"
-                max="2099"
-                style="display:none;"
-                aria-label="Tahun lulus"
-              />
-              <span class="form-error" id="error-instansi" role="alert">
-                ⚠️ Instansi/asal wajib diisi
-              </span>
+            <div class="jumlah-tamu-hint" id="jumlah-tamu-hint">
+              💡 Untuk rombongan, tambah jumlah tamu. Setiap anggota akan didata satu per satu.
             </div>
-
-            <div class="form-group">
-              <label class="form-label" for="no-hp">
-                No. HP / WA <span class="required">*</span>
-              </label>
-              <input
-                type="tel"
-                id="no-hp"
-                name="noHp"
-                class="form-control"
-                placeholder="08123456789"
-                autocomplete="tel"
-                inputmode="numeric"
-                required
-              />
-              <span class="form-error" id="error-no-hp" role="alert">
-                ⚠️ Nomor HP/WA wajib diisi
-              </span>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="email">
-                Email <span class="required">*</span>
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                class="form-control"
-                placeholder="nama@email.com"
-                autocomplete="email"
-                inputmode="email"
-                required
-              />
-              <span class="form-error" id="error-email" role="alert">
-                ⚠️ Format email tidak valid
-              </span>
-            </div>
-
           </div>
         </div>
 
-        <!-- ── Seksi 4: Keperluan ────────────────────────── -->
+        <!-- ── Seksi 4: Data Kunjungan Bersama ──────────── -->
         <div class="form-section">
           <p class="form-section__title">
-            <span class="form-section__title-icon">💬</span>
-            Keperluan Kunjungan
+            <span class="form-section__title-icon">📋</span>
+            Data Kunjungan
           </p>
+
+          <div class="form-group" id="group-instansi">
+            <label class="form-label" for="instansi" id="label-instansi">
+              Instansi / Asal <span class="required">*</span>
+            </label>
+            <!-- Input teks — default -->
+            <input
+              type="text"
+              id="instansi"
+              name="instansi"
+              class="form-control"
+              placeholder="Contoh: SDN 01, Dinas Pendidikan"
+              required
+            />
+            <!-- Dropdown siswa — untuk Orang Tua/Wali Murid -->
+            <select
+              id="instansi-siswa"
+              name="instansiSiswa"
+              class="form-control"
+              style="display:none;"
+              aria-label="Pilih siswa"
+            >
+              <option value="">— Pilih nama siswa —</option>
+            </select>
+            <!-- Input tahun lulus — untuk Alumni -->
+            <input
+              type="number"
+              id="instansi-tahun-lulus"
+              name="instansiTahunLulus"
+              class="form-control"
+              placeholder="Contoh: 2020"
+              min="1900"
+              max="2099"
+              style="display:none;"
+              aria-label="Tahun lulus"
+            />
+            <span class="form-error" id="error-instansi" role="alert">
+              ⚠️ Instansi/asal wajib diisi
+            </span>
+          </div>
 
           <div class="form-group">
             <label class="form-label" for="keperluan">
@@ -257,7 +212,6 @@
             >
               <option value="">— Pilih staf yang dituju —</option>
             </select>
-            <!-- Retry jika staf gagal dimuat -->
             <div id="staf-retry-wrap" style="display:none;margin-top:var(--space-2);">
               <button type="button" class="btn btn--soft btn--sm" id="btn-retry-staf">
                 🔄 Coba Lagi
@@ -272,11 +226,56 @@
           </div>
         </div>
 
-        <!-- ── Seksi 5: Tanda Tangan ─────────────────────── -->
+        <!-- ▶▶ Seksi 5: Data Anggota Rombongan ─────────── -->
+        <!-- Ditampilkan JS saat jumlahTamu > 1 -->
+        <div class="form-section" id="section-anggota" style="display:none;">
+          <p class="form-section__title">
+            <span class="form-section__title-icon">👥</span>
+            Data Setiap Anggota
+            <span class="rombongan-badge" id="badge-jumlah-anggota">
+              👥 <span id="jumlah-tamu-display-2">0</span> orang
+            </span>
+          </p>
+          <p style="font-size:var(--font-size-xs);color:var(--clr-gray-500);margin-bottom:var(--space-4);margin-top:calc(-1 * var(--space-3));">
+            Isi data identitas setiap anggota rombongan. Tamu pertama adalah wakil/kontak utama.
+          </p>
+
+          <!-- Container card anggota — diisi oleh JS -->
+          <div id="anggota-repeater" role="list" aria-label="Daftar anggota rombongan">
+            <!-- Diisi oleh JS: renderAnggotaRepeater() -->
+          </div>
+
+          <!-- Tombol tambah tamu manual -->
+          <button
+            type="button"
+            class="btn-tambah-tamu"
+            id="btn-tambah-tamu-manual"
+            aria-label="Tambah tamu lagi"
+          >
+            ➕ Tambah Tamu Lagi
+          </button>
+        </div>
+
+        <!-- ▶▶ Seksi 6: Data Tamu Tunggal ──────────────── -->
+        <!-- Muncul saat jumlahTamu = 1; untuk rombongan data masuk ke repeater -->
+        <div class="form-section" id="section-tamu-tunggal">
+          <p class="form-section__title">
+            <span class="form-section__title-icon">🪪</span>
+            Data Diri Tamu
+          </p>
+
+          <!-- Container card anggota tunggal — diisi oleh JS -->
+          <div id="anggota-repeater-tunggal" role="list">
+            <!-- Diisi oleh JS saat jumlahTamu = 1 -->
+          </div>
+        </div>
+
+        <!-- ── Seksi 7: Tanda Tangan ─────────────────────── -->
         <div class="form-section">
           <p class="form-section__title">
             <span class="form-section__title-icon">✍️</span>
             Tanda Tangan Digital
+            <span style="font-size:var(--font-size-xs);font-weight:500;color:var(--clr-gray-400);text-transform:none;letter-spacing:0;">(Wakil / Tamu Pertama)</span>
           </p>
 
           <div class="form-group" style="margin-bottom:0;">
@@ -337,7 +336,62 @@
         </div>
 
       </form>
-    </div>
+    </div><!-- /#form-wrapper -->
+
+    <!-- ▶▶ Review Screen (Ringkasan Sebelum Simpan) ─────── -->
+    <div class="review-screen form-tamu-container" id="review-screen" style="display:none;" role="region" aria-label="Ringkasan kunjungan sebelum disimpan">
+
+      <div class="review-screen__header">
+        <div class="review-screen__icon">📋</div>
+        <h2 class="review-screen__title">Tinjau Kunjungan</h2>
+        <p class="review-screen__subtitle">Periksa data sebelum menyimpan</p>
+      </div>
+
+      <!-- Info kunjungan bersama -->
+      <div class="review-card">
+        <div class="review-card__title">🏢 Info Kunjungan</div>
+        <div class="review-row">
+          <div class="review-row__label">Jumlah Tamu</div>
+          <div class="review-row__value" id="review-jumlah">—</div>
+        </div>
+        <div class="review-row">
+          <div class="review-row__label">Jenis</div>
+          <div class="review-row__value" id="review-jenis">—</div>
+        </div>
+        <div class="review-row">
+          <div class="review-row__label">Waktu</div>
+          <div class="review-row__value" id="review-waktu">—</div>
+        </div>
+        <div class="review-row">
+          <div class="review-row__label">Keperluan</div>
+          <div class="review-row__value" id="review-keperluan">—</div>
+        </div>
+        <div class="review-row" style="border-bottom:none;">
+          <div class="review-row__label">Bertemu</div>
+          <div class="review-row__value" id="review-bertemu">—</div>
+        </div>
+      </div>
+
+      <!-- Daftar anggota -->
+      <div class="review-card">
+        <div class="review-card__title">👥 Daftar Tamu</div>
+        <ol class="review-anggota-list" id="review-daftar-anggota">
+          <!-- Diisi JS -->
+        </ol>
+      </div>
+
+      <!-- Tombol aksi -->
+      <div class="review-actions">
+        <button type="button" class="btn btn--secondary" id="btn-review-edit">
+          ✏️ Kembali & Edit
+        </button>
+        <button type="button" class="btn btn--primary" id="btn-review-confirm">
+          <span class="btn__spinner"></span>
+          <span class="btn__text">💾 Simpan Kunjungan</span>
+        </button>
+      </div>
+
+    </div><!-- /#review-screen -->
 
     <!-- ── Success Screen ─────────────────────────────────── -->
     <div class="success-screen" id="success-screen" role="status" aria-live="polite">
@@ -345,18 +399,15 @@
         <div class="success-screen__lottie" aria-hidden="true">✅</div>
         <h2 class="success-screen__title">Kunjungan Tercatat!</h2>
         <p class="success-screen__desc">
-          Data kunjungan Anda telah berhasil disimpan.<br>
+          Data kunjungan berhasil disimpan.<br>
           Silakan menuju ke bagian resepsionis.
         </p>
         <div class="success-screen__card">
           <div class="success-screen__time" id="success-time"></div>
           <div class="success-screen__date" id="success-date"></div>
+          <div class="success-screen__count" id="success-count"></div>
         </div>
-        <button
-          class="btn btn--primary"
-          id="btn-new-entry"
-          style="margin:0 auto;"
-        >
+        <button class="btn btn--primary" id="btn-new-entry" style="margin:0 auto;">
           ➕ Daftarkan Tamu Lain
         </button>
       </div>
