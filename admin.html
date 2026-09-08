@@ -184,11 +184,15 @@
             <div class="chart-card__title">Jenis Tamu</div>
             <div class="chart-card__total" id="chart-jenis-total">—</div>
           </div>
-          <div class="bar-chart" id="chart-jenis">
+          <!-- Skeleton tampil sebelum data tiba, canvas tersembunyi -->
+          <div id="chart-jenis-skeleton">
             <div class="skeleton skeleton--text" style="height:8px;margin-bottom:14px;"></div>
             <div class="skeleton skeleton--text" style="height:8px;margin-bottom:14px;width:80%;"></div>
             <div class="skeleton skeleton--text" style="height:8px;margin-bottom:14px;width:60%;"></div>
             <div class="skeleton skeleton--text" style="height:8px;width:40%;"></div>
+          </div>
+          <div class="chartjs-wrap" id="chart-jenis-wrap" style="display:none;">
+            <canvas id="chart-jenis" aria-label="Grafik breakdown jenis tamu" role="img"></canvas>
           </div>
         </div>
 
@@ -198,11 +202,11 @@
             <div class="chart-card__title">Tren 7 Hari</div>
             <div class="chart-card__total" id="chart-trend-total">—</div>
           </div>
-          <div class="trend-chart" id="trend-chart">
-            <!-- Diisi JS -->
+          <div id="trend-chart-skeleton">
+            <div class="skeleton skeleton--text" style="height:88px;border-radius:var(--radius-lg);"></div>
           </div>
-          <div class="trend-chart__label-row" id="trend-labels">
-            <!-- Diisi JS -->
+          <div class="chartjs-wrap" id="trend-chart-wrap" style="display:none;">
+            <canvas id="trend-chart" aria-label="Grafik tren kunjungan 7 hari terakhir" role="img"></canvas>
           </div>
         </div>
       </div>
@@ -790,6 +794,8 @@
   </div>
 
   <!-- Scripts -->
+  <!-- Chart.js (versi slim tanpa bundler) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
