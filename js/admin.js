@@ -667,9 +667,14 @@ async function openRekapDetail(tamuId) {
 
   if (!modal) return;
 
+  // Reset scroll posisi sebelum modal aktif (konsisten dengan satpam)
+  const modalBox = modal.querySelector('.modal');
+  if (modalBox) modalBox.scrollTop = 0;
+
   if (content) content.innerHTML = `
     <div style="text-align:center;padding:var(--space-8);">
       <div class="spinner" style="margin:0 auto;"></div>
+      <p class="text-sm text-muted" style="margin-top:var(--space-3);">Memuat detail...</p>
     </div>`;
   if (badges)  badges.innerHTML  = '';
   if (title)   title.textContent = 'Detail Kunjungan';
@@ -695,10 +700,11 @@ async function openRekapDetail(tamuId) {
     ? `Rombongan — ${t.jumlahTamu} Tamu`
     : (t.namaLengkap || 'Detail Kunjungan');
 
+  // Badges: hapus inline margin-left yang redundant karena parent sudah punya gap
   if (badges) badges.innerHTML = `
     <span class="badge badge--${t.status === 'Hadir' ? 'success' : 'gray'}">${escapeHtml(t.status)}</span>
     <span class="badge badge--primary">${escapeHtml(t.jenisTamu)}</span>
-    ${t.isRombongan ? `<span class="badge-rombongan-sm" style="margin-left:4px;">${_icon('users','0.75rem')} ${t.jumlahTamu} Tamu</span>` : ''}`;
+    ${t.isRombongan ? `<span class="badge-rombongan-sm">${_icon('users','0.75rem')} ${t.jumlahTamu} Tamu</span>` : ''}`;
 
   const ttdHtml = t.tandaTangan
     ? `<div class="detail-signature"><img src="${t.tandaTangan}" alt="Tanda tangan" /></div>`
@@ -708,26 +714,28 @@ async function openRekapDetail(tamuId) {
     ? 'Orang Tua/Wali dari'
     : t.jenisTamu === 'Alumni' ? 'Tahun Lulus' : 'Instansi / Asal';
 
+  // Gunakan CSS classes yang sama dengan satpam — hapus semua inline style anggota
   const anggota = Array.isArray(t.dataAnggota) ? t.dataAnggota : [];
   let anggotaHtml = '';
   if (t.isRombongan && anggota.length > 0) {
     anggotaHtml = `
-      <div class="detail-section-title" style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--clr-gray-100);">
+      <div class="detail-section-title">
         ${_icon('users','0.8rem')} Daftar Anggota (${anggota.length} orang)
       </div>
-      <ol style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:var(--space-2);">
+      <ol class="detail-anggota-list">
         ${anggota.map((a, i) => `
-          <li style="background:var(--clr-gray-50);border:1px solid var(--clr-gray-200);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);">
-            <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;">
-              <span style="width:22px;height:22px;border-radius:50%;background:${i===0?'var(--clr-primary)':'var(--clr-gray-300)'};color:${i===0?'white':'var(--clr-gray-700)'};font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</span>
-              <strong style="font-size:var(--font-size-sm);">${escapeHtml(a.namaLengkap||'—')}</strong>
-              ${i===0?'<span style="font-size:10px;background:var(--clr-primary);color:white;padding:1px 7px;border-radius:999px;font-weight:700;">Wakil</span>':''}
-              ${a.jabatan?`<span style="font-size:11px;color:var(--clr-gray-500);background:var(--clr-gray-200);padding:1px 7px;border-radius:999px;">${escapeHtml(a.jabatan)}</span>`:''}
+          <li class="detail-anggota-item">
+            <div class="detail-anggota-item__header">
+              <span class="detail-anggota-item__nomor">${i + 1}</span>
+              <span class="detail-anggota-item__nama">${escapeHtml(a.namaLengkap || '—')}</span>
+              ${i === 0 ? '<span class="detail-anggota-item__wakil">Wakil</span>' : ''}
+              ${a.jabatan ? `<span class="detail-anggota-item__jabatan">${escapeHtml(a.jabatan)}</span>` : ''}
             </div>
-            ${(a.noHp||a.email)?`<div style="font-size:var(--font-size-xs);color:var(--clr-gray-500);margin-top:4px;display:flex;gap:var(--space-3);flex-wrap:wrap;">
-              ${a.noHp?`<span style="display:flex;align-items:center;gap:3px;">${_icon('phone','0.75rem')} ${escapeHtml(a.noHp)}</span>`:''}
-              ${a.email?`<span style="display:flex;align-items:center;gap:3px;">${_icon('mail','0.75rem')} ${escapeHtml(a.email)}</span>`:''}
-            </div>`:''}
+            ${(a.noHp || a.email) ? `
+            <div class="detail-anggota-item__contact">
+              ${a.noHp  ? `<span class="detail-anggota-item__contact-item">${_icon('phone','0.75rem')} ${escapeHtml(a.noHp)}</span>` : ''}
+              ${a.email ? `<span class="detail-anggota-item__contact-item">${_icon('mail','0.75rem')} ${escapeHtml(a.email)}</span>` : ''}
+            </div>` : ''}
           </li>`).join('')}
       </ol>`;
   }
@@ -737,14 +745,14 @@ async function openRekapDetail(tamuId) {
     <div class="detail-row"><div class="detail-row__label">Jam Datang</div><div class="detail-row__value">${displayVal(t.jamDatang)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Pulang</div><div class="detail-row__value">${t.jamPulang || '<span class="text-muted">Belum pulang</span>'}</div></div>
     <div class="detail-row"><div class="detail-row__label">${escapeHtml(instansiLabel)}</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value" style="white-space:pre-wrap;">${displayVal(t.keperluan)}</div></div>
+    <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value detail-row__value--pre">${displayVal(t.keperluan)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Bertemu</div><div class="detail-row__value">${displayVal(t.bertemuDengan)}</div></div>
     ${!t.isRombongan ? `
     <div class="detail-row"><div class="detail-row__label">Nama</div><div class="detail-row__value">${displayVal(t.namaLengkap)}</div></div>
     <div class="detail-row"><div class="detail-row__label">No. HP/WA</div><div class="detail-row__value">${displayVal(t.noHp)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Email</div><div class="detail-row__value">${displayVal(t.email)}</div></div>` : ''}
     ${anggotaHtml}
-    <div class="detail-row" style="margin-top:var(--space-4);"><div class="detail-row__label">Tanda Tangan</div><div class="detail-row__value">${ttdHtml}</div></div>
+    <div class="detail-row detail-row--signature"><div class="detail-row__label">Tanda Tangan</div><div class="detail-row__value">${ttdHtml}</div></div>
     ${t.diupdateOleh ? `<div class="detail-row"><div class="detail-row__label">Dicatat oleh</div><div class="detail-row__value">${displayVal(t.diupdateOleh)}</div></div>` : ''}
   `;
 }
