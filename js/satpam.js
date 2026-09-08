@@ -498,8 +498,8 @@ async function openDetail(tamuId) {
             </div>
             ${(a.noHp || a.email) ? `
             <div class="detail-anggota-item__contact">
-              ${a.noHp  ? `<span style="display:flex;align-items:center;gap:3px;">${_icon('phone','0.75rem')} ${escapeHtml(a.noHp)}</span>` : ''}
-              ${a.email ? `<span style="display:flex;align-items:center;gap:3px;">${_icon('mail','0.75rem')} ${escapeHtml(a.email)}</span>` : ''}
+              ${a.noHp  ? `<span class="detail-anggota-item__contact-item">${_icon('phone','0.75rem')} ${escapeHtml(a.noHp)}</span>` : ''}
+              ${a.email ? `<span class="detail-anggota-item__contact-item">${_icon('mail','0.75rem')} ${escapeHtml(a.email)}</span>` : ''}
             </div>` : ''}
           </li>
         `).join('')}
@@ -533,13 +533,13 @@ async function openDetail(tamuId) {
     <div class="detail-row"><div class="detail-row__label">Jam Datang</div><div class="detail-row__value">${displayVal(t.jamDatang)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Pulang</div><div class="detail-row__value">${t.jamPulang || '<span class="text-muted">Belum pulang</span>'}</div></div>
     <div class="detail-row"><div class="detail-row__label">${escapeHtml(instansiLabel)}</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value" style="white-space:pre-wrap;">${displayVal(t.keperluan)}</div></div>
+    <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value detail-row__value--pre">${displayVal(t.keperluan)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Bertemu</div><div class="detail-row__value">${displayVal(t.bertemuDengan)}</div></div>
     ${!t.isRombongan ? `
     <div class="detail-row"><div class="detail-row__label">No. HP/WA</div><div class="detail-row__value">${displayVal(t.noHp)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Email</div><div class="detail-row__value">${displayVal(t.email)}</div></div>` : ''}
     ${anggotaHtml}
-    <div class="detail-row" style="margin-top:var(--space-4);">
+    <div class="detail-row detail-row--signature">
       <div class="detail-row__label">Tanda Tangan</div>
       <div class="detail-row__value">${ttdHtml}</div>
     </div>
