@@ -1011,6 +1011,18 @@ body.modal-open .admin-nav {
 
 .detail-row:last-child { border-bottom: none; }
 
+/* Variant: baris tanda tangan diberi margin atas lebih besar */
+.detail-row--signature {
+  margin-top: var(--space-4);
+}
+
+/* Responsive: di layar sangat sempit, kolom label lebih kecil */
+@media (max-width: 360px) {
+  .detail-row {
+    grid-template-columns: 90px 1fr;
+  }
+}
+
 .detail-row__label {
   color: var(--clr-gray-400);
   font-weight: 600;
@@ -1018,12 +1030,22 @@ body.modal-open .admin-nav {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding-top: 2px;
+  /* Cegah label panjang overflow kolom 110px */
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .detail-row__value {
   color: var(--clr-gray-800);
   word-break: break-word;
+  overflow-wrap: break-word;
   font-weight: 500;
+  min-width: 0;
+}
+
+/* Variant: keperluan dengan pre-wrap agar newline dipertahankan */
+.detail-row__value--pre {
+  white-space: pre-wrap;
 }
 
 /* ── Signature Preview ────────────────────────────────────── */
@@ -1034,6 +1056,9 @@ body.modal-open .admin-nav {
   padding: var(--space-3);
   background: var(--clr-gray-50);
   max-width: 320px;
+  /* Cegah overflow di layar sempit */
+  max-width: min(320px, 100%);
+  box-sizing: border-box;
 }
 
 .detail-signature img { width: 100%; height: auto; }
