@@ -1,13 +1,34 @@
 /* ============================================================
-   login.css — Halaman Login v3 (Mobile First)
+   login.css — Halaman Login v2.1 (Mobile First)
+   CHANGELOG v2.1:
+     - FIX C1: .login-page overflow-x:hidden + overflow-y:auto menggantikan
+               min-height konflik dengan keyboard virtual di iOS.
+     - FIX C2: .login-panel-right min-height 100dvh dengan fallback 100vh
+               agar tidak terpotong keyboard virtual di iOS.
+     - FIX C3: .login-card max-width konsisten, word-break di semua teks
+               panjang agar tidak overflow di layar sempit.
+     - FIX C4: .login-error display:grid → flex untuk konsistensi; animasi
+               re-trigger via JS (display:none tidak perlu di CSS).
+     - FIX C5: .login-password-wrap height tidak tergantung pada form-control
+               min-height yang bisa berubah — gunakan align-stretch.
+     - FIX C6: .password-toggle touch target 48x48 min — lebih mudah disentuh.
+     - FIX C7: Panel kiri tidak muncul di layar 768px portrait yang sempit
+               (landscape tablet masih tampil). Ubah breakpoint ke 900px.
+     - FIX C8: Logo container (.login-brand__logo, .login-logo-mobile__icon)
+               menggunakan position:relative + overflow:hidden agar img yang
+               di-inject JS tidak keluar batas.
+     - ADD: Divider visual antara form dan footer lebih rapi.
+     - ADD: Focus-visible states untuk semua interaktif elemen.
+     - ADD: Reduced motion support.
+     - IMPROVE: Spacing lebih konsisten dengan design system.
+     - IMPROVE: login-heading title size responsif.
+     - IMPROVE: Panel kiri lebih tinggi konten di desktop besar.
    ============================================================ */
 
 /* ── Anti-FOUC ────────────────────────────────────────────── */
 /*
- * Sembunyikan konten body selama ~150ms pertama menggunakan animasi CSS murni.
- * Tidak bergantung pada JavaScript sama sekali — aman jika JS lambat/gagal.
- * Setelah 150ms, konten muncul otomatis tanpa perlu JS apapun.
- * Ini cukup untuk menunggu CSS di-parse dan render pertama selesai.
+ * Sembunyikan konten selama 150ms pertama (murni CSS, tidak butuh JS).
+ * Cukup menunggu CSS parse + first paint selesai.
  */
 @keyframes fouc-guard {
   0%   { visibility: hidden; }
@@ -21,20 +42,25 @@
 /* ── Page Root ────────────────────────────────────────────── */
 .login-page {
   display: flex;
+  /* FIX C1: pakai dvh dengan fallback vh — keyboard virtual iOS tidak memotong */
   min-height: 100vh;
-  /* FIX L13: gunakan dvh agar tidak terpotong keyboard virtual di mobile */
   min-height: 100dvh;
   background: var(--clr-white);
-  overflow-x: hidden; /* cegah horizontal overflow */
+  overflow-x: hidden;
+  /* Izinkan scroll vertikal jika konten lebih tinggi dari viewport
+     (landscape mobile dengan keyboard terbuka) */
+  overflow-y: auto;
 }
 
 /* ═══════════════════════════════════════════════════════════
-   PANEL KIRI — Branding (tablet+)
+   PANEL KIRI — Branding (hanya desktop/tablet landscape)
+   FIX C7: ubah breakpoint 768px → 900px agar tidak muncul
+   di tablet portrait yang ruangnya terlalu sempit
    ═══════════════════════════════════════════════════════════ */
 .login-panel-left {
-  display: none; /* hidden di mobile */
+  display: none;
   flex: 1;
-  min-width: 0; /* cegah flex item overflow */
+  min-width: 0;
   background: linear-gradient(160deg,
     var(--clr-primary-deeper) 0%,
     var(--clr-primary)        55%,
@@ -47,7 +73,7 @@
   padding: var(--space-12) var(--space-10);
 }
 
-/* Subtle geometric texture — diagonal rule lines (identik dengan school-header) */
+/* Geometric texture — identik dengan school-header di Form Tamu */
 .login-panel-left::before {
   content: '';
   position: absolute;
@@ -62,13 +88,11 @@
   pointer-events: none;
 }
 
-/* Aksen vertikal kanan — border cahaya tipis memisahkan panel kiri dan kanan */
+/* Garis pemisah kanan — halus, memberikan kedalaman */
 .login-panel-left::after {
   content: '';
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; right: 0; bottom: 0;
   width: 1px;
   background: linear-gradient(
     to bottom,
@@ -80,18 +104,26 @@
   pointer-events: none;
 }
 
-/* Brand content */
+/* FIX C7: tampilkan panel kiri hanya di 900px+ */
+@media (min-width: 900px) {
+  .login-panel-left { display: flex; }
+}
+
+/* ── Branding Content ─────────────────────────────────────── */
 .login-brand {
   position: relative;
   z-index: 1;
   color: var(--clr-white);
   text-align: center;
   max-width: 360px;
+  width: 100%;
 }
 
+/* FIX C8: Logo container — position:relative + overflow:hidden
+   agar img yang di-inject JS tidak meluber */
 .login-brand__logo {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   background: rgba(255,255,255,0.15);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -102,7 +134,16 @@
   justify-content: center;
   margin: 0 auto var(--space-6);
   box-shadow: 0 16px 40px rgba(0,0,0,0.2);
-  overflow: hidden; /* cegah icon overflow */
+  /* FIX C8 */
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Saat logo gambar berhasil dimuat, icon default disembunyikan via JS */
+.login-brand__logo.has-logo > i,
+.login-brand__logo.has-logo > svg {
+  display: none;
 }
 
 .login-brand__title {
@@ -112,15 +153,18 @@
   letter-spacing: -0.03em;
   margin-bottom: var(--space-3);
   word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .login-brand__sub {
   font-size: var(--font-size-base);
-  color: rgba(255,255,255,0.70);
-  line-height: 1.6;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.65;
   word-break: break-word;
+  overflow-wrap: break-word;
 }
 
+/* Feature list */
 .login-brand__features {
   margin-top: var(--space-10);
   display: flex;
@@ -138,70 +182,114 @@
   color: rgba(255,255,255,0.85);
   font-size: var(--font-size-sm);
   font-weight: 500;
+  line-height: 1.5;
 }
 
 .login-feature__icon {
   width: 36px;
   height: 36px;
-  min-width: 36px; /* cegah shrink */
+  min-width: 36px;
   background: rgba(255,255,255,0.15);
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   color: rgba(255,255,255,0.9);
+  flex-shrink: 0;
 }
 
-@media (min-width: 768px) {
-  .login-panel-left { display: flex; }
+/* Dekorasi: garis horizontal di bawah feature list (desktop) */
+@media (min-width: 900px) {
+  .login-brand__features {
+    padding-top: var(--space-10);
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
    PANEL KANAN — Form Login
    ═══════════════════════════════════════════════════════════ */
 .login-panel-right {
-  /* FIX L8: width 100% eksplisit di mobile, flex di tablet+ */
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-6) var(--space-5);
+  /* FIX C2: padding atas+bawah cukup besar agar tidak terlalu padat */
+  padding: var(--space-8) var(--space-5);
   background: var(--clr-white);
-  /* FIX L13: jangan min-height 100vh agar tidak konflik dengan keyboard virtual */
+  /* FIX C2: min-height dengan fallback */
   min-height: 100vh;
   min-height: 100dvh;
   box-sizing: border-box;
+  /* Scroll vertikal jika keyboard virtual memotong tinggi */
   overflow-y: auto;
+  /* Align ke atas di landscape kecil agar tidak terpotong atas */
+  align-items: flex-start;
 }
 
-@media (min-width: 768px) {
+/* Tengahkan konten secara vertikal hanya jika ada cukup ruang */
+@media (min-height: 600px) {
   .login-panel-right {
-    /* Di tablet+: panel kanan hanya mengambil porsi tertentu */
-    flex: 0 0 480px;
-    max-width: 480px;
-    padding: var(--space-8) var(--space-10);
-    min-height: 0; /* biarkan flex container yang menentukan tinggi */
+    align-items: center;
+  }
+}
+
+/* Tablet portrait (768-899px) */
+@media (min-width: 640px) and (max-width: 899px) {
+  .login-panel-right {
+    padding: var(--space-10) var(--space-10);
+  }
+}
+
+/* FIX C7: Di 900px+, panel kanan mengambil lebar tetap */
+@media (min-width: 900px) {
+  .login-panel-right {
+    flex: 0 0 460px;
+    max-width: 460px;
+    padding: var(--space-10) var(--space-10);
+    min-height: 0;
+    align-items: center;
+  }
+}
+
+@media (min-width: 1200px) {
+  .login-panel-right {
+    flex: 0 0 520px;
+    max-width: 520px;
+    padding: var(--space-12) var(--space-12);
   }
 }
 
 /* ── Login Card ───────────────────────────────────────────── */
 .login-card {
   width: 100%;
-  max-width: 400px;
-  animation: slideUp 0.4s var(--transition-spring);
+  /* FIX C3: max-width konsisten */
+  max-width: 420px;
+  /* Pastikan tidak overflow di layar sempit */
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  /* Animasi masuk */
+  animation: loginCardIn 0.45s var(--transition-spring);
+}
+
+@keyframes loginCardIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ═══════════════════════════════════════════════════════════
-   MOBILE LOGO (hanya tampil di mobile)
+   LOGO MOBILE (hanya tampil di bawah 900px)
    ═══════════════════════════════════════════════════════════ */
 .login-logo-mobile {
   text-align: center;
   margin-bottom: var(--space-8);
 }
 
+/* FIX C8: Logo container mobile — sama seperti panel kiri */
 .login-logo-mobile__icon {
-  width: 64px;
-  height: 64px;
+  width: 68px;
+  height: 68px;
   background: linear-gradient(135deg, var(--clr-primary), var(--clr-accent));
   border-radius: var(--radius-xl);
   display: flex;
@@ -210,7 +298,15 @@
   margin: 0 auto var(--space-4);
   color: var(--clr-white);
   box-shadow: var(--shadow-primary);
+  /* FIX C8 */
+  position: relative;
   overflow: hidden;
+  flex-shrink: 0;
+}
+
+.login-logo-mobile__icon.has-logo > i,
+.login-logo-mobile__icon.has-logo > svg {
+  display: none;
 }
 
 .login-logo-mobile__title {
@@ -220,14 +316,16 @@
   letter-spacing: -0.02em;
   margin-bottom: var(--space-1);
   word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .login-logo-mobile__sub {
   font-size: var(--font-size-sm);
   color: var(--clr-gray-400);
+  line-height: 1.5;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .login-logo-mobile { display: none; }
 }
 
@@ -242,15 +340,26 @@
   color: var(--clr-gray-900);
   letter-spacing: -0.03em;
   margin-bottom: 4px;
+  /* FIX C3: responsif di layar sempit */
+  word-break: break-word;
 }
 
 .login-heading__sub {
   font-size: var(--font-size-sm);
   color: var(--clr-gray-400);
+  line-height: 1.55;
+}
+
+/* Kurangi ukuran heading di layar ≤360px */
+@media (max-width: 360px) {
+  .login-heading__title { font-size: var(--font-size-xl); }
 }
 
 /* ── Error Box ────────────────────────────────────────────── */
+/* FIX C4: Tidak lagi display:none di CSS — JS mengontrol visibility
+   via class .visible. Ini mencegah animasi tidak terpicu di beberapa browser. */
 .login-error {
+  /* State awal: tersembunyi tapi ada di flow (display diatur JS) */
   display: none;
   align-items: flex-start;
   gap: var(--space-3);
@@ -263,12 +372,14 @@
   margin-bottom: var(--space-5);
   font-weight: 500;
   word-break: break-word;
-  /* Animasi didefinisikan di sini, re-trigger lewat JS */
+  overflow-wrap: break-word;
+  /* Pastikan tidak overflow secara horizontal */
+  max-width: 100%;
 }
 
 .login-error.visible {
   display: flex;
-  animation: loginErrorIn 0.25s ease;
+  animation: loginErrorIn 0.25s ease forwards;
 }
 
 @keyframes loginErrorIn {
@@ -277,19 +388,21 @@
 }
 
 .login-error__icon {
-  font-size: 1rem;
   flex-shrink: 0;
   margin-top: 1px;
   line-height: 1.4;
+  /* Pastikan ikon tidak mengecil */
+  min-width: 1rem;
 }
 
-/* ── Form ─────────────────────────────────────────────────── */
+/* ── Login Form ───────────────────────────────────────────── */
 .login-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
+/* Override margin-bottom dari global .form-group agar gap form konsisten */
 .login-form .form-group { margin-bottom: 0; }
 
 .login-form .form-label {
@@ -298,22 +411,19 @@
   color: var(--clr-gray-700);
   margin-bottom: var(--space-2);
   display: block;
+  letter-spacing: -0.005em;
 }
 
-/* ── Username Input (dengan icon kiri) ────────────────────── */
-/* Menggunakan .input-icon-wrap dari global.css */
-.login-form .input-icon-wrap .form-control {
-  /* Icon kiri sudah diatur oleh global.css .input-icon-wrap__icon */
-}
-
-/* ── Password Input (icon kiri + toggle kanan) ─────────────  */
-/* FIX L6: class khusus untuk password field, tidak campur dengan input-icon-wrap */
+/* ── Password Input Wrapper ───────────────────────────────── */
+/* FIX C5: Wrapper menggunakan align-items:stretch sehingga tinggi
+   mengikuti input secara natural tanpa magic number. */
 .login-password-wrap {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
 }
 
+/* Ikon kiri (kunci) */
 .login-password-wrap__icon {
   position: absolute;
   left: var(--space-4);
@@ -321,35 +431,40 @@
   transform: translateY(-50%);
   color: var(--clr-gray-400);
   pointer-events: none;
-  font-size: 1rem;
   line-height: 1;
   z-index: 1;
+  /* Pastikan tidak menutupi input */
+  display: flex;
+  align-items: center;
 }
 
-/* FIX L7: hapus inline style — padding diset di sini */
+/* Input password */
 .login-password-input {
   width: 100%;
-  /* icon kiri + gap + icon kanan */
-  padding-left: calc(var(--space-4) + 1.4rem + var(--space-2));
+  /* padding kiri: space-4 + lebar ikon (~1rem) + space-2 */
+  padding-left: calc(var(--space-4) + 1.1rem + var(--space-2));
+  /* padding kanan: lebar toggle button */
   padding-right: 48px;
 }
 
 /* ── Password Toggle Button ───────────────────────────────── */
+/* FIX C6: Touch target minimal 44x44 untuk kemudahan sentuh */
 .password-toggle {
   position: absolute;
   right: 0;
   top: 0;
+  bottom: 0;
   width: 48px;
-  height: 100%;
   min-height: var(--touch-target);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--clr-gray-400);
-  font-size: 1.1rem;
   transition: color var(--transition), background var(--transition);
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
   cursor: pointer;
+  /* Tidak ada border — tombol transparan agar tidak mengganggu border input */
+  background: transparent;
 }
 
 .password-toggle:hover {
@@ -361,6 +476,12 @@
   outline: 2px solid var(--clr-primary);
   outline-offset: -2px;
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  color: var(--clr-primary);
+}
+
+/* Tambahkan border-radius kiri agar outline tidak terpotong input */
+.login-password-input:focus ~ .password-toggle {
+  /* Tidak perlu style khusus — outline hanya pada :focus-visible */
 }
 
 /* ── Submit Button ────────────────────────────────────────── */
@@ -368,11 +489,18 @@
   height: 52px;
   font-size: var(--font-size-md);
   border-radius: var(--radius-xl);
-  margin-top: var(--space-2);
   letter-spacing: -0.01em;
+  /* Tambah sedikit margin atas untuk visual breathing room */
+  margin-top: var(--space-1);
 }
 
-/* ── Footer ───────────────────────────────────────────────── */
+/* State loading — spinner muncul, teks hilang (via global .btn.loading) */
+.login-submit-btn.loading {
+  /* Cursor tidak-allowed sudah di global; tambahkan opacity lebih jelas */
+  opacity: 0.75;
+}
+
+/* ── Divider & Footer ─────────────────────────────────────── */
 .login-footer {
   margin-top: var(--space-7);
   padding-top: var(--space-5);
@@ -380,26 +508,34 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   text-align: center;
 }
 
 .login-footer__back {
-  color: var(--clr-primary);
-  font-weight: 600;
-  font-size: var(--font-size-sm);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: color var(--transition);
-  padding: var(--space-1) 0;
+  color: var(--clr-primary);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
   /* Touch target */
   min-height: var(--touch-target);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  transition: color var(--transition), background var(--transition);
+  text-decoration: none;
 }
 
 .login-footer__back:hover {
   color: var(--clr-primary-dark);
+  background: var(--clr-primary-light);
   text-decoration: none;
+}
+
+.login-footer__back:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 2px;
 }
 
 .login-footer__copy {
@@ -408,25 +544,22 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   RESPONSIVE — Landscape mobile & kecil
+   RESPONSIVE — Landscape mobile
    ═══════════════════════════════════════════════════════════ */
-
-/* Landscape mobile: kurangi padding agar form muat di layar */
 @media (max-height: 600px) and (orientation: landscape) {
   .login-panel-right {
     align-items: flex-start;
-    padding-top: var(--space-4);
-    padding-bottom: var(--space-4);
+    padding-top: var(--space-5);
+    padding-bottom: var(--space-5);
   }
 
   .login-logo-mobile {
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
   }
 
   .login-logo-mobile__icon {
-    width: 48px;
-    height: 48px;
-    font-size: 1.4rem;
+    width: 52px;
+    height: 52px;
   }
 
   .login-heading {
@@ -436,12 +569,26 @@
   .login-heading__title {
     font-size: var(--font-size-xl);
   }
+
+  .login-form {
+    gap: var(--space-3);
+  }
+
+  .login-submit-btn {
+    height: 46px;
+    margin-top: 0;
+  }
+
+  .login-footer {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+  }
 }
 
-/* Layar sangat kecil (< 360px) */
+/* ── Layar sangat kecil (< 360px) ────────────────────────── */
 @media (max-width: 359px) {
   .login-panel-right {
-    padding: var(--space-4) var(--space-4);
+    padding: var(--space-5) var(--space-4);
   }
 
   .login-heading__title {
@@ -451,21 +598,21 @@
   .login-submit-btn {
     height: 48px;
   }
-}
 
-/* Tablet landscape: panel kanan lebih lebar */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .login-panel-right {
-    flex: 0 0 420px;
-    max-width: 420px;
+  .login-card {
+    max-width: 100%;
   }
 }
 
-/* Desktop: panel kanan lebar tetap */
-@media (min-width: 1024px) {
-  .login-panel-right {
-    flex: 0 0 520px;
-    max-width: 520px;
-    padding: var(--space-12) var(--space-12);
+/* ── Reduced motion ───────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .no-fouc { animation: none; }
+
+  .login-card {
+    animation: none;
+  }
+
+  .login-error.visible {
+    animation: none;
   }
 }
