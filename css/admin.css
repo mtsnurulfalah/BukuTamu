@@ -481,6 +481,14 @@
   margin-bottom: var(--space-5);
 }
 
+/* ── Modal Detail — scroll dan overflow guard ─────────────── */
+/* Konsisten dengan satpam.css .modal--detail */
+.modal--detail {
+  max-height: 90vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 /* ── Notif Pulse ──────────────────────────────────────────── */
 .notif-dot {
   width: 8px;
@@ -891,6 +899,7 @@
 }
 
 /* ── Detail section title ────────────────────────────────── */
+/* Konsisten dengan satpam.css — tambahkan border-top, margin, padding */
 .detail-section-title {
   font-size: var(--font-size-xs);
   font-weight: 700;
@@ -900,6 +909,120 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* Konsistensi dengan satpam.css */
+  margin: var(--space-5) 0 var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--clr-gray-100);
+}
+
+/* Ikon dalam detail-section-title sejajar vertikal */
+.detail-section-title svg,
+.detail-section-title i {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ── Detail Anggota List — dipakai di admin sekarang via CSS class ── */
+/* Class-class ini sebelumnya hanya ada di satpam.css.
+   Dipindahkan logikanya ke global agar admin bisa memakai hal yang sama. */
+.detail-anggota-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.detail-anggota-item {
+  background: var(--clr-gray-50);
+  border: 1px solid var(--clr-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  /* Cegah overflow di mobile */
+  min-width: 0;
+  overflow: hidden;
+}
+
+.detail-anggota-item__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.detail-anggota-item__nomor {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Tamu pertama mendapat latar biru */
+.detail-anggota-item:first-child .detail-anggota-item__nomor {
+  background: var(--clr-primary);
+  color: var(--clr-white);
+}
+
+.detail-anggota-item__nama {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--clr-gray-800);
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.detail-anggota-item__wakil {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--clr-primary);
+  color: var(--clr-white);
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.detail-anggota-item__jabatan {
+  font-size: 11px;
+  color: var(--clr-gray-500);
+  background: var(--clr-gray-200);
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.detail-anggota-item__contact {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-500);
+}
+
+/* Class baru untuk span kontak individu — menggantikan inline style */
+.detail-anggota-item__contact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.detail-anggota-item__contact-item svg,
+.detail-anggota-item__contact-item i {
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 /* ── Tabel wrapper: responsive di mobile ─────────────────── */
