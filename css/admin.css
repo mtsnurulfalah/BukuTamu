@@ -481,7 +481,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
   flex-shrink: 0;
 }
 
@@ -696,7 +695,7 @@
   background: linear-gradient(160deg,
     var(--clr-primary-deeper) 0%,
     var(--clr-primary)        50%,
-    #3b82f6                   100%
+    var(--clr-primary-dark)   100%
   );
   padding: var(--space-8) var(--space-5);
   text-align: center;
@@ -704,24 +703,31 @@
   overflow: hidden;
 }
 
-.settings-preview-header::before,
-.settings-preview-header::after {
+/* Diagonal texture — konsisten dengan school-header dan login panel */
+.settings-preview-header::before {
   content: '';
   position: absolute;
-  border-radius: 50%;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 28px,
+    rgba(255,255,255,0.025) 28px,
+    rgba(255,255,255,0.025) 29px
+  );
   pointer-events: none;
 }
 
-.settings-preview-header::before {
-  width: 180px; height: 180px;
-  background: rgba(255,255,255,0.05);
-  top: -60px; right: -40px;
-}
-
+/* Fade out di bawah */
 .settings-preview-header::after {
-  width: 120px; height: 120px;
-  background: rgba(255,255,255,0.04);
-  bottom: -40px; left: -30px;
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, rgba(13,37,84,0.30));
+  pointer-events: none;
 }
 
 .settings-preview-header__logo {
@@ -734,7 +740,6 @@
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--space-3);
-  font-size: 1.75rem;
   overflow: hidden;
   position: relative;
   z-index: 1;
@@ -768,10 +773,12 @@
 
 /* ── Navbar Logo Preview ──────────────────────────────────── */
 .navbar__brand-logo-img {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-md);
   object-fit: cover;
+  position: absolute;
+  inset: 0;
 }
 
 /* ── Siswa Filter Bar ─────────────────────────────────────── */
@@ -818,9 +825,9 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
+  background: var(--clr-primary-light);
+  border: 1px solid var(--clr-primary-mid);
+  color: var(--clr-primary);
   font-size: 10px;
   font-weight: 700;
   padding: 1px 7px;
