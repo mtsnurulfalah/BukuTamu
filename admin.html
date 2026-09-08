@@ -18,8 +18,8 @@
 </head>
 <body class="admin-page">
 
-  <!-- Toast Container -->
-  <div id="toast-container" role="alert" aria-live="polite"></div>
+  <!-- Toast Container — live region; tidak pakai role="alert" ganda -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 
   <!-- Navbar -->
   <nav class="navbar" role="navigation" aria-label="Navigasi utama">
@@ -194,6 +194,8 @@
           <div class="chartjs-wrap" id="chart-jenis-wrap" style="display:none;">
             <canvas id="chart-jenis" aria-label="Grafik breakdown jenis tamu" role="img"></canvas>
           </div>
+          <!-- FIX A8: fallback teks saat data kosong (tidak mengganti canvas) -->
+          <p class="text-sm text-muted" id="chart-jenis-empty" style="display:none;padding:var(--space-4);">Belum ada data kunjungan.</p>
         </div>
 
         <!-- Tren 7 hari -->
@@ -794,13 +796,13 @@
   </div>
 
   <!-- Scripts -->
-  <!-- Chart.js (versi slim tanpa bundler) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/admin.js"></script>
-  <script>lucide.createIcons();</script>
+  <!-- FIX A15: guard lucide.createIcons() jika CDN gagal -->
+  <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
 
 </body>
 </html>
