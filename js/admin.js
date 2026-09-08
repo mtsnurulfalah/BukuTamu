@@ -1576,33 +1576,37 @@ function _updateNavbarName(nama) {
 
 /**
  * Update logo di navbar live (brand icon).
+ * Menargetkan #navbar-logo-wrap — menggantikan SVG default dengan <img> saat logo tersedia.
  * @param {string} url
  */
 function _updateNavbarLogo(url) {
-  const iconEl = document.querySelector('.navbar__brand-icon');
+  const iconEl = document.getElementById('navbar-logo-wrap');
   if (!iconEl) return;
 
   // Hapus img lama jika ada
   const oldImg = iconEl.querySelector('img');
   if (oldImg) oldImg.remove();
 
+  // SVG default (icon book-open) — sembunyikan/tampilkan sesuai keadaan
+  const svgIcon = iconEl.querySelector('svg, i');
+
   if (url) {
     const img     = document.createElement('img');
     img.src       = normalizeLogoUrl(url);
-    img.alt       = 'Logo';
+    img.alt       = 'Logo sekolah';
     img.className = 'navbar__brand-logo-img';
 
-    // Sembunyikan icon default saat logo dimuat agar tidak tampil bersamaan.
-    img.onload  = () => { iconEl.style.fontSize = '0'; };
+    img.onload  = () => {
+      if (svgIcon) svgIcon.style.display = 'none';
+    };
     img.onerror = () => {
       img.remove();
-      iconEl.style.fontSize = ''; // kembalikan emoji saat gambar gagal load
+      if (svgIcon) svgIcon.style.display = '';
     };
 
     iconEl.appendChild(img);
   } else {
-    // Hapus semua img dan kembalikan tampilan emoji
-    iconEl.style.fontSize = '';
+    if (svgIcon) svgIcon.style.display = '';
   }
 }
 
