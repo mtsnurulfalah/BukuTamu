@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="theme-color" content="#1a4480" />
   <meta name="description" content="Dashboard Admin — Buku Tamu Digital" />
   <title>Dashboard Admin — Buku Tamu Digital</title>
   <link rel="manifest" href="/manifest.json" />
@@ -14,6 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/global.css" />
   <link rel="stylesheet" href="/css/admin.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body class="admin-page">
 
@@ -23,8 +24,13 @@
   <!-- Navbar -->
   <nav class="navbar" role="navigation" aria-label="Navigasi utama">
     <div class="navbar__brand">
-      <div class="navbar__brand-icon" aria-hidden="true">🏫</div>
-      <span id="nav-school-name">Buku Tamu</span>
+      <div class="navbar__brand-icon" id="navbar-logo-wrap" aria-hidden="true">
+        <i data-lucide="book-open" style="width:1.1rem;height:1.1rem;color:var(--clr-primary-deeper);"></i>
+      </div>
+      <div class="navbar__brand-text">
+        <span class="navbar__brand-name" id="nav-school-name">Buku Tamu</span>
+        <span class="navbar__brand-label">Dashboard Admin</span>
+      </div>
     </div>
     <div class="navbar__right">
       <div style="position:relative;display:inline-flex;">
@@ -36,7 +42,7 @@
         id="btn-logout"
         aria-label="Keluar"
       >
-        🚪 Keluar
+        <i data-lucide="log-out" style="width:0.9rem;height:0.9rem;"></i> Keluar
       </button>
     </div>
   </nav>
@@ -60,7 +66,7 @@
         aria-selected="true"
         aria-controls="pane-ringkasan"
       >
-        📊 Ringkasan
+        <i data-lucide="bar-chart-2" style="width:0.85rem;height:0.85rem;"></i> Ringkasan
       </button>
       <button
         class="tab-btn"
@@ -69,7 +75,7 @@
         aria-selected="false"
         aria-controls="pane-rekap"
       >
-        📋 Rekap Tamu
+        <i data-lucide="clipboard-list" style="width:0.85rem;height:0.85rem;"></i> Rekap Tamu
       </button>
       <button
         class="tab-btn"
@@ -78,7 +84,7 @@
         aria-selected="false"
         aria-controls="pane-staf"
       >
-        👥 Staf
+        <i data-lucide="users" style="width:0.85rem;height:0.85rem;"></i> Staf
       </button>
       <button
         class="tab-btn"
@@ -87,7 +93,7 @@
         aria-selected="false"
         aria-controls="pane-siswa"
       >
-        🎓 Siswa
+        <i data-lucide="graduation-cap" style="width:0.85rem;height:0.85rem;"></i> Siswa
       </button>
       <button
         class="tab-btn"
@@ -96,7 +102,7 @@
         aria-selected="false"
         aria-controls="pane-pengaturan"
       >
-        ⚙️ Pengaturan
+        <i data-lucide="settings" style="width:0.85rem;height:0.85rem;"></i> Pengaturan
       </button>
     </div>
   </nav>
@@ -120,7 +126,7 @@
       <!-- Stat Cards Grid — ▶▶ 6 cards untuk multi-tamu -->
       <div class="stats-grid stats-grid--6" id="stats-grid">
         <div class="stat-card stat-card--primary">
-          <div class="stat-card__icon" aria-hidden="true">👥</div>
+          <div class="stat-card__icon" aria-hidden="true"><i data-lucide="users" style="width:1.2rem;height:1.2rem;color:var(--clr-primary);"></i></div>
           <div class="stat-card__label">Individu Hari Ini</div>
           <div class="stat-card__value" id="stat-hari-ini">
             <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
@@ -128,7 +134,7 @@
           <div class="stat-card__sub" id="stat-hari-ini-sub">—</div>
         </div>
         <div class="stat-card stat-card--success">
-          <div class="stat-card__icon" aria-hidden="true">🟢</div>
+          <div class="stat-card__icon" aria-hidden="true"><i data-lucide="user-check" style="width:1.2rem;height:1.2rem;color:var(--clr-success);"></i></div>
           <div class="stat-card__label">Sedang Hadir</div>
           <div class="stat-card__value" id="stat-aktif">
             <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
@@ -136,7 +142,7 @@
           <div class="stat-card__sub" id="stat-aktif-sub">individu aktif</div>
         </div>
         <div class="stat-card stat-card--warning">
-          <div class="stat-card__icon" aria-hidden="true">📅</div>
+          <div class="stat-card__icon" aria-hidden="true"><i data-lucide="calendar-days" style="width:1.2rem;height:1.2rem;color:var(--clr-warning);"></i></div>
           <div class="stat-card__label">Individu Bulan Ini</div>
           <div class="stat-card__value" id="stat-bulan-ini">
             <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
@@ -144,7 +150,7 @@
           <div class="stat-card__sub" id="stat-bulan-ini-sub">—</div>
         </div>
         <div class="stat-card stat-card--info">
-          <div class="stat-card__icon" aria-hidden="true">🏆</div>
+          <div class="stat-card__icon" aria-hidden="true"><i data-lucide="trophy" style="width:1.2rem;height:1.2rem;color:var(--clr-info);"></i></div>
           <div class="stat-card__label">Terbanyak</div>
           <div class="stat-card__value" id="stat-terbanyak" style="font-size:1rem;">
             <div class="skeleton skeleton--text" style="width:80px;height:1.2rem;"></div>
@@ -153,7 +159,7 @@
         </div>
         <!-- ▶▶ MULTI-TAMU: Stat card baru -->
         <div class="stat-card stat-card--purple">
-          <div class="stat-card__icon" aria-hidden="true">📊</div>
+          <div class="stat-card__icon" aria-hidden="true"><i data-lucide="database" style="width:1.2rem;height:1.2rem;color:#7c3aed;"></i></div>
           <div class="stat-card__label">Total Semua</div>
           <div class="stat-card__value" id="stat-total-semua">
             <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
@@ -161,7 +167,7 @@
           <div class="stat-card__sub" id="stat-total-semua-sub">individu</div>
         </div>
         <div class="stat-card stat-card--orange">
-          <div class="stat-card__icon" aria-hidden="true">🚌</div>
+          <div class="stat-card__icon" aria-hidden="true"><i data-lucide="bus" style="width:1.2rem;height:1.2rem;color:#ea580c;"></i></div>
           <div class="stat-card__label">Rombongan</div>
           <div class="stat-card__value" id="stat-rombongan">
             <div class="skeleton skeleton--text" style="width:60px;height:2rem;"></div>
@@ -240,14 +246,14 @@
         </div>
         <div class="filter-actions">
           <button class="btn btn--primary btn--sm" id="btn-filter">
-            🔍 Terapkan Filter
+            <i data-lucide="filter" style="width:0.85rem;height:0.85rem;"></i> Terapkan Filter
           </button>
           <button class="btn btn--secondary btn--sm" id="btn-reset-filter">
-            ↩️ Reset
+            <i data-lucide="rotate-ccw" style="width:0.85rem;height:0.85rem;"></i> Reset
           </button>
           <button class="btn export-btn btn--sm" id="btn-export">
             <span class="btn__spinner"></span>
-            <span class="btn__text">📥 Export CSV</span>
+            <span class="btn__text"><i data-lucide="download" style="width:0.85rem;height:0.85rem;"></i> Export CSV</span>
           </button>
         </div>
       </div>
@@ -283,7 +289,9 @@
 
       <!-- Empty State Rekap -->
       <div class="empty-state" id="rekap-empty" style="display:none;">
-        <div class="empty-state__icon" aria-hidden="true">📭</div>
+        <div class="empty-state__icon" aria-hidden="true">
+          <i data-lucide="inbox" style="width:3.5rem;height:3.5rem;color:var(--clr-gray-300);"></i>
+        </div>
         <div class="empty-state__title">Tidak ada data</div>
         <div class="empty-state__desc">Tidak ada data kunjungan untuk filter yang dipilih.</div>
       </div>
@@ -306,7 +314,7 @@
           <div class="section-subtitle">Kelola daftar staf yang muncul di dropdown form tamu.</div>
         </div>
         <button class="btn btn--primary btn--sm" id="btn-tambah-staf" aria-expanded="false">
-          ➕ Tambah Staf
+          <i data-lucide="plus" style="width:0.85rem;height:0.85rem;"></i> Tambah Staf
         </button>
       </div>
 
@@ -344,7 +352,7 @@
           <div style="display:flex;gap:var(--space-3);margin-top:var(--space-4);">
             <button type="submit" class="btn btn--primary btn--sm" id="btn-save-staf">
               <span class="btn__spinner"></span>
-              <span class="btn__text">💾 Simpan</span>
+              <span class="btn__text">Simpan</span>
             </button>
             <button type="button" class="btn btn--secondary btn--sm" id="btn-cancel-staf">
               Batal
@@ -374,7 +382,9 @@
 
       <!-- Empty staf -->
       <div class="empty-state" id="staf-empty" style="display:none;">
-        <div class="empty-state__icon" aria-hidden="true">👤</div>
+        <div class="empty-state__icon" aria-hidden="true">
+          <i data-lucide="user-x" style="width:3.5rem;height:3.5rem;color:var(--clr-gray-300);"></i>
+        </div>
         <div class="empty-state__title">Belum ada staf</div>
         <div class="empty-state__desc">Tambahkan staf untuk ditampilkan di form tamu.</div>
       </div>
@@ -394,7 +404,7 @@
           <div class="section-subtitle">Kelola daftar siswa untuk dropdown "Orang Tua/Wali Murid" di form tamu.</div>
         </div>
         <button class="btn btn--primary btn--sm" id="btn-tambah-siswa" aria-expanded="false">
-          ➕ Tambah Siswa
+          <i data-lucide="plus" style="width:0.85rem;height:0.85rem;"></i> Tambah Siswa
         </button>
       </div>
 
@@ -432,7 +442,7 @@
           <div style="display:flex;gap:var(--space-3);margin-top:var(--space-4);">
             <button type="submit" class="btn btn--primary btn--sm" id="btn-save-siswa">
               <span class="btn__spinner"></span>
-              <span class="btn__text">💾 Simpan</span>
+              <span class="btn__text">Simpan</span>
             </button>
             <button type="button" class="btn btn--secondary btn--sm" id="btn-cancel-siswa">
               Batal
@@ -447,7 +457,7 @@
           type="search"
           id="siswa-search"
           class="form-control"
-          placeholder="🔍 Cari nama atau kelas..."
+          placeholder="Cari nama atau kelas..."
           aria-label="Cari siswa"
           style="max-width:300px;"
         />
@@ -474,7 +484,9 @@
 
       <!-- Empty state -->
       <div class="empty-state" id="siswa-empty" style="display:none;">
-        <div class="empty-state__icon" aria-hidden="true">🎓</div>
+        <div class="empty-state__icon" aria-hidden="true">
+          <i data-lucide="graduation-cap" style="width:3.5rem;height:3.5rem;color:var(--clr-gray-300);"></i>
+        </div>
         <div class="empty-state__title">Belum ada data siswa</div>
         <div class="empty-state__desc">Tambahkan siswa untuk ditampilkan di dropdown form tamu.</div>
       </div>
@@ -497,7 +509,7 @@
       <!-- ── Identitas Sekolah ─────────────────────────────── -->
       <div class="settings-card">
         <div class="settings-card__header">
-          <div class="settings-card__icon">🏫</div>
+          <div class="settings-card__icon"><i data-lucide="school" style="width:1.4rem;height:1.4rem;color:var(--clr-primary);"></i></div>
           <div>
             <div class="settings-card__title">Identitas Sekolah</div>
             <div class="settings-card__sub">Nama, alamat, dan kepala sekolah</div>
@@ -555,7 +567,7 @@
             <div class="settings-actions">
               <button type="submit" class="btn btn--primary" id="btn-save-identitas">
                 <span class="btn__spinner"></span>
-                <span class="btn__text">💾 Simpan Identitas</span>
+                <span class="btn__text">Simpan Identitas</span>
               </button>
             </div>
           </form>
@@ -565,7 +577,7 @@
       <!-- ── Logo Sekolah ──────────────────────────────────── -->
       <div class="settings-card">
         <div class="settings-card__header">
-          <div class="settings-card__icon">🖼️</div>
+          <div class="settings-card__icon"><i data-lucide="image" style="width:1.4rem;height:1.4rem;color:var(--clr-primary);"></i></div>
           <div>
             <div class="settings-card__title">Logo Sekolah</div>
             <div class="settings-card__sub">Tampil di header form tamu dan halaman login</div>
@@ -578,7 +590,7 @@
             <div class="logo-preview-box">
               <div class="logo-preview-box__label">Preview</div>
               <div class="logo-preview-box__img" id="preview-logo-sekolah">
-                <span id="preview-logo-sekolah-fallback">🏫</span>
+                <span id="preview-logo-sekolah-fallback"><i data-lucide="school" style="width:2.2rem;height:2.2rem;color:var(--clr-gray-400);"></i></span>
               </div>
               <div class="logo-preview-box__desc" id="preview-logo-sekolah-status">
                 Belum ada logo
@@ -599,25 +611,25 @@
                     placeholder="https://drive.google.com/uc?id=..."
                   />
                   <p class="form-hint">
-                    💡 Paste link share Google Drive langsung — sistem otomatis mengkonversi ke format yang dapat ditampilkan.
+                    Paste link share Google Drive langsung — sistem otomatis mengkonversi ke format yang dapat ditampilkan.
                   </p>
                 </div>
                 <div class="logo-form-actions">
                   <button type="button" class="btn btn--soft btn--sm" id="btn-preview-logo-sekolah">
-                    👁️ Preview
+                    <i data-lucide="eye" style="width:0.85rem;height:0.85rem;"></i> Preview
                   </button>
                   <button type="submit" class="btn btn--primary btn--sm" id="btn-save-logo-sekolah">
                     <span class="btn__spinner"></span>
-                    <span class="btn__text">💾 Simpan</span>
+                    <span class="btn__text">Simpan</span>
                   </button>
                   <button type="button" class="btn btn--secondary btn--sm" id="btn-hapus-logo-sekolah">
-                    🗑️ Hapus
+                    <i data-lucide="trash-2" style="width:0.85rem;height:0.85rem;"></i> Hapus
                   </button>
                 </div>
               </form>
 
               <div class="logo-guide">
-                <div class="logo-guide__title">📌 Cara mendapatkan URL dari Google Drive:</div>
+                <div class="logo-guide__title">Cara mendapatkan URL dari Google Drive:</div>
                 <ol class="logo-guide__steps">
                   <li>Upload gambar ke Google Drive</li>
                   <li>Klik kanan → <strong>Bagikan</strong> → atur ke <em>Siapa saja dengan link</em></li>
@@ -634,7 +646,7 @@
       <!-- ── Logo Aplikasi ─────────────────────────────────── -->
       <div class="settings-card">
         <div class="settings-card__header">
-          <div class="settings-card__icon">📱</div>
+          <div class="settings-card__icon"><i data-lucide="smartphone" style="width:1.4rem;height:1.4rem;color:var(--clr-primary);"></i></div>
           <div>
             <div class="settings-card__title">Logo Aplikasi</div>
             <div class="settings-card__sub">Ikon di navbar dan tab browser</div>
@@ -647,7 +659,7 @@
             <div class="logo-preview-box">
               <div class="logo-preview-box__label">Preview</div>
               <div class="logo-preview-box__img logo-preview-box__img--sm" id="preview-logo-app">
-                <span id="preview-logo-app-fallback">📋</span>
+                <span id="preview-logo-app-fallback"><i data-lucide="layout-grid" style="width:2rem;height:2rem;color:var(--clr-gray-400);"></i></span>
               </div>
               <div class="logo-preview-box__desc" id="preview-logo-app-status">
                 Menggunakan ikon default
@@ -668,19 +680,19 @@
                     placeholder="https://..."
                   />
                   <p class="form-hint">
-                    💡 Ukuran ideal: 192×192px atau 512×512px, format PNG/WebP, rasio 1:1. Mendukung link Google Drive langsung.
+                    Ukuran ideal: 192×192px atau 512×512px, format PNG/WebP, rasio 1:1. Mendukung link Google Drive langsung.
                   </p>
                 </div>
                 <div class="logo-form-actions">
                   <button type="button" class="btn btn--soft btn--sm" id="btn-preview-logo-app">
-                    👁️ Preview
+                    <i data-lucide="eye" style="width:0.85rem;height:0.85rem;"></i> Preview
                   </button>
                   <button type="submit" class="btn btn--primary btn--sm" id="btn-save-logo-app">
                     <span class="btn__spinner"></span>
-                    <span class="btn__text">💾 Simpan</span>
+                    <span class="btn__text">Simpan</span>
                   </button>
                   <button type="button" class="btn btn--secondary btn--sm" id="btn-hapus-logo-app">
-                    🗑️ Hapus
+                    <i data-lucide="trash-2" style="width:0.85rem;height:0.85rem;"></i> Hapus
                   </button>
                 </div>
               </form>
@@ -693,7 +705,7 @@
       <!-- ── Pratinjau Header Form Tamu ────────────────────── -->
       <div class="settings-card">
         <div class="settings-card__header">
-          <div class="settings-card__icon">🖥️</div>
+          <div class="settings-card__icon"><i data-lucide="monitor" style="width:1.4rem;height:1.4rem;color:var(--clr-primary);"></i></div>
           <div>
             <div class="settings-card__title">Pratinjau Header Form Tamu</div>
             <div class="settings-card__sub">Tampilan header berdasarkan pengaturan saat ini</div>
@@ -702,7 +714,7 @@
         <div class="settings-card__body" style="padding:0;overflow:hidden;border-radius:0 0 var(--radius-xl) var(--radius-xl);">
           <div class="settings-preview-header">
             <div class="settings-preview-header__logo" id="settings-preview-logo">
-              <span id="settings-preview-logo-icon">🏫</span>
+              <span id="settings-preview-logo-icon"><i data-lucide="school" style="width:1.6rem;height:1.6rem;color:rgba(255,255,255,0.9);"></i></span>
             </div>
             <div class="settings-preview-header__name" id="settings-preview-name">
               Nama Sekolah
@@ -723,7 +735,9 @@
   <div class="modal-backdrop" id="modal-detail" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
     <div class="modal">
       <div class="modal__handle" aria-hidden="true"></div>
-      <button class="modal__close" id="btn-close-detail" aria-label="Tutup detail">✕</button>
+      <button class="modal__close" id="btn-close-detail" aria-label="Tutup detail">
+        <i data-lucide="x" style="width:1rem;height:1rem;"></i>
+      </button>
       <h2 class="modal__title" id="modal-detail-title">Detail Kunjungan</h2>
       <div class="detail-badge-row" id="modal-detail-badges"></div>
       <div id="modal-detail-content">
@@ -738,7 +752,9 @@
     <div class="modal modal--logout">
       <div class="modal__handle" aria-hidden="true"></div>
 
-      <div class="logout-modal__icon" aria-hidden="true">🚪</div>
+      <div class="logout-modal__icon" aria-hidden="true">
+        <i data-lucide="log-out" style="width:2rem;height:2rem;color:var(--clr-gray-600);"></i>
+      </div>
       <h2 class="modal__title" id="modal-logout-title">Keluar dari Aplikasi</h2>
       <p class="logout-modal__desc">
         Pilih halaman yang ingin dibuka setelah Anda keluar.
@@ -748,7 +764,7 @@
         <!-- Keluar & ke Form Tamu -->
         <button class="btn btn--primary logout-modal__btn" id="btn-logout-to-form">
           <span class="btn__spinner"></span>
-          <span class="logout-modal__btn-icon">📋</span>
+          <span class="logout-modal__btn-icon"><i data-lucide="clipboard-list" style="width:1.4rem;height:1.4rem;"></i></span>
           <span class="logout-modal__btn-body">
             <span class="logout-modal__btn-label">Keluar &amp; Buka Form Tamu</span>
             <span class="logout-modal__btn-sub">Halaman pendaftaran tamu publik</span>
@@ -758,7 +774,7 @@
         <!-- Keluar & ke Login -->
         <button class="btn btn--secondary logout-modal__btn" id="btn-logout-to-login">
           <span class="btn__spinner"></span>
-          <span class="logout-modal__btn-icon">🔐</span>
+          <span class="logout-modal__btn-icon"><i data-lucide="log-in" style="width:1.4rem;height:1.4rem;"></i></span>
           <span class="logout-modal__btn-body">
             <span class="logout-modal__btn-label">Keluar &amp; Buka Hal. Login</span>
             <span class="logout-modal__btn-sub">Kembali ke halaman masuk petugas</span>
@@ -778,6 +794,7 @@
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/admin.js"></script>
+  <script>lucide.createIcons();</script>
 
 </body>
 </html>
