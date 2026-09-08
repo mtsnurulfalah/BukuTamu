@@ -47,29 +47,37 @@
   padding: var(--space-12) var(--space-10);
 }
 
-/* Dekorasi lingkaran blur */
-.login-panel-left::before,
-.login-panel-left::after {
+/* Subtle geometric texture — diagonal rule lines (identik dengan school-header) */
+.login-panel-left::before {
   content: '';
   position: absolute;
-  border-radius: 50%;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 28px,
+    rgba(255,255,255,0.025) 28px,
+    rgba(255,255,255,0.025) 29px
+  );
   pointer-events: none;
 }
 
-.login-panel-left::before {
-  width: 400px;
-  height: 400px;
-  background: rgba(255,255,255,0.06);
-  top: -120px;
-  right: -100px;
-}
-
+/* Aksen vertikal kanan — border cahaya tipis memisahkan panel kiri dan kanan */
 .login-panel-left::after {
-  width: 280px;
-  height: 280px;
-  background: rgba(255,255,255,0.04);
-  bottom: -80px;
-  left: -60px;
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255,255,255,0.15) 30%,
+    rgba(255,255,255,0.15) 70%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 /* Brand content */
