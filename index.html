@@ -18,8 +18,8 @@
 </head>
 <body class="form-page">
 
-  <!-- Toast Container -->
-  <div id="toast-container" role="alert" aria-live="polite"></div>
+  <!-- FIX B24: Toast container sebagai live region, toast individual tidak perlu role -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 
   <!-- ── Hero Header ─────────────────────────────────────── -->
   <header class="school-header" id="school-header">
@@ -29,7 +29,7 @@
         <span>Masuk</span>
       </a>
     </div>
-    <div class="school-header__logo" id="school-logo">
+    <div class="school-header__logo" id="school-logo" role="img" aria-label="Logo sekolah">
       <span id="school-logo-icon"><i data-lucide="school" style="width:2.2rem;height:2.2rem;color:rgba(255,255,255,0.9);"></i></span>
     </div>
     <h1 class="school-header__title" id="school-name">Buku Tamu Digital</h1>
@@ -48,8 +48,8 @@
   <main id="main-content">
 
     <!-- Loading State -->
-    <div class="form-loading" id="form-loading">
-      <div class="form-loading__spinner"></div>
+    <div class="form-loading" id="form-loading" role="status" aria-label="Memuat formulir">
+      <div class="form-loading__spinner" aria-hidden="true"></div>
       <p class="form-loading__text">Memuat formulir...</p>
     </div>
 
@@ -70,7 +70,7 @@
         </div>
         <div class="form-progress__step" id="prog-step-3" data-step="3">
           <div class="form-progress__dot" aria-hidden="true"><span class="form-progress__dot-num">3</span></div>
-          <span class="form-progress__label">Data</span>
+          <span class="form-progress__label">Jumlah</span>
         </div>
         <div class="form-progress__step" id="prog-step-4" data-step="4">
           <div class="form-progress__dot" aria-hidden="true"><span class="form-progress__dot-num">4</span></div>
@@ -78,7 +78,7 @@
         </div>
         <div class="form-progress__step" id="prog-step-5" data-step="5">
           <div class="form-progress__dot" aria-hidden="true"><span class="form-progress__dot-num">5</span></div>
-          <span class="form-progress__label">Tanda Tangan</span>
+          <span class="form-progress__label">TTD</span>
         </div>
       </nav>
 
@@ -147,7 +147,12 @@
                   aria-label="Kurangi jumlah tamu"
                   disabled
                 >−</button>
-                <span class="jumlah-tamu-control__display" id="jumlah-tamu-display">1</span>
+                <span
+                  class="jumlah-tamu-control__display"
+                  id="jumlah-tamu-display"
+                  aria-live="polite"
+                  aria-label="Jumlah tamu"
+                >1</span>
                 <button
                   type="button"
                   class="jumlah-tamu-control__btn"
@@ -161,7 +166,7 @@
               Untuk rombongan, tambah jumlah tamu. Setiap anggota akan didata satu per satu.
             </div>
             <!-- Muncul saat jenis = Orang Tua/Wali Murid -->
-            <div class="jumlah-tamu-hint jumlah-tamu-hint--lock" id="rombongan-lock-notice" style="display:none;">
+            <div class="jumlah-tamu-hint jumlah-tamu-hint--lock" id="rombongan-lock-notice" style="display:none;" role="note">
               <strong>Orang Tua/Wali Murid</strong> hanya dapat mendaftar secara perorangan (1 orang per kunjungan).
             </div>
           </div>
@@ -185,6 +190,7 @@
               name="instansi"
               class="form-control"
               placeholder="Contoh: SDN 01, Dinas Pendidikan"
+              autocomplete="organization"
               required
             />
             <!-- Dropdown siswa — untuk Orang Tua/Wali Murid -->
@@ -214,21 +220,29 @@
             </span>
           </div>
 
+          <!-- FIX U10: Karakter counter textarea keperluan -->
           <div class="form-group">
             <label class="form-label" for="keperluan">
               Keperluan <span class="required">*</span>
             </label>
-            <textarea
-              id="keperluan"
-              name="keperluan"
-              class="form-control"
-              placeholder="Jelaskan keperluan kunjungan Anda..."
-              rows="3"
-              required
-            ></textarea>
-            <span class="form-error" id="error-keperluan" role="alert">
-              Keperluan wajib diisi
-            </span>
+            <div class="textarea-wrapper">
+              <textarea
+                id="keperluan"
+                name="keperluan"
+                class="form-control"
+                placeholder="Jelaskan keperluan kunjungan Anda..."
+                rows="3"
+                maxlength="500"
+                required
+              ></textarea>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin-top:var(--space-1);">
+              <span class="form-error" id="error-keperluan" role="alert" style="margin-top:0;">
+                Keperluan wajib diisi
+              </span>
+              <!-- Counter teks (FIX U10) -->
+              <span class="char-counter" id="keperluan-counter" aria-live="polite">0/500</span>
+            </div>
           </div>
 
           <div class="form-group" style="margin-bottom:0;">
@@ -245,11 +259,9 @@
             </select>
             <div id="staf-retry-wrap" style="display:none;margin-top:var(--space-2);">
               <button type="button" class="btn btn--soft btn--sm" id="btn-retry-staf">
-                Coba Lagi
+                <i data-lucide="refresh-cw" style="width:0.8rem;height:0.8rem;"></i> Coba Lagi
               </button>
-              <span style="font-size:var(--font-size-xs);color:var(--clr-gray-400);margin-left:var(--space-2);">
-                Gagal memuat daftar staf
-              </span>
+              <span>Gagal memuat daftar staf</span>
             </div>
             <span class="form-error" id="error-bertemu" role="alert">
               Pilih staf yang akan ditemui
@@ -259,7 +271,7 @@
 
         <!-- ▶▶ Seksi 5: Data Anggota Rombongan ─────────── -->
         <!-- Ditampilkan JS saat jumlahTamu > 1 -->
-        <div class="form-section" id="section-anggota" style="display:none;">
+        <div class="form-section" id="section-anggota" style="display:none;" data-progress-step="4">
           <p class="form-section__title">
             <span class="form-section__title-icon"><i data-lucide="users" style="width:0.95rem;height:0.95rem;"></i></span>
             Data Setiap Anggota
@@ -289,15 +301,15 @@
         </div>
 
         <!-- ▶▶ Seksi 6: Data Tamu Tunggal ──────────────── -->
-        <!-- Muncul saat jumlahTamu = 1; untuk rombongan data masuk ke repeater -->
-        <div class="form-section" id="section-tamu-tunggal">
+        <!-- Muncul saat jumlahTamu = 1 -->
+        <div class="form-section" id="section-tamu-tunggal" data-progress-step="4">
           <p class="form-section__title">
             <span class="form-section__title-icon"><i data-lucide="id-card" style="width:0.95rem;height:0.95rem;"></i></span>
             Data Diri Tamu
           </p>
 
           <!-- Container card anggota tunggal — diisi oleh JS -->
-          <div id="anggota-repeater-tunggal" role="list">
+          <div id="anggota-repeater-tunggal" role="list" aria-label="Data tamu">
             <!-- Diisi oleh JS saat jumlahTamu = 1 -->
           </div>
         </div>
@@ -320,10 +332,10 @@
               id="signature-container"
               aria-labelledby="label-ttd"
               role="img"
-              aria-label="Area tanda tangan digital"
+              aria-label="Area tanda tangan digital. Gambar tanda tangan Anda di sini."
             >
               <canvas id="signature-canvas" aria-label="Kanvas tanda tangan"></canvas>
-              <div class="signature-placeholder" id="signature-placeholder">
+              <div class="signature-placeholder" id="signature-placeholder" aria-hidden="true">
                 <span class="signature-placeholder__icon"><i data-lucide="pen-line" style="width:2rem;height:2rem;opacity:0.3;color:var(--clr-gray-500);"></i></span>
                 <span class="signature-placeholder__text">Tanda tangan di sini</span>
                 <span class="signature-placeholder__sub">Gunakan jari atau mouse</span>
@@ -331,15 +343,15 @@
             </div>
 
             <div class="signature-footer">
-              <div class="signature-status" id="signature-status">
-                <span class="signature-status__dot"></span>
+              <div class="signature-status" id="signature-status" aria-live="polite">
+                <span class="signature-status__dot" aria-hidden="true"></span>
                 <span>Belum ditandatangani</span>
               </div>
               <button
                 type="button"
                 class="btn btn--secondary btn--sm"
                 id="btn-clear-signature"
-                aria-label="Hapus tanda tangan"
+                aria-label="Hapus tanda tangan dan mulai ulang"
               >
                 <i data-lucide="trash-2" style="width:0.85rem;height:0.85rem;"></i> Hapus
               </button>
@@ -358,11 +370,12 @@
             class="btn btn--primary btn--full"
             id="btn-submit"
             disabled
+            aria-describedby="submit-note"
           >
-            <span class="btn__spinner"></span>
+            <span class="btn__spinner" aria-hidden="true"></span>
             <span class="btn__text">Daftarkan Kunjungan</span>
           </button>
-          <p class="submit-note">
+          <p class="submit-note" id="submit-note">
             Dengan mengirimkan formulir ini, Anda menyetujui bahwa data yang diisi adalah benar dan dapat dipertanggungjawabkan.
           </p>
         </div>
@@ -374,7 +387,7 @@
     <div class="review-screen form-tamu-container" id="review-screen" style="display:none;" role="region" aria-label="Ringkasan kunjungan sebelum disimpan">
 
       <div class="review-screen__header">
-        <div class="review-screen__icon"><i data-lucide="clipboard-check" style="width:2.8rem;height:2.8rem;color:var(--clr-primary);"></i></div>
+        <div class="review-screen__icon" aria-hidden="true"><i data-lucide="clipboard-check" style="width:2.8rem;height:2.8rem;color:var(--clr-primary);"></i></div>
         <h2 class="review-screen__title">Tinjau Kunjungan</h2>
         <p class="review-screen__subtitle">Periksa data sebelum menyimpan</p>
       </div>
@@ -407,7 +420,7 @@
       <!-- Daftar anggota -->
       <div class="review-card">
         <div class="review-card__title"><i data-lucide="users" style="width:0.8rem;height:0.8rem;"></i> Daftar Tamu</div>
-        <ol class="review-anggota-list" id="review-daftar-anggota">
+        <ol class="review-anggota-list" id="review-daftar-anggota" aria-label="Daftar anggota yang akan didaftarkan">
           <!-- Diisi JS -->
         </ol>
       </div>
@@ -418,7 +431,7 @@
           <i data-lucide="arrow-left" style="width:0.9rem;height:0.9rem;"></i> Kembali &amp; Edit
         </button>
         <button type="button" class="btn btn--primary" id="btn-review-confirm">
-          <span class="btn__spinner"></span>
+          <span class="btn__spinner" aria-hidden="true"></span>
           <span class="btn__text">Simpan Kunjungan</span>
         </button>
       </div>
@@ -426,7 +439,7 @@
     </div><!-- /#review-screen -->
 
     <!-- ── Success Screen ─────────────────────────────────── -->
-    <div class="success-screen" id="success-screen" role="status" aria-live="polite">
+    <div class="success-screen" id="success-screen" role="status" aria-live="polite" aria-label="Kunjungan berhasil didaftarkan">
       <div class="success-screen__wrap">
         <div class="success-screen__lottie" aria-hidden="true">
           <i data-lucide="check-circle-2" style="width:3.5rem;height:3.5rem;color:var(--clr-success);"></i>
@@ -454,7 +467,11 @@
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/form-tamu.js"></script>
-  <script>lucide.createIcons();</script>
+  <script>
+    // Inisialisasi ikon Lucide untuk elemen statis di halaman
+    // Ikon dinamis (anggota card) menggunakan SVG inline via _icon() helper
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  </script>
 
 </body>
 </html>
