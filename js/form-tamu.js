@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSignaturePad();
     attachFormEvents();
     initJumlahTamu();   // ▶▶
+    initProgressIndicator();
 
   } catch (err) {
     console.error('Form init error:', err);
@@ -73,6 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSignaturePad();
     attachFormEvents();
     initJumlahTamu();   // ▶▶
+    initProgressIndicator();
   }
 
   showFormLoading(false);
@@ -830,6 +832,101 @@ function attachFormEvents() {
       }, 100);
     });
   }
+}
+
+// ═════════════════════════════════════════════════════════════
+// PROGRESS INDICATOR (scroll-aware via IntersectionObserver)
+// ═════════════════════════════════════════════════════════════
+
+/**
+ * Inisialisasi progress indicator yang scroll-aware.
+ *
+ * Cara kerja:
+ *   - IntersectionObserver mengamati semua .form-section[data-progress-step]
+ *   - Saat section masuk viewport (≥25%), update step yang aktif
+ *   - Step sebelum aktif mendapat class 'completed' (checkmark)
+ *   - Progress bar bersifat "sticky" — tersembunyi saat form di-hide (review/success)
+ */
+function initProgressIndicator() {
+  const progressEl = document.getElementById('form-progress');
+  if (!progressEl || typeof IntersectionObserver === 'undefined') return;
+
+  const steps = progressEl.querySelectorAll('.form-progress__step');
+  if (!steps.length) return;
+
+  // Buat map stepNumber → elemen step
+  const stepMap = {};
+  steps.forEach(s => { stepMap[s.dataset.step] = s; });
+
+  let activeStep = 1;
+
+  function updateProgress(newStep) {
+    if (newStep === activeStep) return;
+    activeStep = newStep;
+
+    steps.forEach(s => {
+      const n = parseInt(s.dataset.step, 10);
+      s.classList.remove('active', 'completed');
+      if (n === activeStep) {
+        s.classList.add('active');
+      } else if (n < activeStep) {
+        s.classList.add('completed');
+      }
+    });
+  }
+
+  // Track sections visible di viewport — gunakan Map untuk tahu yang paling atas
+  const visibleSections = new Map();
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const step = parseInt(entry.target.dataset.progressStep, 10);
+      if (!step) return;
+
+      if (entry.isIntersecting) {
+        visibleSections.set(step, entry.boundingClientRect.top);
+      } else {
+        visibleSections.delete(step);
+      }
+    });
+
+    if (visibleSections.size === 0) return;
+
+    // Ambil step dengan posisi paling dekat ke atas viewport
+    let topStep = activeStep;
+    let topY    = Infinity;
+    visibleSections.forEach((y, step) => {
+      if (y < topY) { topY = y; topStep = step; }
+    });
+
+    updateProgress(topStep);
+  }, {
+    threshold: 0.15,         // section terdeteksi saat 15% sudah masuk viewport
+    rootMargin: '0px 0px -30% 0px', // area deteksi: dari atas hingga 70% tinggi viewport
+  });
+
+  // Amati semua form-section yang punya data-progress-step
+  document.querySelectorAll('.form-section[data-progress-step]').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Sembunyikan progress saat review / success screen aktif, tampilkan kembali saat form
+  const formWrapper    = document.getElementById('form-wrapper');
+  const reviewScreen   = document.getElementById('review-screen');
+  const successScreen  = document.getElementById('success-screen');
+
+  const progressObserver = new MutationObserver(() => {
+    const formVisible    = formWrapper    && formWrapper.style.display    !== 'none';
+    const reviewVisible  = reviewScreen   && reviewScreen.style.display   !== 'none'
+                        && reviewScreen.classList.contains('visible');
+    const successVisible = successScreen  && successScreen.classList.contains('visible');
+
+    progressEl.style.display = (formVisible && !reviewVisible && !successVisible) ? '' : 'none';
+  });
+
+  if (formWrapper)   progressObserver.observe(formWrapper,   { attributes: true, attributeFilter: ['style'] });
+  if (reviewScreen)  progressObserver.observe(reviewScreen,  { attributes: true, attributeFilter: ['class', 'style'] });
+  if (successScreen) progressObserver.observe(successScreen, { attributes: true, attributeFilter: ['class'] });
 }
 
 // ═════════════════════════════════════════════════════════════
