@@ -43,6 +43,15 @@
 
 .admin-nav .tabs::-webkit-scrollbar { display: none; }
 
+/* Ikon SVG di dalam tab-btn — override display:block dari global reset
+   agar tidak mengganggu flex alignment vertikal */
+.tab-btn svg,
+.tab-btn i {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 @media (min-width: 640px) {
   .admin-nav { padding: var(--space-3) var(--space-6); }
 }
@@ -449,6 +458,20 @@
   box-shadow: var(--shadow-success);
 }
 .export-btn:hover { background: #047857; }
+
+/* Pastikan ikon dan teks di dalam .btn__text sejajar vertikal */
+.export-btn .btn__text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Override global svg { display:block } agar ikon dalam .btn__text tetap inline */
+.export-btn .btn__text svg,
+.export-btn .btn__text i {
+  display: inline-block;
+  flex-shrink: 0;
+}
 
 /* ── Detail Modal Badges ──────────────────────────────────── */
 .detail-badge-row {
