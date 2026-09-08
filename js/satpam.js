@@ -1,6 +1,5 @@
 /**
- * satpam.js — Dashboard Satpam
- * ▶▶ v2: Mendukung Multi-Tamu / Rombongan
+ * satpam.js — Dashboard Satpam v2.1
  * ─────────────────────────────────────────────────────────
  * Fitur:
  *   - Daftar tamu aktif: rombongan tampil sebagai 1 baris
@@ -10,7 +9,21 @@
  *   - Edit kunjungan: ubah data sesi + tambah/hapus/ubah anggota
  *   - Stats strip: hadir sesi + hadir individu
  *   - Pencarian cukup dengan nama salah satu anggota
+ *
+ * CHANGELOG v2.1:
+ *   - FIX S1: try/catch di loadTamuAktif()
+ *   - FIX S2: try/catch di loadSchoolConfig()
+ *   - FIX S3: ganti onclick inline → event delegation di renderCards/renderTable
+ *   - FIX S4/S12: isConfirmingPulang guard mencegah double-submit catat pulang
+ *   - FIX S5: ganti confirm() blocking di hapus anggota → toast dua-klik
+ *   - FIX S6: try/catch di _submitEditForm
+ *   - FIX S7: try/catch di openDetail dan openEditModal
+ *   - FIX S9: beforeunload membersihkan refreshTimer
+ *   - FIX S11: ganti querySelector fragile dengan getElementById di openCatatPulang
+ *   - FIX S13: null guard svgIcon di _updateNavbarLogo
  */
+
+'use strict';
 
 // ── State ─────────────────────────────────────────────────────
 let allTamuAktif      = [];
@@ -21,9 +34,14 @@ let sudahPulangCount  = 0;
 let selectedTamuId    = null;
 let session           = null;
 
-// ▶▶ Edit state
-let editModalOpen     = false;
-let editTamuData      = null;   // data kunjungan yang sedang diedit
+// FIX S4/S12: guard double-submit catat pulang
+let isConfirmingPulang = false;
+
+// Edit state
+let editTamuData = null;
+
+// FIX S5: pending hapus anggota (ganti confirm() blocking)
+const _pendingHapusAnggota = new Map(); // Map<index_string, timeoutId>
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -31,31 +49,44 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!session) return;
 
   initNavbar(session);
-  loadSchoolConfig();
+  loadSchoolConfig();          // fire-and-forget; tidak blocking
   await loadTamuAktif();
   startAutoRefresh();
   attachEvents();
 });
 
+// FIX S9: bersihkan timer saat halaman di-unload
+window.addEventListener('beforeunload', () => {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+});
+
 // ── Load School Config ────────────────────────────────────────
+// FIX S2: try/catch agar kegagalan tidak crash halaman
 async function loadSchoolConfig() {
-  const result = await callGAS('getConfig').catch(() => null);
-  if (result?.status === 'ok' && result.data) {
-    const nama = result.data.nama_sekolah || CONFIG.APP_NAME;
-    const navName = document.getElementById('nav-school-name');
-    if (navName) navName.textContent = nama;
-    document.title = `Dashboard Satpam — ${nama}`;
-    if (result.data.logo_app_url) _updateNavbarLogo(result.data.logo_app_url);
+  try {
+    const result = await callGAS('getConfig');
+    if (result?.status === 'ok' && result.data) {
+      const nama = result.data.nama_sekolah || CONFIG.APP_NAME;
+      const navName = document.getElementById('nav-school-name');
+      if (navName) navName.textContent = nama;
+      document.title = `Dashboard Satpam — ${nama}`;
+      if (result.data.logo_app_url) _updateNavbarLogo(result.data.logo_app_url);
+    }
+  } catch (_) {
+    // Config gagal — tampilan default tetap digunakan
   }
 }
 
+// FIX S13: null guard untuk svgIcon
 function _updateNavbarLogo(url) {
   const iconEl = document.getElementById('navbar-logo-wrap');
   if (!iconEl) return;
+
   const oldImg = iconEl.querySelector('img');
   if (oldImg) oldImg.remove();
 
-  const svgIcon = iconEl.querySelector('svg, i');
+  // FIX S13: querySelector bisa return null setelah logo sebelumnya dihapus
+  const svgIcon = iconEl.querySelector('svg, i[data-lucide]');
 
   if (url) {
     const img     = document.createElement('img');
@@ -71,15 +102,20 @@ function _updateNavbarLogo(url) {
 }
 
 // ── Load Tamu Aktif ────────────────────────────────────────────
+// FIX S1: try/catch agar kegagalan GAS tidak crash halaman
 async function loadTamuAktif(silent = false) {
   if (!silent) showSkeleton(true);
 
-  const result = await callGAS('getTamuAktif', { token: getToken() });
+  let result;
+  try {
+    result = await callGAS('getTamuAktif', { token: getToken() });
+  } catch (_) {
+    result = { status: 'error', message: 'Koneksi gagal.' };
+  }
 
   if (result.status === 'ok') {
     const newData  = result.data?.tamu || [];
     const newCount = newData.length;
-    const newIndiv = result.data?.totalIndividu || newCount;
 
     if (lastCount >= 0 && newCount > lastCount) {
       const diff = newCount - lastCount;
@@ -89,11 +125,13 @@ async function loadTamuAktif(silent = false) {
     lastCount    = newCount;
     allTamuAktif = newData;
     applySearch();
-    // ▶▶ Sertakan total individu di stats strip
-    updateStatsStrip(allTamuAktif, sudahPulangCount,
-      result.data?.totalIndividu ?? newCount);
+    updateStatsStrip(
+      allTamuAktif,
+      sudahPulangCount,
+      result.data?.totalIndividu ?? newCount
+    );
 
-  } else if (result.status === 'error') {
+  } else {
     showToast('Gagal memuat data: ' + (result.message || 'Coba lagi'), 'danger');
   }
 
@@ -103,8 +141,8 @@ async function loadTamuAktif(silent = false) {
 
 // ── Update Stats Strip ────────────────────────────────────────
 function updateStatsStrip(data, sudahPulang = 0, totalIndividuAktif) {
-  const sesiAktif   = data.length;
-  const individAktif= totalIndividuAktif !== undefined
+  const sesiAktif    = data.length;
+  const individAktif = totalIndividuAktif !== undefined
     ? totalIndividuAktif
     : data.reduce((s, t) => s + (t.jumlahTamu || 1), 0);
 
@@ -114,31 +152,31 @@ function updateStatsStrip(data, sudahPulang = 0, totalIndividuAktif) {
   const elPulang  = document.getElementById('stat-pulang');
   const elBadge   = document.getElementById('active-count');
 
-  if (elSesi)    elSesi.textContent    = sesiAktif;
-  if (elInd)     elInd.textContent     = individAktif;
-  if (elHariIni) elHariIni.textContent = individAktif + sudahPulang;
-  if (elPulang)  elPulang.textContent  = sudahPulang;
-  if (elBadge)   {
-    elBadge.textContent    = individAktif;
-    elBadge.style.display  = individAktif > 0 ? '' : 'none';
+  if (elSesi)    elSesi.textContent   = sesiAktif;
+  if (elInd)     elInd.textContent    = individAktif;
+  if (elHariIni) elHariIni.textContent= individAktif + sudahPulang;
+  if (elPulang)  elPulang.textContent = sudahPulang;
+  if (elBadge) {
+    elBadge.textContent   = individAktif;
+    elBadge.style.display = individAktif > 0 ? '' : 'none';
   }
 }
 
 // ── Apply Search Filter ───────────────────────────────────────
 function applySearch() {
-  const searchVal = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+  const searchVal = (document.getElementById('search-input')?.value || '')
+    .trim().toLowerCase();
 
   if (!searchVal) {
     filteredTamu = [...allTamuAktif];
   } else {
     filteredTamu = allTamuAktif.filter(t => {
-      const nama     = (t.namaLengkap || '').toLowerCase();
-      const instansi = (t.instansi    || '').toLowerCase();
-      const kep      = (t.keperluan   || '').toLowerCase();
+      if (
+        (t.namaLengkap || '').toLowerCase().includes(searchVal) ||
+        (t.instansi    || '').toLowerCase().includes(searchVal) ||
+        (t.keperluan   || '').toLowerCase().includes(searchVal)
+      ) return true;
 
-      if (nama.includes(searchVal) || instansi.includes(searchVal) || kep.includes(searchVal)) return true;
-
-      // ▶▶ Cari dalam data anggota rombongan
       if (Array.isArray(t.dataAnggota)) {
         return t.dataAnggota.some(a =>
           (a.namaLengkap || '').toLowerCase().includes(searchVal) ||
@@ -153,8 +191,9 @@ function applySearch() {
 }
 
 // ── Render Tamu ───────────────────────────────────────────────
+// FIX S8: gunakan window.matchMedia yang lebih robust
 function renderTamu() {
-  const isDesktop = window.innerWidth >= 1024;
+  const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
   if (isDesktop) { renderTable(); showView('table'); }
   else           { renderCards(); showView('cards'); }
 
@@ -169,27 +208,24 @@ function showView(view) {
   if (tableWrap) tableWrap.style.display = view === 'table' ? '' : 'none';
 }
 
-// ── ▶▶ Helper: Render nama rombongan ─────────────────────────
-/**
- * Buat teks ringkasan nama untuk satu sesi (1 tamu atau rombongan).
- * Contoh: "Ahmad, Budi, Citra +1 lagi"
- */
+// ── Helper: Render nama rombongan ─────────────────────────────
 function _namaRombongan(tamu) {
   if (!tamu.isRombongan) return escapeHtml(tamu.namaLengkap);
-
   const anggota = Array.isArray(tamu.dataAnggota) ? tamu.dataAnggota : [];
   const shown   = anggota.slice(0, 3).map(a => escapeHtml(a.namaLengkap || '—')).join(', ');
   const sisa    = anggota.length - 3;
-  return sisa > 0 ? `${shown} <span class="badge-sisa">+${sisa}</span>` : shown;
+  return sisa > 0
+    ? `${shown} <span class="badge-sisa">+${sisa}</span>`
+    : shown;
 }
 
-/** Badge jumlah tamu untuk rombongan */
 function _badgeTamu(tamu) {
   if (!tamu.isRombongan) return '';
   return `<span class="badge-rombongan">${_icon('users','0.75rem')} ${tamu.jumlahTamu} Tamu</span>`;
 }
 
 // ── Render Cards (Mobile) ─────────────────────────────────────
+// FIX S3: tidak lagi pakai onclick inline — gunakan data-action + event delegation
 function renderCards() {
   const container = document.getElementById('tamu-card-list');
   if (!container) return;
@@ -226,13 +262,13 @@ function renderCards() {
       </div>
       <div class="tamu-card__actions">
         <button class="btn btn-pulang btn--sm"
-          onclick="openCatatPulang('${escapeHtml(tamu.id)}')"
-          aria-label="Catat pulang ${escapeHtml(tamu.namaLengkap)}">
+          data-action="pulang" data-id="${escapeHtml(tamu.id)}"
+          aria-label="Catat pulang ${escapeHtml(tamu.namaLengkap || 'tamu')}">
           ${_icon('check','0.85rem')} Catat Pulang
         </button>
         <button class="btn btn-detail btn--sm"
-          onclick="openDetail('${escapeHtml(tamu.id)}')"
-          aria-label="Lihat detail ${escapeHtml(tamu.namaLengkap)}">
+          data-action="detail" data-id="${escapeHtml(tamu.id)}"
+          aria-label="Lihat detail ${escapeHtml(tamu.namaLengkap || 'tamu')}">
           ${_icon('search','0.85rem')} Detail
         </button>
       </div>
@@ -241,6 +277,7 @@ function renderCards() {
 }
 
 // ── Render Table (Desktop) ────────────────────────────────────
+// FIX S3: tidak lagi pakai onclick inline
 function renderTable() {
   const tbody = document.getElementById('tamu-table-body');
   if (!tbody) return;
@@ -267,15 +304,15 @@ function renderTable() {
         ${tamu.jumlahTamu || 1}
       </td>
       <td>
-        <div style="display:flex;gap:var(--space-2);">
+        <div class="tabel-actions">
           <button class="btn btn--success btn--sm"
-            onclick="openCatatPulang('${escapeHtml(tamu.id)}')"
+            data-action="pulang" data-id="${escapeHtml(tamu.id)}"
             aria-label="Catat pulang">
             ${_icon('check','0.85rem')} Pulang
           </button>
           <button class="btn btn--secondary btn--sm"
-            onclick="openDetail('${escapeHtml(tamu.id)}')"
-            aria-label="Detail">
+            data-action="detail" data-id="${escapeHtml(tamu.id)}"
+            aria-label="Lihat detail">
             ${_icon('search','0.85rem')}
           </button>
         </div>
@@ -291,14 +328,14 @@ function openCatatPulang(tamuId) {
 
   selectedTamuId = tamuId;
 
-  const namEl    = document.getElementById('pulang-nama');
-  const metaEl   = document.getElementById('pulang-meta');
-  const avatarEl = document.querySelector('#sheet-pulang .catat-pulang-info__avatar');
+  // FIX S11: ganti querySelector fragile dengan getElementById
+  const namEl  = document.getElementById('pulang-nama');
+  const metaEl = document.getElementById('pulang-meta');
+  // Avatar masih pakai querySelector tapi lebih spesifik ke ID container
+  const avatarEl = document.getElementById('pulang-avatar-icon');
 
-  // Avatar berdasarkan jenis tamu — gunakan SVG icon
-  const avatarIconName = tamu.isRombongan ? 'users' : 'user';
   if (avatarEl) {
-    avatarEl.innerHTML = _icon(avatarIconName, '1.4rem');
+    avatarEl.innerHTML = _icon(tamu.isRombongan ? 'users' : 'user', '1.4rem');
   }
 
   if (namEl) {
@@ -308,8 +345,8 @@ function openCatatPulang(tamuId) {
   }
   if (metaEl) {
     metaEl.textContent = tamu.isRombongan
-      ? `Wakil: ${tamu.namaLengkap} • Datang: ${tamu.jamDatang} • ${tamu.bertemuDengan}`
-      : `${tamu.jenisTamu} • Datang: ${tamu.jamDatang} • ${tamu.bertemuDengan}`;
+      ? `Wakil: ${tamu.namaLengkap} · Datang: ${tamu.jamDatang} · ${tamu.bertemuDengan}`
+      : `${tamu.jenisTamu} · Datang: ${tamu.jamDatang} · ${tamu.bertemuDengan}`;
   }
 
   const jamInput = document.getElementById('input-jam-pulang');
@@ -318,66 +355,88 @@ function openCatatPulang(tamuId) {
     jamInput.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   }
 
+  // Reset state tombol confirm
   const btnConfirm = document.getElementById('btn-confirm-pulang');
-  if (btnConfirm) { btnConfirm.classList.remove('loading'); btnConfirm.disabled = false; }
+  if (btnConfirm) {
+    btnConfirm.classList.remove('loading');
+    btnConfirm.disabled = false;
+  }
+  isConfirmingPulang = false;
 
   const sheet = document.getElementById('sheet-pulang');
   if (sheet) sheet.classList.add('active');
   lockScroll();
-  setTimeout(() => jamInput?.focus(), 100);
+  setTimeout(() => document.getElementById('input-jam-pulang')?.focus(), 100);
 }
 
 function closeCatatPulang() {
   const sheet = document.getElementById('sheet-pulang');
   if (sheet) sheet.classList.remove('active');
   unlockScroll();
-  selectedTamuId = null;
+  selectedTamuId     = null;
+  isConfirmingPulang = false;
 }
 
+// FIX S4/S12: guard double-submit
 async function confirmCatatPulang() {
-  if (!selectedTamuId) return;
+  if (!selectedTamuId || isConfirmingPulang) return;
 
   const jamInput   = document.getElementById('input-jam-pulang');
   const btnConfirm = document.getElementById('btn-confirm-pulang');
   const jamPulang  = jamInput?.value || '';
 
-  if (!jamPulang) { showToast('Jam pulang wajib diisi.', 'danger'); jamInput?.focus(); return; }
-  if (!/^\d{2}:\d{2}$/.test(jamPulang)) { showToast('Format jam tidak valid.', 'danger'); return; }
+  if (!jamPulang) {
+    showToast('Jam pulang wajib diisi.', 'danger');
+    jamInput?.focus();
+    return;
+  }
+  if (!/^\d{2}:\d{2}$/.test(jamPulang)) {
+    showToast('Format jam tidak valid.', 'danger');
+    return;
+  }
 
   const tamuIdToUpdate = selectedTamuId;
-  setButtonLoading(btnConfirm);
+  isConfirmingPulang   = true;
+  if (btnConfirm) setButtonLoading(btnConfirm);
 
-  const result = await callGAS('updateJamPulang', {
-    token    : getToken(),
-    id       : tamuIdToUpdate,
-    jamPulang: jamPulang,
-  });
+  let result;
+  try {
+    result = await callGAS('updateJamPulang', {
+      token    : getToken(),
+      id       : tamuIdToUpdate,
+      jamPulang: jamPulang,
+    });
+  } catch (_) {
+    result = { status: 'error', message: 'Koneksi gagal.' };
+  }
+
+  isConfirmingPulang = false;
 
   if (result.status === 'ok') {
     closeCatatPulang();
-    const d = result.data;
-    // ▶▶ Pesan berbeda untuk rombongan
-    const namaDisplay = d?.jumlahTamu > 1
+    const d           = result.data;
+    const namaDisplay = (d?.jumlahTamu || 1) > 1
       ? `Rombongan ${d.jumlahTamu} orang`
       : (d?.nama || 'Tamu');
-    const individu = d?.jumlahTamu || 1;
+    const individu    = d?.jumlahTamu || 1;
 
     showToast(`${namaDisplay} berhasil dicatat pulang jam ${jamPulang}.`, 'success');
 
-    allTamuAktif    = allTamuAktif.filter(t => t.id !== tamuIdToUpdate);
+    allTamuAktif     = allTamuAktif.filter(t => t.id !== tamuIdToUpdate);
     sudahPulangCount += individu;
     lastCount        = allTamuAktif.length;
     applySearch();
-    // BUG C2 FIX: hitung individu aktif dari data lokal secara eksplisit
+
     const individAktifSisa = allTamuAktif.reduce((s, t) => s + (t.jumlahTamu || 1), 0);
     updateStatsStrip(allTamuAktif, sudahPulangCount, individAktifSisa);
   } else {
     showToast(result.message || 'Gagal mencatat jam pulang.', 'danger');
-    resetButtonLoading(btnConfirm, false);
+    if (btnConfirm) resetButtonLoading(btnConfirm, false);
   }
 }
 
 // ── Modal Detail ──────────────────────────────────────────────
+// FIX S7: try/catch per callGAS
 async function openDetail(tamuId) {
   const modal   = document.getElementById('modal-detail');
   const content = document.getElementById('modal-detail-content');
@@ -395,10 +454,18 @@ async function openDetail(tamuId) {
   modal.classList.add('active');
   lockScroll();
 
-  const result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
+  let result;
+  try {
+    result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
+  } catch (_) {
+    if (content) content.innerHTML =
+      `<div class="alert alert--danger">Koneksi gagal. Coba lagi.</div>`;
+    return;
+  }
 
   if (result.status !== 'ok') {
-    if (content) content.innerHTML = `<div class="alert alert--danger">${escapeHtml(result.message || 'Gagal memuat detail.')}</div>`;
+    if (content) content.innerHTML =
+      `<div class="alert alert--danger">${escapeHtml(result.message || 'Gagal memuat detail.')}</div>`;
     return;
   }
 
@@ -413,13 +480,13 @@ async function openDetail(tamuId) {
   const instansiLabel  = t.jenisTamu === 'Orang Tua/Wali Murid' ? 'Orang Tua/Wali dari'
     : t.jenisTamu === 'Alumni' ? 'Tahun Lulus' : 'Instansi / Asal';
 
-  // ▶▶ Render daftar anggota
-  let anggotaHtml = '';
   const anggota = Array.isArray(t.dataAnggota) ? t.dataAnggota : [];
-
+  let anggotaHtml = '';
   if (t.isRombongan && anggota.length > 0) {
     anggotaHtml = `
-      <div class="detail-section-title">${_icon('users','0.8rem')} Daftar Anggota (${anggota.length} orang)</div>
+      <div class="detail-section-title">
+        ${_icon('users','0.8rem')} Daftar Anggota (${anggota.length} orang)
+      </div>
       <ol class="detail-anggota-list">
         ${anggota.map((a, i) => `
           <li class="detail-anggota-item">
@@ -439,31 +506,32 @@ async function openDetail(tamuId) {
       </ol>`;
   }
 
-  // TTD
   const ttdHtml = t.tandaTangan
     ? `<div class="detail-signature"><img src="${t.tandaTangan}" alt="Tanda tangan" /></div>`
     : '<span class="text-muted">—</span>';
 
-  // ▶▶ Tombol edit — hanya tampil jika user punya akses (satpam dan admin bisa edit)
   const canEdit = typeof getRole === 'function'
     ? (getRole() === 'admin' || getRole() === ROLES.SATPAM)
-    : true; // fallback: tampilkan jika getRole tidak tersedia
+    : true;
+
+  // FIX S3: ganti onclick inline dengan data-action
   const editBtn = canEdit ? `
     <div style="display:flex;gap:var(--space-3);margin-top:var(--space-5);">
-      <button class="btn btn--secondary btn--sm" onclick="openEditModal('${escapeHtml(t.id)}')">
+      <button class="btn btn--secondary btn--sm"
+        data-action="edit" data-id="${escapeHtml(t.id)}">
         ${_icon('pencil','0.85rem')} Edit Kunjungan
       </button>
     </div>` : '';
 
   if (content) content.innerHTML = `
-    <div style="margin-bottom:var(--space-3);">
+    <div class="detail-badges" style="display:flex;gap:var(--space-2);flex-wrap:wrap;margin-bottom:var(--space-3);">
       <span class="badge badge--${t.status === 'Hadir' ? 'success' : 'gray'}">${escapeHtml(t.status)}</span>
-      <span class="badge badge--primary" style="margin-left:var(--space-2);">${escapeHtml(t.jenisTamu)}</span>
-      ${t.isRombongan ? `<span class="badge-rombongan" style="margin-left:var(--space-2);">${_icon('users','0.75rem')} ${t.jumlahTamu} Tamu</span>` : ''}
+      <span class="badge badge--primary">${escapeHtml(t.jenisTamu)}</span>
+      ${t.isRombongan ? `<span class="badge-rombongan">${_icon('users','0.75rem')} ${t.jumlahTamu} Tamu</span>` : ''}
     </div>
-    <div class="detail-row"><div class="detail-row__label">Tanggal</div><div class="detail-row__value">${tanggalDisplay}</div></div>
+    <div class="detail-row"><div class="detail-row__label">Tanggal</div><div class="detail-row__value">${displayVal(tanggalDisplay)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Jam Datang</div><div class="detail-row__value">${displayVal(t.jamDatang)}</div></div>
-    <div class="detail-row"><div class="detail-row__label">Jam Pulang</div><div class="detail-row__value">${displayVal(t.jamPulang) || '<span class="text-muted">Belum pulang</span>'}</div></div>
+    <div class="detail-row"><div class="detail-row__label">Jam Pulang</div><div class="detail-row__value">${t.jamPulang || '<span class="text-muted">Belum pulang</span>'}</div></div>
     <div class="detail-row"><div class="detail-row__label">${escapeHtml(instansiLabel)}</div><div class="detail-row__value">${displayVal(t.instansi)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Keperluan</div><div class="detail-row__value" style="white-space:pre-wrap;">${displayVal(t.keperluan)}</div></div>
     <div class="detail-row"><div class="detail-row__label">Bertemu</div><div class="detail-row__value">${displayVal(t.bertemuDengan)}</div></div>
@@ -486,16 +554,15 @@ function closeDetail() {
   unlockScroll();
 }
 
-// ── ▶▶ Edit Kunjungan ─────────────────────────────────────────
+// ── Edit Kunjungan ────────────────────────────────────────────
+// FIX S7: try/catch per callGAS
 async function openEditModal(tamuId) {
-  // Tutup detail dulu
   closeDetail();
 
   const modal   = document.getElementById('modal-edit');
   const content = document.getElementById('modal-edit-content');
   if (!modal) return;
 
-  // Reset & loading
   if (content) content.innerHTML = `
     <div style="text-align:center;padding:var(--space-8);">
       <div class="spinner" style="margin:0 auto;"></div>
@@ -504,9 +571,18 @@ async function openEditModal(tamuId) {
   modal.classList.add('active');
   lockScroll();
 
-  const result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
+  let result;
+  try {
+    result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
+  } catch (_) {
+    if (content) content.innerHTML =
+      `<div class="alert alert--danger">Koneksi gagal. Coba lagi.</div>`;
+    return;
+  }
+
   if (result.status !== 'ok') {
-    if (content) content.innerHTML = `<div class="alert alert--danger">${escapeHtml(result.message)}</div>`;
+    if (content) content.innerHTML =
+      `<div class="alert alert--danger">${escapeHtml(result.message || 'Gagal memuat data.')}</div>`;
     return;
   }
 
@@ -522,27 +598,28 @@ function _renderEditForm(t) {
     ? t.dataAnggota
     : [{ namaLengkap: t.namaLengkap, noHp: t.noHp, email: t.email, jabatan: '', jenisId: '', noId: '' }];
 
-  // Build anggota rows HTML
   const anggotaRowsHtml = anggota.map((a, i) => _buildEditAnggotaRow(i, a)).join('');
 
   content.innerHTML = `
-    <!-- Info Kunjungan (Bersama) -->
     <div class="edit-section-title">${_icon('clipboard-list','0.85rem')} Info Kunjungan</div>
 
     <div class="form-grid-2" style="margin-bottom:var(--space-4);">
       <div class="form-group">
         <label class="form-label" for="edit-jam-datang">Jam Datang</label>
-        <input type="time" id="edit-jam-datang" class="form-control" value="${escapeAttrVal(t.jamDatang)}" />
+        <input type="time" id="edit-jam-datang" class="form-control"
+          value="${escapeAttrVal(t.jamDatang)}" />
       </div>
       <div class="form-group">
         <label class="form-label" for="edit-jam-pulang">Jam Pulang</label>
-        <input type="time" id="edit-jam-pulang" class="form-control" value="${escapeAttrVal(t.jamPulang)}" />
+        <input type="time" id="edit-jam-pulang" class="form-control"
+          value="${escapeAttrVal(t.jamPulang)}" />
       </div>
     </div>
 
     <div class="form-group">
       <label class="form-label" for="edit-instansi">Instansi / Asal</label>
-      <input type="text" id="edit-instansi" class="form-control" value="${escapeAttrVal(t.instansi)}" />
+      <input type="text" id="edit-instansi" class="form-control"
+        value="${escapeAttrVal(t.instansi)}" />
     </div>
     <div class="form-group">
       <label class="form-label" for="edit-keperluan">Keperluan</label>
@@ -550,10 +627,10 @@ function _renderEditForm(t) {
     </div>
     <div class="form-group">
       <label class="form-label" for="edit-bertemu">Bertemu Dengan</label>
-      <input type="text" id="edit-bertemu" class="form-control" value="${escapeAttrVal(t.bertemuDengan)}" />
+      <input type="text" id="edit-bertemu" class="form-control"
+        value="${escapeAttrVal(t.bertemuDengan)}" />
     </div>
 
-    <!-- Anggota -->
     <div class="edit-section-title" style="margin-top:var(--space-2);">
       ${_icon('users','0.85rem')} Anggota Rombongan
       <span class="edit-anggota-count" id="edit-anggota-count">(${anggota.length} orang)</span>
@@ -568,7 +645,6 @@ function _renderEditForm(t) {
       ${_icon('plus','0.85rem')} Tambah Anggota
     </button>
 
-    <!-- Footer aksi -->
     <div class="edit-actions">
       <button type="button" class="btn btn--secondary" id="btn-edit-batal">Batal</button>
       <button type="button" class="btn btn--primary" id="btn-edit-simpan">
@@ -578,7 +654,6 @@ function _renderEditForm(t) {
     </div>
   `;
 
-  // Pasang events
   _attachEditFormEvents(t.id);
 }
 
@@ -588,8 +663,11 @@ function _buildEditAnggotaRow(index, data) {
     <div class="edit-anggota-row" data-index="${index}" id="edit-row-${index}">
       <div class="edit-anggota-row__header">
         <span class="edit-anggota-row__nomor">${index + 1}</span>
-        <span class="edit-anggota-row__label">Tamu ${index + 1}${isFirst ? ' (Wakil)' : ''}</span>
-        ${!isFirst ? `<button type="button" class="btn-hapus-anggota" data-index="${index}"
+        <span class="edit-anggota-row__label">
+          Tamu ${index + 1}${isFirst ? ' (Wakil)' : ''}
+        </span>
+        ${!isFirst ? `<button type="button" class="btn-hapus-anggota"
+          data-index="${index}" aria-label="Hapus tamu ${index + 1}"
           title="Hapus tamu ini">${_icon('trash-2','0.85rem')}</button>` : ''}
       </div>
       <div class="form-grid-2">
@@ -606,7 +684,9 @@ function _buildEditAnggotaRow(index, data) {
             placeholder="08xx-xxxx" />
         </div>
         <div class="form-group">
-          <label class="form-label">Email ${isFirst ? '<span class="required">*</span>' : ''}</label>
+          <label class="form-label">
+            Email ${isFirst ? '<span class="required">*</span>' : ''}
+          </label>
           <input type="email" class="form-control edit-anggota-email"
             data-index="${index}" value="${escapeAttrVal(data.email)}"
             placeholder="${isFirst ? 'nama@email.com' : 'Opsional'}" />
@@ -622,7 +702,6 @@ function _buildEditAnggotaRow(index, data) {
   `;
 }
 
-// Escape value untuk atribut HTML — BUG C4 FIX: tambahkan < dan >
 function escapeAttrVal(str) {
   if (!str) return '';
   return String(str)
@@ -646,40 +725,58 @@ function _attachEditFormEvents(tamuId) {
         _buildEditAnggotaRow(count, { namaLengkap: '', noHp: '', email: '', jabatan: '' })
       );
       _updateEditAnggotaCount();
+      // FIX UX: fokus ke input nama anggota baru
+      const newRow = list.lastElementChild;
+      newRow?.querySelector('.edit-anggota-nama')?.focus();
     }
   });
 
-  // Event delegation untuk hapus anggota
+  // FIX S5: ganti confirm() blocking → toast dua-klik dengan Map
   modal.querySelector('#edit-anggota-list')?.addEventListener('click', e => {
     const btn = e.target.closest('.btn-hapus-anggota');
     if (!btn) return;
-    const idx = parseInt(btn.getAttribute('data-index'), 10);
-    const rows = modal.querySelectorAll('.edit-anggota-row');
-    if (rows.length <= 1) { showToast('Minimal harus ada 1 anggota.', 'danger'); return; }
-    if (!confirm(`Hapus Tamu ${idx + 1}?`)) return;
-    rows[idx]?.remove();
-    // Re-index semua baris yang tersisa
-    modal.querySelectorAll('.edit-anggota-row').forEach((row, i) => {
-      row.setAttribute('data-index', i);
-      row.id = `edit-row-${i}`;
-      const nomor = row.querySelector('.edit-anggota-row__nomor');
-      const label = row.querySelector('.edit-anggota-row__label');
-      if (nomor) nomor.textContent = i + 1;
-      if (label) label.textContent = `Tamu ${i + 1}${i === 0 ? ' (Wakil)' : ''}`;
-      row.querySelectorAll('[data-index]').forEach(el => el.setAttribute('data-index', i));
-      // Hapus tombol hapus dari tamu pertama jika perlu
-      const hapusBtn = row.querySelector('.btn-hapus-anggota');
-      if (i === 0 && hapusBtn) hapusBtn.remove();
-      else if (i > 0 && !hapusBtn) {
-        const hdr = row.querySelector('.edit-anggota-row__header');
-        if (hdr) hdr.insertAdjacentHTML('beforeend',
-          `<button type="button" class="btn-hapus-anggota" data-index="${i}">${_icon('trash-2','0.85rem')}</button>`);
-      }
-    });
-    _updateEditAnggotaCount();
+
+    const idx     = parseInt(btn.getAttribute('data-index'), 10);
+    const rows    = modal.querySelectorAll('.edit-anggota-row');
+    const key     = String(idx);
+
+    if (rows.length <= 1) {
+      showToast('Minimal harus ada 1 anggota.', 'danger');
+      return;
+    }
+
+    // FIX S5: konfirmasi dua-klik
+    if (_pendingHapusAnggota.has(key)) {
+      clearTimeout(_pendingHapusAnggota.get(key));
+      _pendingHapusAnggota.delete(key);
+      // Eksekusi hapus
+      rows[idx]?.remove();
+      // Re-index semua baris yang tersisa
+      modal.querySelectorAll('.edit-anggota-row').forEach((row, i) => {
+        row.setAttribute('data-index', i);
+        row.id = `edit-row-${i}`;
+        const nomor = row.querySelector('.edit-anggota-row__nomor');
+        const label = row.querySelector('.edit-anggota-row__label');
+        if (nomor) nomor.textContent = i + 1;
+        if (label) label.textContent = `Tamu ${i + 1}${i === 0 ? ' (Wakil)' : ''}`;
+        row.querySelectorAll('[data-index]').forEach(el => el.setAttribute('data-index', i));
+        const hapusBtn = row.querySelector('.btn-hapus-anggota');
+        if (i === 0 && hapusBtn) hapusBtn.remove();
+        else if (i > 0 && !hapusBtn) {
+          const hdr = row.querySelector('.edit-anggota-row__header');
+          if (hdr) hdr.insertAdjacentHTML('beforeend',
+            `<button type="button" class="btn-hapus-anggota" data-index="${i}"
+              aria-label="Hapus tamu ${i + 1}">${_icon('trash-2','0.85rem')}</button>`);
+        }
+      });
+      _updateEditAnggotaCount();
+    } else {
+      showToast(`Klik lagi untuk menghapus Tamu ${idx + 1}.`, 'default', 3000);
+      const tid = setTimeout(() => _pendingHapusAnggota.delete(key), 3000);
+      _pendingHapusAnggota.set(key, tid);
+    }
   });
 
-  // Simpan
   modal.querySelector('#btn-edit-simpan')?.addEventListener('click', () => _submitEditForm(tamuId));
   modal.querySelector('#btn-edit-batal')?.addEventListener('click', closeEditModal);
 }
@@ -692,21 +789,21 @@ function _updateEditAnggotaCount() {
   if (el) el.textContent = `(${count} orang)`;
 }
 
+// FIX S6: try/catch di _submitEditForm
 async function _submitEditForm(tamuId) {
-  const modal  = document.getElementById('modal-edit');
-  const btnSave= modal?.querySelector('#btn-edit-simpan');
+  const modal   = document.getElementById('modal-edit');
+  const btnSave = modal?.querySelector('#btn-edit-simpan');
   if (!modal) return;
 
-  // Kumpulkan data anggota
   const anggota = [];
   const rows    = modal.querySelectorAll('.edit-anggota-row');
   let valid     = true;
 
   rows.forEach((row, i) => {
-    const nama  = row.querySelector('.edit-anggota-nama')?.value.trim()  || '';
-    const noHp  = row.querySelector('.edit-anggota-nohp')?.value.trim()  || '';
-    const email = row.querySelector('.edit-anggota-email')?.value.trim().toLowerCase() || '';
-    const jabatan= row.querySelector('.edit-anggota-jabatan')?.value.trim() || '';
+    const nama    = row.querySelector('.edit-anggota-nama')?.value.trim()    || '';
+    const noHp    = row.querySelector('.edit-anggota-nohp')?.value.trim()    || '';
+    const email   = row.querySelector('.edit-anggota-email')?.value.trim().toLowerCase() || '';
+    const jabatan = row.querySelector('.edit-anggota-jabatan')?.value.trim() || '';
 
     if (!nama) { showToast(`Nama tamu ${i + 1} wajib diisi.`, 'danger'); valid = false; }
     if (i === 0 && !email) { showToast('Email tamu pertama wajib diisi.', 'danger'); valid = false; }
@@ -718,16 +815,22 @@ async function _submitEditForm(tamuId) {
   const payload = {
     token        : getToken(),
     id           : tamuId,
-    instansi     : modal.querySelector('#edit-instansi')?.value.trim()   || '',
-    keperluan    : modal.querySelector('#edit-keperluan')?.value.trim()   || '',
-    bertemuDengan: modal.querySelector('#edit-bertemu')?.value.trim()    || '',
-    jamDatang    : modal.querySelector('#edit-jam-datang')?.value || '',
-    jamPulang    : modal.querySelector('#edit-jam-pulang')?.value || '',
+    instansi     : modal.querySelector('#edit-instansi')?.value.trim()    || '',
+    keperluan    : modal.querySelector('#edit-keperluan')?.value.trim()    || '',
+    bertemuDengan: modal.querySelector('#edit-bertemu')?.value.trim()     || '',
+    jamDatang    : modal.querySelector('#edit-jam-datang')?.value         || '',
+    jamPulang    : modal.querySelector('#edit-jam-pulang')?.value         || '',
     anggota,
   };
 
-  setButtonLoading(btnSave);
-  const result = await callGAS('updateTamu', payload);
+  if (btnSave) setButtonLoading(btnSave);
+
+  let result;
+  try {
+    result = await callGAS('updateTamu', payload);
+  } catch (_) {
+    result = { status: 'error', message: 'Koneksi gagal.' };
+  }
 
   if (result.status === 'ok') {
     closeEditModal();
@@ -735,7 +838,7 @@ async function _submitEditForm(tamuId) {
     await loadTamuAktif(true);
   } else {
     showToast(result.message || 'Gagal menyimpan perubahan.', 'danger');
-    resetButtonLoading(btnSave, false);
+    if (btnSave) resetButtonLoading(btnSave, false);
   }
 }
 
@@ -744,6 +847,7 @@ function closeEditModal() {
   if (modal) modal.classList.remove('active');
   unlockScroll();
   editTamuData = null;
+  _pendingHapusAnggota.clear();
 }
 
 // ── Notifikasi ────────────────────────────────────────────────
@@ -770,7 +874,7 @@ function stopAutoRefresh() {
 }
 
 function updateRefreshTime() {
-  const el  = document.getElementById('last-refresh');
+  const el = document.getElementById('last-refresh');
   if (!el) return;
   const now = new Date();
   el.textContent = `Terakhir diperbarui: ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -778,10 +882,10 @@ function updateRefreshTime() {
 
 // ── Skeleton ──────────────────────────────────────────────────
 function showSkeleton(show) {
+  const skeleton  = document.getElementById('skeleton-loader');
+  const cardList  = document.getElementById('tamu-card-list');
+  const tableWrap = document.getElementById('tamu-table-wrap');
   if (show) {
-    const skeleton  = document.getElementById('skeleton-loader');
-    const cardList  = document.getElementById('tamu-card-list');
-    const tableWrap = document.getElementById('tamu-table-wrap');
     if (skeleton)  skeleton.style.display  = '';
     if (cardList)  cardList.style.display  = 'none';
     if (tableWrap) tableWrap.style.display = 'none';
@@ -798,8 +902,8 @@ function hideSkeleton() {
 // ── Attach Events ──────────────────────────────────────────────
 function attachEvents() {
   // Search
-  const searchInput = document.getElementById('search-input');
-  if (searchInput) searchInput.addEventListener('input', applySearch);
+  document.getElementById('search-input')
+    ?.addEventListener('input', applySearch);
 
   // Refresh
   const btnRefresh = document.getElementById('btn-refresh');
@@ -813,6 +917,38 @@ function attachEvents() {
     });
   }
 
+  // FIX S3: event delegation untuk card list dan tabel
+  // Card list
+  document.getElementById('tamu-card-list')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const id     = btn.dataset.id;
+    if (!id) return;
+    if (action === 'pulang') openCatatPulang(id);
+    if (action === 'detail') openDetail(id);
+  });
+
+  // Table body
+  document.getElementById('tamu-table-body')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const id     = btn.dataset.id;
+    if (!id) return;
+    if (action === 'pulang') openCatatPulang(id);
+    if (action === 'detail') openDetail(id);
+  });
+
+  // FIX S3: event delegation untuk tombol edit di modal-detail
+  document.getElementById('modal-detail')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action="edit"]');
+    if (btn) {
+      const id = btn.dataset.id;
+      if (id) openEditModal(id);
+    }
+  });
+
   // Bottom sheet pulang
   document.getElementById('btn-confirm-pulang')?.addEventListener('click', confirmCatatPulang);
   document.getElementById('btn-batal-pulang')?.addEventListener('click', closeCatatPulang);
@@ -821,12 +957,20 @@ function attachEvents() {
   // Modal detail
   document.getElementById('btn-close-detail')?.addEventListener('click', closeDetail);
   const modalDetail = document.getElementById('modal-detail');
-  if (modalDetail) modalDetail.addEventListener('click', e => { if (e.target === modalDetail) closeDetail(); });
+  if (modalDetail) {
+    modalDetail.addEventListener('click', e => {
+      if (e.target === modalDetail) closeDetail();
+    });
+  }
 
   // Modal edit
   document.getElementById('btn-close-edit')?.addEventListener('click', closeEditModal);
   const modalEdit = document.getElementById('modal-edit');
-  if (modalEdit) modalEdit.addEventListener('click', e => { if (e.target === modalEdit) closeEditModal(); });
+  if (modalEdit) {
+    modalEdit.addEventListener('click', e => {
+      if (e.target === modalEdit) closeEditModal();
+    });
+  }
 
   // Notif banner
   document.getElementById('notif-banner')?.addEventListener('click', async () => {
@@ -835,15 +979,23 @@ function attachEvents() {
     startAutoRefresh();
   });
 
-  // Resize
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(renderTamu, 200);
-  });
+  // Resize — gunakan matchMedia untuk konsistensi dengan renderTamu()
+  const mql = window.matchMedia('(min-width: 1024px)');
+  const onBreakpointChange = () => renderTamu();
+  // addEventListener untuk matchMedia (modern API)
+  if (mql.addEventListener) {
+    mql.addEventListener('change', onBreakpointChange);
+  } else {
+    // Fallback untuk browser lama
+    mql.addListener(onBreakpointChange);
+  }
 
   // Escape
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeCatatPulang(); closeDetail(); closeEditModal(); }
+    if (e.key === 'Escape') {
+      closeCatatPulang();
+      closeDetail();
+      closeEditModal();
+    }
   });
 }
