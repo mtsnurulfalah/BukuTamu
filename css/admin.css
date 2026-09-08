@@ -1031,3 +1031,296 @@
   max-width: 100%;
   box-sizing: border-box;
 }
+
+/* ============================================================
+   EMAIL NOTIFIKASI ADMIN — komponen Tab Pengaturan
+   ============================================================ */
+
+/* ── Skeleton loader ────────────────────────────────────────── */
+.email-notif-skeleton {
+  padding: var(--space-2) 0 var(--space-4);
+}
+
+/* ── Status Bar ─────────────────────────────────────────────── */
+.email-notif-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--clr-gray-50);
+  border: 1px solid var(--clr-gray-100);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+}
+
+.email-notif-status-bar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* Status dot */
+.email-notif-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.email-notif-dot--green  { background: var(--clr-success, #10b981); box-shadow: 0 0 0 3px rgba(16,185,129,0.18); }
+.email-notif-dot--yellow { background: var(--clr-warning, #f59e0b); box-shadow: 0 0 0 3px rgba(245,158,11,0.18); }
+.email-notif-dot--gray   { background: var(--clr-gray-400, #94a3b8); box-shadow: 0 0 0 3px rgba(148,163,184,0.18); }
+
+.email-notif-address {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--clr-gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.email-notif-status-label {
+  font-size: 0.78rem;
+  color: var(--clr-gray-500);
+  margin-top: 1px;
+}
+
+/* Statistik notifikasi */
+.email-notif-stats {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.email-notif-stat {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.email-notif-stat--sent   { background: #d1fae5; color: #065f46; }
+.email-notif-stat--failed { background: #fee2e2; color: #991b1b; }
+.email-notif-stat--pending{ background: #fef3c7; color: #92400e; }
+
+/* ── Panels ─────────────────────────────────────────────────── */
+.email-notif-panel {
+  margin-top: var(--space-2);
+}
+
+/* Input row: email field + button side by side */
+.email-notif-input-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.email-notif-input-row .form-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.email-notif-input-row .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── OTP panel ──────────────────────────────────────────────── */
+.email-notif-otp-info {
+  font-size: 0.875rem;
+  color: var(--clr-gray-600);
+  margin: 0 0 var(--space-3);
+  line-height: 1.5;
+}
+
+/* Countdown timer row */
+.email-notif-timer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.email-notif-countdown {
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: var(--clr-warning, #d97706);
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 1px;
+  min-width: 3.5rem;
+  text-align: center;
+}
+
+.email-notif-countdown--expired {
+  color: var(--clr-danger, #dc2626);
+  background: #fee2e2;
+}
+
+/* OTP input row: large input + button */
+.email-notif-otp-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.email-notif-otp-input {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5em;
+  text-align: center;
+  max-width: 180px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.email-notif-otp-row .btn {
+  flex-shrink: 0;
+}
+
+/* Tombol aksi di bawah form OTP */
+.email-notif-otp-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* ── Panel verified: tombol aksi ────────────────────────────── */
+.email-notif-verified-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* ── Log Notifikasi ─────────────────────────────────────────── */
+.email-notif-log-wrap {
+  margin-top: var(--space-5);
+  border: 1px solid var(--clr-gray-100);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.email-notif-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-gray-50);
+  border-bottom: 1px solid var(--clr-gray-100);
+}
+
+.email-notif-log-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+}
+
+.email-notif-log-item {
+  display: grid;
+  grid-template-columns: 72px 1fr 1fr auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--clr-gray-50);
+  font-size: 0.78rem;
+}
+
+.email-notif-log-item:last-child {
+  border-bottom: none;
+}
+
+/* Status badge di log */
+.log-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-align: center;
+  white-space: nowrap;
+}
+.log-status--sent    { background: #d1fae5; color: #065f46; }
+.log-status--failed  { background: #fee2e2; color: #991b1b; }
+.log-status--pending { background: #fef3c7; color: #92400e; }
+
+.log-visit-id {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: var(--clr-gray-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-email-to {
+  color: var(--clr-gray-600);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-time {
+  color: var(--clr-gray-400);
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.log-error {
+  grid-column: 1 / -1;
+  color: var(--clr-danger, #dc2626);
+  font-size: 0.72rem;
+  padding-top: 2px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* ── Responsive adjustments ─────────────────────────────────── */
+@media (max-width: 480px) {
+  .email-notif-status-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .email-notif-address {
+    max-width: 100%;
+  }
+
+  .email-notif-input-row {
+    flex-direction: column;
+  }
+
+  .email-notif-otp-row {
+    flex-direction: column;
+  }
+
+  .email-notif-otp-input {
+    max-width: 100%;
+  }
+
+  .email-notif-log-item {
+    grid-template-columns: 64px 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .log-visit-id { display: none; }
+  .log-time     { grid-column: 2; }
+}
+
+@media (max-width: 360px) {
+  .email-notif-verified-actions {
+    flex-direction: column;
+  }
+
+  .email-notif-otp-actions {
+    flex-direction: column;
+  }
+}
