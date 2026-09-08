@@ -50,20 +50,23 @@ async function loadSchoolConfig() {
 }
 
 function _updateNavbarLogo(url) {
-  const iconEl = document.querySelector('.navbar__brand-icon');
+  const iconEl = document.getElementById('navbar-logo-wrap');
   if (!iconEl) return;
   const oldImg = iconEl.querySelector('img');
   if (oldImg) oldImg.remove();
+
+  const svgIcon = iconEl.querySelector('svg, i');
+
   if (url) {
     const img     = document.createElement('img');
     img.src       = normalizeLogoUrl(url);
-    img.alt       = 'Logo';
+    img.alt       = 'Logo sekolah';
     img.className = 'navbar__brand-logo-img';
-    img.onload    = () => { iconEl.style.fontSize = '0'; };
-    img.onerror   = () => { img.remove(); iconEl.style.fontSize = ''; };
+    img.onload    = () => { if (svgIcon) svgIcon.style.display = 'none'; };
+    img.onerror   = () => { img.remove(); if (svgIcon) svgIcon.style.display = ''; };
     iconEl.appendChild(img);
   } else {
-    iconEl.style.fontSize = '';
+    if (svgIcon) svgIcon.style.display = '';
   }
 }
 
