@@ -678,6 +678,19 @@
   flex-wrap: wrap;
 }
 
+/* Span kontak individu — menggantikan inline style */
+.detail-anggota-item__contact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.detail-anggota-item__contact-item svg,
+.detail-anggota-item__contact-item i {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
 /* ── Modal Edit ───────────────────────────────────────────── */
 .modal--edit {
   max-height: 90vh;
