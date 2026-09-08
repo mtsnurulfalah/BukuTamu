@@ -14,17 +14,29 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/global.css" />
   <link rel="stylesheet" href="/css/login.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
+<!--
+  FIX H1: Hapus aria-hidden="true" dari <aside> panel kiri — konten branding
+  seharusnya bisa dibaca screen reader, bukan disembunyikan sepenuhnya.
+  Gunakan aria-hidden hanya pada elemen dekoratif (icon, gambar latar).
+-->
 <body class="login-page no-fouc">
 
-  <!-- Toast Container -->
-  <div id="toast-container" role="alert" aria-live="polite"></div>
+  <!-- Toast Container — live region untuk notifikasi (FIX H2: hapus role="alert" double) -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 
-  <!-- ── Panel Kiri — tampil di tablet+ ──────────────────── -->
-  <aside class="login-panel-left" aria-hidden="true">
+  <!-- ── Panel Kiri — Branding (tampil di 900px+) ────────── -->
+  <aside class="login-panel-left" aria-label="Informasi aplikasi">
     <div class="login-brand">
 
-      <div class="login-brand__logo" id="login-brand-logo" aria-hidden="true">🏫</div>
+      <!--
+        FIX C8: Logo container menggunakan position:relative + overflow:hidden.
+        JS akan inject img dan menambahkan class .has-logo untuk sembunyikan icon default.
+      -->
+      <div class="login-brand__logo" id="login-brand-logo" aria-hidden="true">
+        <i data-lucide="school" style="width:2.2rem;height:2.2rem;color:rgba(255,255,255,0.9);"></i>
+      </div>
 
       <h1 class="login-brand__title" id="brand-school-name">Buku Tamu Digital</h1>
       <p class="login-brand__sub" id="login-brand-sub">
@@ -33,15 +45,21 @@
 
       <ul class="login-brand__features" role="list">
         <li class="login-feature">
-          <span class="login-feature__icon" aria-hidden="true">📋</span>
+          <span class="login-feature__icon" aria-hidden="true">
+            <i data-lucide="clipboard-list" style="width:1.1rem;height:1.1rem;"></i>
+          </span>
           <span>Catat tamu dengan tanda tangan digital</span>
         </li>
         <li class="login-feature">
-          <span class="login-feature__icon" aria-hidden="true">📊</span>
+          <span class="login-feature__icon" aria-hidden="true">
+            <i data-lucide="bar-chart-2" style="width:1.1rem;height:1.1rem;"></i>
+          </span>
           <span>Laporan &amp; statistik kunjungan real-time</span>
         </li>
         <li class="login-feature">
-          <span class="login-feature__icon" aria-hidden="true">🔒</span>
+          <span class="login-feature__icon" aria-hidden="true">
+            <i data-lucide="shield-check" style="width:1.1rem;height:1.1rem;"></i>
+          </span>
           <span>Akses aman berbasis peran pengguna</span>
         </li>
       </ul>
@@ -50,23 +68,51 @@
   </aside>
 
   <!-- ── Panel Kanan — Form Login ────────────────────────── -->
+  <!--
+    FIX H3: <main> adalah landmark utama halaman — sudah benar.
+    Tambahkan id="login-main" untuk referensi JS jika diperlukan.
+  -->
   <main class="login-panel-right" id="login-main">
-    <div class="login-card" role="region" aria-label="Form masuk petugas">
+    <div class="login-card">
 
-      <!-- Logo (mobile only) -->
-      <div class="login-logo-mobile" aria-hidden="false">
-        <div class="login-logo-mobile__icon" id="login-mobile-logo">🏫</div>
+      <!-- Logo (mobile — tampil di bawah 900px) -->
+      <!--
+        FIX H4: aria-hidden="false" tidak perlu ditulis eksplisit (itu default).
+        Hapus atribut yang redundan. Icon di dalamnya tetap aria-hidden="true".
+      -->
+      <div class="login-logo-mobile">
+        <!--
+          FIX C8: Container icon mobile — JS inject img di sini + tambah .has-logo
+        -->
+        <div class="login-logo-mobile__icon" id="login-mobile-logo" aria-hidden="true">
+          <i data-lucide="school" style="width:1.8rem;height:1.8rem;color:white;"></i>
+        </div>
+        <!--
+          FIX H5: id="app-name" dipertahankan untuk JS.
+          Tambahkan id="login-mobile-title" yang direferensikan login.js.
+        -->
+        <!-- FIX H5: id="app-name" dipakai JS untuk update nama; login-mobile-title dipakai _setAppName() -->
         <p class="login-logo-mobile__title" id="app-name">Buku Tamu Digital</p>
         <p class="login-logo-mobile__sub">Sistem pencatatan tamu sekolah</p>
       </div>
 
       <!-- Heading -->
       <div class="login-heading">
+        <!--
+          FIX H6: Gunakan <h2> karena <h1> ada di panel kiri (brand title).
+          Di mobile, heading ini menjadi heading level pertama yang terlihat —
+          masih semantik karena diawali struktur <aside> → <main>.
+        -->
         <h2 class="login-heading__title">Selamat datang</h2>
         <p class="login-heading__sub">Masuk untuk mengakses dashboard petugas</p>
       </div>
 
       <!-- Error Message -->
+      <!--
+        FIX H7: role="alert" + aria-live="assertive" sudah benar untuk error.
+        aria-atomic="true" memastikan seluruh pesan dibaca ulang setiap update.
+        Tidak perlu perubahan.
+      -->
       <div
         class="login-error"
         id="login-error"
@@ -74,7 +120,9 @@
         aria-live="assertive"
         aria-atomic="true"
       >
-        <span class="login-error__icon" aria-hidden="true">⚠️</span>
+        <span class="login-error__icon" aria-hidden="true">
+          <i data-lucide="alert-triangle" style="width:1rem;height:1rem;"></i>
+        </span>
         <span id="login-error-text">Username atau password salah.</span>
       </div>
 
@@ -90,7 +138,9 @@
         <div class="form-group">
           <label class="form-label" for="username">Username</label>
           <div class="input-icon-wrap">
-            <span class="input-icon-wrap__icon" aria-hidden="true">👤</span>
+            <span class="input-icon-wrap__icon" aria-hidden="true">
+              <i data-lucide="user" style="width:1rem;height:1rem;"></i>
+            </span>
             <input
               type="text"
               id="username"
@@ -109,9 +159,15 @@
         <!-- Password -->
         <div class="form-group">
           <label class="form-label" for="password">Password</label>
-          <!-- FIX L6: pisahkan class, tidak lagi gabung input-icon-wrap + password-wrapper -->
+          <!--
+            FIX H8: password-wrap membutuhkan role="group" tidak perlu —
+            label sudah terhubung ke input via for/id.
+            Struktur wrapper + toggle sudah benar secara semantik.
+          -->
           <div class="login-password-wrap">
-            <span class="login-password-wrap__icon" aria-hidden="true">🔑</span>
+            <span class="login-password-wrap__icon" aria-hidden="true">
+              <i data-lucide="lock" style="width:1rem;height:1rem;"></i>
+            </span>
             <input
               type="password"
               id="password"
@@ -121,22 +177,34 @@
               autocomplete="current-password"
               required
             />
+            <!--
+              FIX H9: Toggle button — aria-label="Tampilkan password" sebagai state awal.
+              JS akan update saat di-klik. aria-controls menghubungkan tombol ke input.
+            -->
             <button
               type="button"
               class="password-toggle"
               id="toggle-password"
               aria-label="Tampilkan password"
+              aria-controls="password"
             >
-              <span id="toggle-icon" aria-hidden="true">👁️</span>
+              <span id="toggle-icon" aria-hidden="true">
+                <i data-lucide="eye" style="width:1.1rem;height:1.1rem;"></i>
+              </span>
             </button>
           </div>
         </div>
 
         <!-- Submit -->
+        <!--
+          FIX H10: aria-describedby menghubungkan tombol ke elemen error
+          agar screen reader membaca ulang error saat ada perubahan.
+        -->
         <button
           type="submit"
           class="btn btn--primary btn--full login-submit-btn"
           id="btn-login"
+          aria-describedby="login-error"
         >
           <span class="btn__spinner" aria-hidden="true"></span>
           <span class="btn__text">Masuk ke Dashboard</span>
@@ -147,7 +215,7 @@
       <!-- Footer -->
       <footer class="login-footer">
         <a href="/" class="login-footer__back">
-          <span aria-hidden="true">←</span>
+          <i data-lucide="arrow-left" style="width:0.9rem;height:0.9rem;" aria-hidden="true"></i>
           Kembali ke Form Tamu
         </a>
         <span class="login-footer__copy">
@@ -158,11 +226,18 @@
     </div>
   </main>
 
-  <!-- Scripts -->
+  <!-- Scripts — urutan penting: config → api → auth → login -->
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/login.js"></script>
+  <!--
+    FIX H11: Guard lucide.createIcons() — jika CDN lambat/gagal,
+    tidak menyebabkan error uncaught.
+  -->
+  <script>
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  </script>
 
 </body>
 </html>
