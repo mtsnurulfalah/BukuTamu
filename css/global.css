@@ -559,6 +559,13 @@ select.form-control {
 .btn.loading .btn__spinner { display: block; }
 .btn.loading .btn__text    { display: none; }
 
+/* Pastikan ikon di dalam btn__text sejajar dengan teks */
+.btn__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+}
+
 /* ── Badge ────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
