@@ -132,6 +132,20 @@ async function switchTab(tabId) {
 // ══════════════════════════════════════════════════════════════
 
 async function loadRingkasan() {
+  // Destroy chart lama agar canvas tidak blocked jika tab di-reload
+  if (_chartJenis) { _chartJenis.destroy(); _chartJenis = null; }
+  if (_chartTrend) { _chartTrend.destroy(); _chartTrend = null; }
+
+  // Kembalikan skeleton sampai data tiba
+  const skJenis = document.getElementById('chart-jenis-skeleton');
+  const skTrend = document.getElementById('trend-chart-skeleton');
+  const wJenis  = document.getElementById('chart-jenis-wrap');
+  const wTrend  = document.getElementById('trend-chart-wrap');
+  if (skJenis) skJenis.style.display = '';
+  if (skTrend) skTrend.style.display = '';
+  if (wJenis)  wJenis.style.display  = 'none';
+  if (wTrend)  wTrend.style.display  = 'none';
+
   // Tanggal di header
   const today = new Date();
   const dateEl = document.getElementById('ringkasan-date');
@@ -230,64 +244,187 @@ function setStatCard(valueId, value, subText, isText = false) {
   if (subEl && subText) subEl.textContent = subText;
 }
 
-// ── Bar Chart (CSS) ───────────────────────────────────────────
-function renderBarChart(perJenis, totalSemua) {
-  const container = document.getElementById('chart-jenis');
-  if (!container) return;
+// ── Chart instances (disimpan agar bisa di-destroy saat tab di-reload) ──
+let _chartJenis = null;
+let _chartTrend = null;
 
+// ── Bar Chart (Chart.js — Horizontal Bar) ────────────────────
+function renderBarChart(perJenis, totalSemua) {
+  const skeleton  = document.getElementById('chart-jenis-skeleton');
+  const wrap      = document.getElementById('chart-jenis-wrap');
+  const canvas    = document.getElementById('chart-jenis');
+
+  if (!canvas) return;
+
+  // Sembunyikan skeleton, tampilkan canvas
+  if (skeleton) skeleton.style.display = 'none';
+  if (wrap)     wrap.style.display     = '';
+
+  // Data kosong
   if (!perJenis || perJenis.length === 0) {
-    container.innerHTML = '<p class="text-sm text-muted">Belum ada data.</p>';
+    if (wrap) wrap.innerHTML = '<p class="text-sm text-muted" style="padding:var(--space-4);">Belum ada data.</p>';
     return;
   }
 
-  const max = Math.max(...perJenis.map(j => j.total), 1);
+  // Destroy instance lama jika ada (mencegah "Canvas is already in use" saat reload tab)
+  if (_chartJenis) { _chartJenis.destroy(); _chartJenis = null; }
 
-  container.innerHTML = perJenis.map(item => {
-    const pct = Math.round((item.total / max) * 100);
-    return `
-      <div class="bar-chart__item">
-        <div class="bar-chart__label" title="${escapeHtml(item.jenis)}">${escapeHtml(item.jenis)}</div>
-        <div class="bar-chart__bar-wrap">
-          <div class="bar-chart__bar" style="width:${pct}%;" role="progressbar"
-               aria-valuenow="${item.total}" aria-valuemax="${max}"
-               aria-label="${escapeHtml(item.jenis)}: ${item.total} kunjungan">
-          </div>
-        </div>
-        <div class="bar-chart__count">${item.total}</div>
-      </div>`;
-  }).join('');
+  // Ambil warna CSS dari :root
+  const style    = getComputedStyle(document.documentElement);
+  const primary  = style.getPropertyValue('--clr-primary').trim()       || '#1a4480';
+  const accent   = style.getPropertyValue('--clr-accent').trim()        || '#e8a020';
+  const gray100  = style.getPropertyValue('--clr-gray-100').trim()      || '#f1f5f9';
+  const gray600  = style.getPropertyValue('--clr-gray-600').trim()      || '#475569';
+  const gray400  = style.getPropertyValue('--clr-gray-400').trim()      || '#94a3b8';
+
+  const labels = perJenis.map(j => j.jenis);
+  const values = perJenis.map(j => j.total);
+
+  _chartJenis = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: primary,
+        borderRadius: 5,
+        borderSkipped: false,
+        hoverBackgroundColor: accent,
+      }],
+    },
+    options: {
+      indexAxis: 'y',      // horizontal bar
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.x} kunjungan`,
+          },
+          backgroundColor: '#0f172a',
+          titleColor: '#f1f5f9',
+          bodyColor:  '#94a3b8',
+          padding: 10,
+          cornerRadius: 8,
+          displayColors: false,
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0,
+            color: gray400,
+            font: { size: 11 },
+          },
+          grid: { color: gray100 },
+          border: { display: false },
+        },
+        y: {
+          ticks: {
+            color: gray600,
+            font: { size: 11, weight: '500' },
+          },
+          grid: { display: false },
+          border: { display: false },
+        },
+      },
+      layout: { padding: { right: 8 } },
+    },
+  });
 }
 
-// ── Trend Chart (CSS) ─────────────────────────────────────
+// ── Trend Chart (Chart.js — Line) ─────────────────────────────
 function renderTrendChart(tren7Hari) {
-  const chartEl  = document.getElementById('trend-chart');
-  const labelsEl = document.getElementById('trend-labels');
-  if (!chartEl || !labelsEl) return;
+  const skeleton  = document.getElementById('trend-chart-skeleton');
+  const wrap      = document.getElementById('trend-chart-wrap');
+  const canvas    = document.getElementById('trend-chart');
+
+  if (!canvas) return;
+
+  if (skeleton) skeleton.style.display = 'none';
+  if (wrap)     wrap.style.display     = '';
 
   if (!tren7Hari || tren7Hari.length === 0) {
-    chartEl.innerHTML = '<p class="text-sm text-muted">Belum ada data.</p>';
+    if (wrap) wrap.innerHTML = '<p class="text-sm text-muted" style="padding:var(--space-4);">Belum ada data.</p>';
     return;
   }
 
-  // BUG D4 FIX: gunakan totalIndividu untuk tinggi bar (konsisten dengan label)
-  // Fallback ke total (sesi) jika totalIndividu tidak tersedia (data lama)
+  if (_chartTrend) { _chartTrend.destroy(); _chartTrend = null; }
+
+  const style   = getComputedStyle(document.documentElement);
+  const primary = style.getPropertyValue('--clr-primary').trim()  || '#1a4480';
+  const accent  = style.getPropertyValue('--clr-accent').trim()   || '#e8a020';
+  const gray100 = style.getPropertyValue('--clr-gray-100').trim() || '#f1f5f9';
+  const gray400 = style.getPropertyValue('--clr-gray-400').trim() || '#94a3b8';
+
   const getValue = item => item.totalIndividu ?? item.total ?? 0;
-  const max = Math.max(...tren7Hari.map(getValue), 1);
 
-  chartEl.innerHTML = tren7Hari.map(item => {
-    const val        = getValue(item);
-    const heightPct  = Math.round((val / max) * 100);
-    return `<div class="trend-chart__bar"
-               style="height:${Math.max(heightPct, 4)}%;"
-               data-count="${val}"
-               role="img"
-               aria-label="${escapeHtml(item.label)}: ${val} individu">
-            </div>`;
-  }).join('');
+  const labels = tren7Hari.map(item => escapeHtml(item.label));
+  const values = tren7Hari.map(getValue);
 
-  labelsEl.innerHTML = tren7Hari.map(item =>
-    `<div class="trend-chart__label">${escapeHtml(item.label)}</div>`
-  ).join('');
+  // Gradient fill di bawah garis
+  function makeGradient(ctx) {
+    const gradient = ctx.createLinearGradient(0, 0, 0, 120);
+    gradient.addColorStop(0,   primary + '40');   // 25% opacity di atas
+    gradient.addColorStop(1,   primary + '00');   // transparan di bawah
+    return gradient;
+  }
+
+  _chartTrend = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: primary,
+        borderWidth: 2.5,
+        pointBackgroundColor: primary,
+        pointBorderColor:     '#ffffff',
+        pointBorderWidth:     2,
+        pointRadius:          4,
+        pointHoverRadius:     6,
+        pointHoverBackgroundColor: accent,
+        fill: true,
+        backgroundColor: ctx => makeGradient(ctx.chart.ctx),
+        tension: 0.35,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y} individu`,
+          },
+          backgroundColor: '#0f172a',
+          titleColor: '#f1f5f9',
+          bodyColor:  '#94a3b8',
+          padding: 10,
+          cornerRadius: 8,
+          displayColors: false,
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: gray400, font: { size: 11 } },
+          grid: { display: false },
+          border: { display: false },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0, color: gray400, font: { size: 11 } },
+          grid: { color: gray100 },
+          border: { display: false },
+        },
+      },
+    },
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
