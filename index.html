@@ -14,6 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/global.css" />
   <link rel="stylesheet" href="/css/form-tamu.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body class="form-page">
 
@@ -24,11 +25,12 @@
   <header class="school-header" id="school-header">
     <div class="school-header__login-wrap">
       <a href="/login" class="school-header__login-btn" aria-label="Login untuk petugas">
-        🔐
+        <i data-lucide="log-in" style="width:0.95rem;height:0.95rem;"></i>
+        <span>Masuk</span>
       </a>
     </div>
     <div class="school-header__logo" id="school-logo">
-      <span id="school-logo-icon">🏫</span>
+      <span id="school-logo-icon"><i data-lucide="school" style="width:2.2rem;height:2.2rem;color:rgba(255,255,255,0.9);"></i></span>
     </div>
     <h1 class="school-header__title" id="school-name">Buku Tamu Digital</h1>
     <p class="school-header__subtitle" id="school-subtitle">
@@ -55,12 +57,37 @@
     <!-- Form Tamu                                          -->
     <!-- ═══════════════════════════════════════════════════ -->
     <div class="form-tamu-container" id="form-wrapper">
+
+      <!-- ── Progress Indicator ─────────────────────────── -->
+      <nav class="form-progress" id="form-progress" aria-label="Langkah pengisian formulir">
+        <div class="form-progress__step active" id="prog-step-1" data-step="1">
+          <div class="form-progress__dot" aria-hidden="true"><span class="form-progress__dot-num">1</span></div>
+          <span class="form-progress__label">Jenis</span>
+        </div>
+        <div class="form-progress__step" id="prog-step-2" data-step="2">
+          <div class="form-progress__dot" aria-hidden="true"><span class="form-progress__dot-num">2</span></div>
+          <span class="form-progress__label">Waktu</span>
+        </div>
+        <div class="form-progress__step" id="prog-step-3" data-step="3">
+          <div class="form-progress__dot" aria-hidden="true"><span class="form-progress__dot-num">3</span></div>
+          <span class="form-progress__label">Data</span>
+        </div>
+        <div class="form-progress__step" id="prog-step-4" data-step="4">
+          <div class="form-progress__dot" aria-hidden="true"><span class="form-progress__dot-num">4</span></div>
+          <span class="form-progress__label">Keperluan</span>
+        </div>
+        <div class="form-progress__step" id="prog-step-5" data-step="5">
+          <div class="form-progress__dot" aria-hidden="true"><span class="form-progress__dot-num">5</span></div>
+          <span class="form-progress__label">Tanda Tangan</span>
+        </div>
+      </nav>
+
       <form id="form-tamu" novalidate autocomplete="off">
 
         <!-- ── Seksi 1: Jenis Tamu ──────────────────────── -->
-        <div class="form-section">
+        <div class="form-section" data-progress-step="1">
           <p class="form-section__title">
-            <span class="form-section__title-icon">👤</span>
+            <span class="form-section__title-icon"><i data-lucide="user-circle" style="width:0.95rem;height:0.95rem;"></i></span>
             Jenis Tamu
           </p>
           <div class="form-group" style="margin-bottom:0;">
@@ -72,25 +99,25 @@
             </div>
             <input type="hidden" id="jenis-tamu" name="jenisTamu" required />
             <span class="form-error" id="error-jenis-tamu" role="alert">
-              ⚠️ Pilih jenis tamu terlebih dahulu
+              Pilih jenis tamu terlebih dahulu
             </span>
           </div>
         </div>
 
         <!-- ── Seksi 2: Waktu Kunjungan ─────────────────── -->
-        <div class="form-section">
+        <div class="form-section" data-progress-step="2">
           <p class="form-section__title">
-            <span class="form-section__title-icon">📅</span>
+            <span class="form-section__title-icon"><i data-lucide="calendar" style="width:0.95rem;height:0.95rem;"></i></span>
             Waktu Kunjungan
           </p>
           <div class="auto-fields">
             <div class="auto-field">
-              <div class="auto-field__label">📆 Tanggal</div>
+              <div class="auto-field__label">Tanggal</div>
               <div class="auto-field__value" id="display-tanggal">—</div>
               <input type="hidden" id="tanggal" name="tanggal" />
             </div>
             <div class="auto-field auto-field--editable">
-              <label class="auto-field__label" for="jam-datang">🕐 Jam Datang</label>
+              <label class="auto-field__label" for="jam-datang">Jam Datang</label>
               <input
                 type="time"
                 id="jam-datang"
@@ -104,9 +131,9 @@
         </div>
 
         <!-- ▶▶ Seksi 3: Jumlah Tamu ─────────────────────── -->
-        <div class="form-section">
+        <div class="form-section" data-progress-step="3">
           <p class="form-section__title">
-            <span class="form-section__title-icon">👥</span>
+            <span class="form-section__title-icon"><i data-lucide="users" style="width:0.95rem;height:0.95rem;"></i></span>
             Jumlah Tamu
           </p>
           <div class="form-group" style="margin-bottom:0;">
@@ -131,19 +158,19 @@
               <span class="jumlah-tamu-control__label" id="jumlah-tamu-label">orang (kunjungan tunggal)</span>
             </div>
             <div class="jumlah-tamu-hint" id="jumlah-tamu-hint">
-              💡 Untuk rombongan, tambah jumlah tamu. Setiap anggota akan didata satu per satu.
+              Untuk rombongan, tambah jumlah tamu. Setiap anggota akan didata satu per satu.
             </div>
             <!-- Muncul saat jenis = Orang Tua/Wali Murid -->
             <div class="jumlah-tamu-hint jumlah-tamu-hint--lock" id="rombongan-lock-notice" style="display:none;">
-              🔒 <strong>Orang Tua/Wali Murid</strong> hanya dapat mendaftar secara perorangan (1 orang per kunjungan).
+              <strong>Orang Tua/Wali Murid</strong> hanya dapat mendaftar secara perorangan (1 orang per kunjungan).
             </div>
           </div>
         </div>
 
         <!-- ── Seksi 4: Data Kunjungan Bersama ──────────── -->
-        <div class="form-section">
+        <div class="form-section" data-progress-step="4">
           <p class="form-section__title">
-            <span class="form-section__title-icon">📋</span>
+            <span class="form-section__title-icon"><i data-lucide="clipboard-list" style="width:0.95rem;height:0.95rem;"></i></span>
             Data Kunjungan
           </p>
 
@@ -183,7 +210,7 @@
               aria-label="Tahun lulus"
             />
             <span class="form-error" id="error-instansi" role="alert">
-              ⚠️ Instansi/asal wajib diisi
+              Instansi/asal wajib diisi
             </span>
           </div>
 
@@ -200,7 +227,7 @@
               required
             ></textarea>
             <span class="form-error" id="error-keperluan" role="alert">
-              ⚠️ Keperluan wajib diisi
+              Keperluan wajib diisi
             </span>
           </div>
 
@@ -218,14 +245,14 @@
             </select>
             <div id="staf-retry-wrap" style="display:none;margin-top:var(--space-2);">
               <button type="button" class="btn btn--soft btn--sm" id="btn-retry-staf">
-                🔄 Coba Lagi
+                Coba Lagi
               </button>
               <span style="font-size:var(--font-size-xs);color:var(--clr-gray-400);margin-left:var(--space-2);">
                 Gagal memuat daftar staf
               </span>
             </div>
             <span class="form-error" id="error-bertemu" role="alert">
-              ⚠️ Pilih staf yang akan ditemui
+              Pilih staf yang akan ditemui
             </span>
           </div>
         </div>
@@ -234,10 +261,11 @@
         <!-- Ditampilkan JS saat jumlahTamu > 1 -->
         <div class="form-section" id="section-anggota" style="display:none;">
           <p class="form-section__title">
-            <span class="form-section__title-icon">👥</span>
+            <span class="form-section__title-icon"><i data-lucide="users" style="width:0.95rem;height:0.95rem;"></i></span>
             Data Setiap Anggota
             <span class="rombongan-badge" id="badge-jumlah-anggota">
-              👥 <span id="jumlah-tamu-display-2">0</span> orang
+              <i data-lucide="users" style="width:0.75rem;height:0.75rem;"></i>
+              <span id="jumlah-tamu-display-2">0</span> orang
             </span>
           </p>
           <p style="font-size:var(--font-size-xs);color:var(--clr-gray-500);margin-bottom:var(--space-4);margin-top:calc(-1 * var(--space-3));">
@@ -256,7 +284,7 @@
             id="btn-tambah-tamu-manual"
             aria-label="Tambah tamu lagi"
           >
-            ➕ Tambah Tamu Lagi
+            <i data-lucide="plus" style="width:0.9rem;height:0.9rem;"></i> Tambah Tamu Lagi
           </button>
         </div>
 
@@ -264,7 +292,7 @@
         <!-- Muncul saat jumlahTamu = 1; untuk rombongan data masuk ke repeater -->
         <div class="form-section" id="section-tamu-tunggal">
           <p class="form-section__title">
-            <span class="form-section__title-icon">🪪</span>
+            <span class="form-section__title-icon"><i data-lucide="id-card" style="width:0.95rem;height:0.95rem;"></i></span>
             Data Diri Tamu
           </p>
 
@@ -275,9 +303,9 @@
         </div>
 
         <!-- ── Seksi 7: Tanda Tangan ─────────────────────── -->
-        <div class="form-section">
+        <div class="form-section" data-progress-step="5">
           <p class="form-section__title">
-            <span class="form-section__title-icon">✍️</span>
+            <span class="form-section__title-icon"><i data-lucide="pen-line" style="width:0.95rem;height:0.95rem;"></i></span>
             Tanda Tangan Digital
             <span style="font-size:var(--font-size-xs);font-weight:500;color:var(--clr-gray-400);text-transform:none;letter-spacing:0;">(Wakil / Tamu Pertama)</span>
           </p>
@@ -296,7 +324,7 @@
             >
               <canvas id="signature-canvas" aria-label="Kanvas tanda tangan"></canvas>
               <div class="signature-placeholder" id="signature-placeholder">
-                <span class="signature-placeholder__icon">✍️</span>
+                <span class="signature-placeholder__icon"><i data-lucide="pen-line" style="width:2rem;height:2rem;opacity:0.3;color:var(--clr-gray-500);"></i></span>
                 <span class="signature-placeholder__text">Tanda tangan di sini</span>
                 <span class="signature-placeholder__sub">Gunakan jari atau mouse</span>
               </div>
@@ -313,12 +341,12 @@
                 id="btn-clear-signature"
                 aria-label="Hapus tanda tangan"
               >
-                🗑️ Hapus
+                <i data-lucide="trash-2" style="width:0.85rem;height:0.85rem;"></i> Hapus
               </button>
             </div>
 
             <span class="form-error" id="error-ttd" role="alert">
-              ⚠️ Tanda tangan wajib diisi
+              Tanda tangan wajib diisi
             </span>
           </div>
         </div>
@@ -346,14 +374,14 @@
     <div class="review-screen form-tamu-container" id="review-screen" style="display:none;" role="region" aria-label="Ringkasan kunjungan sebelum disimpan">
 
       <div class="review-screen__header">
-        <div class="review-screen__icon">📋</div>
+        <div class="review-screen__icon"><i data-lucide="clipboard-check" style="width:2.8rem;height:2.8rem;color:var(--clr-primary);"></i></div>
         <h2 class="review-screen__title">Tinjau Kunjungan</h2>
         <p class="review-screen__subtitle">Periksa data sebelum menyimpan</p>
       </div>
 
       <!-- Info kunjungan bersama -->
       <div class="review-card">
-        <div class="review-card__title">🏢 Info Kunjungan</div>
+        <div class="review-card__title"><i data-lucide="building-2" style="width:0.8rem;height:0.8rem;"></i> Info Kunjungan</div>
         <div class="review-row">
           <div class="review-row__label">Jumlah Tamu</div>
           <div class="review-row__value" id="review-jumlah">—</div>
@@ -378,7 +406,7 @@
 
       <!-- Daftar anggota -->
       <div class="review-card">
-        <div class="review-card__title">👥 Daftar Tamu</div>
+        <div class="review-card__title"><i data-lucide="users" style="width:0.8rem;height:0.8rem;"></i> Daftar Tamu</div>
         <ol class="review-anggota-list" id="review-daftar-anggota">
           <!-- Diisi JS -->
         </ol>
@@ -387,11 +415,11 @@
       <!-- Tombol aksi -->
       <div class="review-actions">
         <button type="button" class="btn btn--secondary" id="btn-review-edit">
-          ✏️ Kembali & Edit
+          <i data-lucide="arrow-left" style="width:0.9rem;height:0.9rem;"></i> Kembali &amp; Edit
         </button>
         <button type="button" class="btn btn--primary" id="btn-review-confirm">
           <span class="btn__spinner"></span>
-          <span class="btn__text">💾 Simpan Kunjungan</span>
+          <span class="btn__text">Simpan Kunjungan</span>
         </button>
       </div>
 
@@ -400,7 +428,9 @@
     <!-- ── Success Screen ─────────────────────────────────── -->
     <div class="success-screen" id="success-screen" role="status" aria-live="polite">
       <div class="success-screen__wrap">
-        <div class="success-screen__lottie" aria-hidden="true">✅</div>
+        <div class="success-screen__lottie" aria-hidden="true">
+          <i data-lucide="check-circle-2" style="width:3.5rem;height:3.5rem;color:var(--clr-success);"></i>
+        </div>
         <h2 class="success-screen__title">Kunjungan Tercatat!</h2>
         <p class="success-screen__desc">
           Data kunjungan berhasil disimpan.<br>
@@ -412,7 +442,7 @@
           <div class="success-screen__count" id="success-count"></div>
         </div>
         <button class="btn btn--primary" id="btn-new-entry" style="margin:0 auto;">
-          ➕ Daftarkan Tamu Lain
+          <i data-lucide="plus" style="width:0.9rem;height:0.9rem;"></i> Daftarkan Tamu Lain
         </button>
       </div>
     </div>
@@ -424,6 +454,7 @@
   <script src="/js/config.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/form-tamu.js"></script>
+  <script>lucide.createIcons();</script>
 
 </body>
 </html>
