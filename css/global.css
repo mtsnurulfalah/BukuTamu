@@ -1142,6 +1142,20 @@ body.modal-open .admin-nav {
 .divider { height: 1px; background: var(--clr-gray-200); margin: var(--space-5) 0; }
 
 /* ── Toast ────────────────────────────────────────────────── */
+/*
+ * CHANGELOG v2.1:
+ *   - FIX T1: Animasi lifecycle dikontrol via JS (class toggle) bukan
+ *             CSS animation delay — tidak ada lagi race condition timing.
+ *   - FIX T2: Durasi animasi tidak lagi hardcode di CSS; JS yang tentukan.
+ *   - FIX T4: toast--info (tipe default) kini punya warna berbeda dari
+ *             toast--danger/success.
+ *   - FIX T5: Pembatasan jumlah toast dikelola JS.
+ *   - FIX T7: Tombol dismiss (.toast__dismiss) per toast.
+ *   - FIX T8: toastOut menggeser ke bawah dan fade, tidak lompat.
+ *   - FIX T9: prepend di JS membuat toast terbaru di atas.
+ *   - IMPROVE: Ikon, struktur, dan warna per tipe lebih jelas.
+ *   - IMPROVE: min-width dan word-break untuk pesan panjang.
+ */
 #toast-container {
   position: fixed;
   bottom: var(--space-5);
@@ -1152,26 +1166,160 @@ body.modal-open .admin-nav {
   flex-direction: column;
   gap: var(--space-2);
   width: calc(100% - var(--space-8));
-  max-width: 380px;
+  max-width: 400px;
   pointer-events: none;
+  /* Cegah toast keluar viewport di mobile */
+  box-sizing: border-box;
 }
 
 .toast {
-  background: var(--clr-gray-900);
-  color: var(--clr-white);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-xl);
   font-size: var(--font-size-sm);
   font-weight: 500;
+  line-height: 1.5;
   box-shadow: var(--shadow-xl);
-  animation: toastIn 0.35s var(--transition-spring), toastOut 0.3s ease 2.7s forwards;
   pointer-events: all;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.08);
+  cursor: default;
+  /* min/max width untuk pesan singkat dan panjang */
+  min-width: 220px;
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  border: 1px solid rgba(255,255,255,0.10);
+  /* State awal: tersembunyi — animasi masuk dikontrol JS via .toast--visible */
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+  transition:
+    opacity 0.28s cubic-bezier(0.34,1.56,0.64,1),
+    transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
 }
 
-.toast--success { background: var(--clr-success); }
-.toast--danger  { background: var(--clr-danger); }
+/* State terlihat — ditambahkan JS sesaat setelah append */
+.toast.toast--visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* FIX T8: animasi keluar — geser ke bawah + fade, tidak lompat */
+.toast.toast--out {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+/* ── Tipe warna ───────────────────────────────────────────── */
+/* Default/info: abu gelap — tidak menggunakan gray-900 penuh agar
+   berbeda jelas dari toast lain di desktop dengan background terang */
+.toast--info {
+  background: var(--clr-gray-800);
+  color: var(--clr-white);
+}
+
+.toast--success {
+  background: var(--clr-success);
+  color: var(--clr-white);
+  border-color: rgba(255,255,255,0.15);
+}
+
+.toast--danger {
+  background: var(--clr-danger);
+  color: var(--clr-white);
+  border-color: rgba(255,255,255,0.15);
+}
+
+.toast--warning {
+  background: var(--clr-warning);
+  color: var(--clr-white);
+  border-color: rgba(255,255,255,0.15);
+}
+
+/* ── Ikon toast ───────────────────────────────────────────── */
+.toast__icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.20);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  margin-top: 1px;
+  line-height: 1;
+}
+
+/* ── Teks pesan ───────────────────────────────────────────── */
+.toast__message {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Tombol dismiss manual (FIX T7) ──────────────────────── */
+.toast__dismiss {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.75);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), color var(--transition);
+  /* Touch target yang nyaman */
+  margin-top: 1px;
+  padding: 0;
+  line-height: 1;
+}
+
+.toast__dismiss:hover {
+  background: rgba(255,255,255,0.30);
+  color: var(--clr-white);
+}
+
+.toast__dismiss:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.7);
+  outline-offset: 2px;
+}
+
+/* ── Mobile: lebih lebar di layar kecil ──────────────────── */
+@media (max-width: 480px) {
+  #toast-container {
+    bottom: var(--space-4);
+    width: calc(100% - var(--space-6));
+    max-width: 100%;
+  }
+
+  .toast {
+    font-size: var(--font-size-xs);
+    padding: var(--space-3) var(--space-3);
+  }
+}
+
+/* ── Reduced motion: skip transisi ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast.toast--visible,
+  .toast.toast--out {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+  .toast.toast--out {
+    opacity: 0;
+  }
+}
 
 /* ── Spinner ──────────────────────────────────────────────── */
 .spinner {
@@ -1232,10 +1380,7 @@ body.modal-open .admin-nav {
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
 
-@keyframes toastOut {
-  from { opacity: 1; transform: scale(1); }
-  to   { opacity: 0; transform: scale(0.95); }
-}
+/* toastOut dihapus — animasi keluar kini dikontrol JS via .toast--out class */
 
 /* ── Utilities ────────────────────────────────────────────── */
 .text-center   { text-align: center; }
