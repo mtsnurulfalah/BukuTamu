@@ -1153,50 +1153,8 @@ body.modal-open .admin-nav {
   animation: spin 0.7s linear infinite;
 }
 
-/* ── CSS Bar Chart ────────────────────────────────────────── */
-.bar-chart { display: flex; flex-direction: column; gap: var(--space-3); }
-
-.bar-chart__item {
-  display: grid;
-  grid-template-columns: 130px 1fr 36px;
-  align-items: center;
-  gap: var(--space-3);
-  font-size: var(--font-size-sm);
-}
-
-.bar-chart__label {
-  color: var(--clr-gray-600);
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bar-chart__bar-wrap {
-  background: var(--clr-gray-100);
-  border-radius: var(--radius-full);
-  height: 8px;
-  overflow: hidden;
-}
-
-.bar-chart__bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--clr-primary), var(--clr-accent));
-  border-radius: var(--radius-full);
-  transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
-}
-
-.bar-chart__count {
-  text-align: right;
-  color: var(--clr-gray-700);
-  font-weight: 700;
-  font-size: var(--font-size-xs);
-}
-
-@media (min-width: 640px) {
-  .bar-chart__item { grid-template-columns: 160px 1fr 44px; }
-}
+/* ── CSS Bar Chart — dihapus, diganti Chart.js ─────────────── */
+/* Styling chart ada di admin.css (.chartjs-wrap) */
 
 /* ── Grid Helpers ─────────────────────────────────────────── */
 .grid-2 { display: grid; grid-template-columns: 1fr; gap: var(--space-4); }
