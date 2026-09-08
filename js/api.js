@@ -65,26 +65,103 @@ async function callGAS(action, payload = {}) {
 
 // ── Toast Notification ───────────────────────────────────────
 /**
- * Tampilkan toast notification di bawah layar.
- * @param {string} message
- * @param {'default'|'success'|'danger'} type
- * @param {number} duration - ms (default 3000)
+ * Tampilkan toast notification.
+ *
+ * CHANGELOG:
+ *   - FIX T1: hapus animasi toastOut dari CSS; kelola remove via JS setelah
+ *             transisi selesai untuk menghilangkan race condition timing.
+ *   - FIX T2: duration kustom kini benar-benar menentukan kapan toast hilang.
+ *   - FIX T3: role="alert" untuk toast danger, role="status" untuk lainnya.
+ *   - FIX T5: batasi maksimal 3 toast sekaligus; buang yang paling lama jika lebih.
+ *   - FIX T7: klik pada toast untuk dismiss manual.
+ *   - FIX T9: toast terbaru muncul di atas (prepend), bukan di bawah.
+ *   - IMPROVE: tambah ikon sesuai tipe (✓ success, ✕ danger, ℹ default/info).
+ *   - IMPROVE: toast--warning sebagai tipe baru.
+ *
+ * @param {string} message   - Pesan yang ditampilkan
+ * @param {'default'|'success'|'danger'|'warning'} type
+ * @param {number} duration  - ms sebelum toast hilang (default 3500)
  */
-function showToast(message, type = 'default', duration = 3000) {
+function showToast(message, type = 'default', duration = 3500) {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
+  // FIX T5: Batasi maks 3 toast; buang yang terlama jika melebihi
+  const MAX_TOASTS = 3;
+  const existing = container.querySelectorAll('.toast');
+  if (existing.length >= MAX_TOASTS) {
+    // Buang toast pertama (paling lama) segera
+    _dismissToast(existing[0]);
+  }
+
+  // FIX T3: role sesuai urgensi
+  const role = (type === 'danger') ? 'alert' : 'status';
+
+  // Ikon sesuai tipe
+  const icons = {
+    success : '✓',
+    danger  : '✕',
+    warning : '⚠',
+    default : 'ℹ',
+  };
+  const iconChar = icons[type] ?? icons.default;
+
   const toast = document.createElement('div');
-  toast.className = `toast${type !== 'default' ? ` toast--${type}` : ''}`;
-  toast.textContent = message;
-  toast.setAttribute('role', 'status');
+  // FIX T4: 'default' mendapat class 'toast--info' agar punya styling berbeda
+  const typeClass = type === 'default' ? 'toast--info' : `toast--${type}`;
+  toast.className = `toast ${typeClass}`;
+  toast.setAttribute('role', role);
+  toast.setAttribute('aria-live', role === 'alert' ? 'assertive' : 'polite');
+  toast.setAttribute('aria-atomic', 'true');
 
-  container.appendChild(toast);
+  // Struktur: ikon + teks
+  toast.innerHTML = `
+    <span class="toast__icon" aria-hidden="true">${iconChar}</span>
+    <span class="toast__message">${_escapeToastMessage(message)}</span>
+    <button class="toast__dismiss" aria-label="Tutup notifikasi" type="button">✕</button>
+  `;
 
-  // Auto-remove setelah duration
-  setTimeout(() => {
-    toast.remove();
-  }, duration);
+  // FIX T7: dismiss manual saat klik tombol ✕
+  toast.querySelector('.toast__dismiss')?.addEventListener('click', () => {
+    _dismissToast(toast);
+  });
+
+  // FIX T9: prepend agar toast terbaru di atas
+  container.prepend(toast);
+
+  // FIX T1 & T2: kelola seluruh lifecycle via JS — tidak bergantung pada timing CSS
+  // Mulai animasi masuk setelah elemen ada di DOM
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      toast.classList.add('toast--visible');
+    });
+  });
+
+  // Jadwalkan dismiss setelah duration
+  const timer = setTimeout(() => _dismissToast(toast), duration);
+
+  // Simpan timer di elemen agar bisa dibatalkan saat dismiss manual
+  toast._dismissTimer = timer;
+}
+
+/**
+ * Animasikan toast keluar, lalu hapus dari DOM.
+ * FIX T1: satu fungsi dismiss yang andal — tidak ada race condition.
+ * @param {HTMLElement} toast
+ */
+function _dismissToast(toast) {
+  if (!toast || !toast.parentNode) return;
+  if (toast._dismissTimer) {
+    clearTimeout(toast._dismissTimer);
+    toast._dismissTimer = null;
+  }
+  // Kelas out memicu animasi CSS keluar
+  toast.classList.remove('toast--visible');
+  toast.classList.add('toast--out');
+  // Hapus dari DOM setelah animasi selesai (sinkron dengan durasi CSS transition)
+  toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  // Fallback: hapus paksa setelah 500ms jika transisi tidak fired (browser lama)
+  setTimeout(() => toast.remove(), 500);
 }
 
 // ── Button Loading State Helpers ─────────────────────────────
@@ -135,6 +212,17 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+/**
+ * Escape pesan untuk dimasukkan ke innerHTML toast.
+ * Lebih ringan dari escapeHtml karena hanya perlu escape < dan >.
+ * @param {string} msg
+ * @returns {string}
+ */
+function _escapeToastMessage(msg) {
+  if (!msg) return '';
+  return String(msg).replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /**
