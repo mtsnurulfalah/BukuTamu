@@ -182,22 +182,58 @@ h3 { font-size: var(--font-size-lg); }
 .navbar__brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-weight: 700;
-  font-size: var(--font-size-base);
+  gap: var(--space-3);
   color: var(--clr-white);
-  letter-spacing: -0.01em;
+  min-width: 0;
+  text-decoration: none;
 }
 
+/* Logo mark — kotak dengan border tipis, terasa seperti identitas visual */
 .navbar__brand-icon {
-  width: 32px;
-  height: 32px;
-  background: rgba(255,255,255,0.15);
+  width: 36px;
+  height: 36px;
+  background: var(--clr-accent);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
+  transition: opacity var(--transition);
+  overflow: hidden;
+  position: relative;
+}
+
+.navbar__brand-icon:hover { opacity: 0.92; }
+
+/* Teks dua baris: nama sekolah + label app */
+.navbar__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.navbar__brand-name {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--clr-white);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.navbar__brand-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .navbar__right {
@@ -237,7 +273,7 @@ h3 { font-size: var(--font-size-lg); }
 
 @media (min-width: 640px) {
   .navbar { padding: 0 var(--space-6); }
-  .navbar__brand { font-size: var(--font-size-md); }
+  .navbar__brand-name { font-size: var(--font-size-base); max-width: 240px; }
   .navbar__user  { display: block; }
 }
 
