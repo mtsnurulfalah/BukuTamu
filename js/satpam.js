@@ -1,5 +1,5 @@
 /**
- * satpam.js — Dashboard Satpam v2.1
+ * satpam.js — Dashboard Satpam v2.2
  * ─────────────────────────────────────────────────────────
  * Fitur:
  *   - Daftar tamu aktif: rombongan tampil sebagai 1 baris
@@ -10,7 +10,12 @@
  *   - Stats strip: hadir sesi + hadir individu
  *   - Pencarian cukup dengan nama salah satu anggota
  *
- * CHANGELOG v2.1:
+ * CHANGELOG v2.2 (SECURITY):
+ *   - SECURITY S1: _callGASSecure() — validasi format token sebelum request
+ *   - SECURITY S2: auto-refresh berhenti jika token tidak lagi valid
+ *   - SECURITY S3: payload tidak pernah menyertakan user_id/role sebagai
+ *                  bukti otorisasi — server memutuskan dari token
+ *   - SECURITY S4: token tidak pernah ada di URL/query string
  *   - FIX S1: try/catch di loadTamuAktif()
  *   - FIX S2: try/catch di loadSchoolConfig()
  *   - FIX S3: ganti onclick inline → event delegation di renderCards/renderTable
@@ -24,6 +29,40 @@
  */
 
 'use strict';
+
+// ── SECURITY: Wrapper callGAS yang memvalidasi token sebelum request ──────────
+/**
+ * ▶▶ SECURITY S1: Wrapper aman untuk semua request ke GAS yang membutuhkan auth.
+ * Menolak request di sisi client jika token tidak ada atau formatnya salah,
+ * tanpa perlu round-trip ke server.
+ *
+ * Server TETAP melakukan validasi sendiri — ini defence-in-depth.
+ *
+ * @param {string} action
+ * @param {Object} payload — JANGAN sertakan user_id/role/username sebagai
+ *                           bukti otorisasi — server tentukan dari token
+ * @returns {Promise<Object>}
+ */
+async function _callGASSecure(action, payload = {}) {
+  const token = getToken();
+
+  // ▶▶ SECURITY: Validasi format token sebelum kirim ke server
+  if (!token || !/^[a-f0-9]{48}$/.test(token)) {
+    // Token tidak ada atau format salah → redirect ke login
+    clearSession();
+    window.location.href = '/login';
+    return { status: 'error', message: 'Sesi tidak valid. Silakan login kembali.' };
+  }
+
+  // ▶▶ SECURITY: Pastikan payload tidak menyertakan field otorisasi dari frontend
+  const cleanPayload = { ...payload };
+  delete cleanPayload.user_id;
+  delete cleanPayload.userId;
+  delete cleanPayload.owner_id;
+  delete cleanPayload.ownerId;
+
+  return callGAS(action, { token, ...cleanPayload });
+}
 
 // ── State ─────────────────────────────────────────────────────
 let allTamuAktif      = [];
@@ -108,7 +147,7 @@ async function loadTamuAktif(silent = false) {
 
   let result;
   try {
-    result = await callGAS('getTamuAktif', { token: getToken() });
+    result = await _callGASSecure('getTamuAktif');
   } catch (_) {
     result = { status: 'error', message: 'Koneksi gagal.' };
   }
@@ -401,8 +440,7 @@ async function confirmCatatPulang() {
 
   let result;
   try {
-    result = await callGAS('updateJamPulang', {
-      token    : getToken(),
+    result = await _callGASSecure('updateJamPulang', {
       id       : tamuIdToUpdate,
       jamPulang: jamPulang,
     });
@@ -456,7 +494,7 @@ async function openDetail(tamuId) {
 
   let result;
   try {
-    result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
+    result = await _callGASSecure('getTamuById', { id: tamuId });
   } catch (_) {
     if (content) content.innerHTML =
       `<div class="alert alert--danger">Koneksi gagal. Coba lagi.</div>`;
@@ -573,7 +611,7 @@ async function openEditModal(tamuId) {
 
   let result;
   try {
-    result = await callGAS('getTamuById', { token: getToken(), id: tamuId });
+    result = await _callGASSecure('getTamuById', { id: tamuId });
   } catch (_) {
     if (content) content.innerHTML =
       `<div class="alert alert--danger">Koneksi gagal. Coba lagi.</div>`;
@@ -813,7 +851,8 @@ async function _submitEditForm(tamuId) {
   if (!valid) return;
 
   const payload = {
-    token        : getToken(),
+    // ▶▶ SECURITY S3: token diambil oleh _callGASSecure() dari server session
+    // Tidak ada user_id/role yang dikirim dari frontend sebagai bukti otorisasi
     id           : tamuId,
     instansi     : modal.querySelector('#edit-instansi')?.value.trim()    || '',
     keperluan    : modal.querySelector('#edit-keperluan')?.value.trim()    || '',
@@ -827,7 +866,7 @@ async function _submitEditForm(tamuId) {
 
   let result;
   try {
-    result = await callGAS('updateTamu', payload);
+    result = await _callGASSecure('updateTamu', payload);
   } catch (_) {
     result = { status: 'error', message: 'Koneksi gagal.' };
   }
@@ -866,7 +905,17 @@ function hideNotifBanner() {
 // ── Auto Refresh ──────────────────────────────────────────────
 function startAutoRefresh() {
   stopAutoRefresh();
-  refreshTimer = setInterval(async () => { await loadTamuAktif(true); }, CONFIG.REFRESH_INTERVAL);
+  refreshTimer = setInterval(async () => {
+    // ▶▶ SECURITY S2: hentikan auto-refresh jika token sudah tidak ada atau tidak valid
+    const token = getToken();
+    if (!token || !/^[a-f0-9]{48}$/.test(token)) {
+      stopAutoRefresh();
+      clearSession();
+      window.location.href = '/login';
+      return;
+    }
+    await loadTamuAktif(true);
+  }, CONFIG.REFRESH_INTERVAL);
 }
 
 function stopAutoRefresh() {
