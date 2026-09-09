@@ -1364,3 +1364,388 @@
 .anggota-card * {
   max-width: 100%;
 }
+
+/* ============================================================
+   ▶▶ OTP TAMU: Komponen Verifikasi Email (v2.2)
+   ============================================================
+   Seluruh komponen ini di-inject secara dinamis oleh JS
+   ke dalam card tamu pertama untuk jenis:
+     Alumni | Dinas/Instansi | Mitra | Vendor/Penyedia
+   ============================================================ */
+
+/* ── Seksi OTP (wrapper utama) ───────────────────────────── */
+.otp-section {
+  /* Span dua kolom di anggota-card__body grid */
+  grid-column: 1 / -1;
+  border-top: 1.5px dashed var(--clr-primary-mid);
+  margin-top: var(--space-2);
+  padding-top: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+/* ── State container ─────────────────────────────────────── */
+.otp-state {
+  animation: fadeIn 0.25s ease;
+}
+
+/* ── Hint sebelum kirim OTP ──────────────────────────────── */
+.otp-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-primary-light);
+  border: 1px solid var(--clr-primary-mid);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xs);
+  color: var(--clr-primary);
+  font-weight: 500;
+  margin-bottom: var(--space-3);
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.otp-hint__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Tombol Kirim OTP ────────────────────────────────────── */
+.btn--otp-send {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 20px;
+  background: var(--clr-primary);
+  color: var(--clr-white);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  min-height: var(--touch-target);
+  letter-spacing: -0.01em;
+  box-shadow: var(--shadow-primary);
+  width: 100%;
+  justify-content: center;
+}
+
+.btn--otp-send:hover:not(:disabled) {
+  background: var(--clr-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(26, 68, 128, 0.35);
+}
+
+.btn--otp-send:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 3px;
+}
+
+.btn--otp-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn--otp-send.loading .btn__icon,
+.btn--otp-send.loading .btn__text {
+  opacity: 0.7;
+}
+
+/* ── Info email masking saat OTP terkirim ────────────────── */
+.otp-sent-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xs);
+  color: #166534;
+  font-weight: 500;
+  margin-bottom: var(--space-4);
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.otp-sent-info__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.otp-masked-email {
+  font-weight: 700;
+  color: #15803d;
+  word-break: break-all;
+}
+
+/* ── Input OTP ───────────────────────────────────────────── */
+.otp-input-wrap {
+  position: relative;
+}
+
+.otp-input {
+  font-family: 'Courier New', 'Courier', monospace !important;
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.35em !important;
+  text-align: center !important;
+  color: var(--clr-primary-dark) !important;
+  background: var(--clr-primary-light) !important;
+  border-color: var(--clr-primary-mid) !important;
+  border-radius: var(--radius-xl) !important;
+  padding: var(--space-3) var(--space-4) !important;
+  transition: all var(--transition) !important;
+  /* Cegah zoom di iOS saat focus */
+  font-size: max(1.75rem, 16px) !important;
+}
+
+.otp-input:focus {
+  background: var(--clr-white) !important;
+  border-color: var(--clr-primary) !important;
+  box-shadow: 0 0 0 4px rgba(26, 68, 128, 0.12) !important;
+  outline: none !important;
+}
+
+.otp-input.is-valid {
+  border-color: var(--clr-success) !important;
+  background: #f0fdf4 !important;
+}
+
+.otp-input.is-invalid {
+  border-color: var(--clr-danger) !important;
+  background: #fef2f2 !important;
+}
+
+/* Placeholder tampil per-karakter di browser modern */
+.otp-input::placeholder {
+  letter-spacing: 0.5em;
+  color: var(--clr-gray-300);
+  font-weight: 400;
+}
+
+/* ── Baris expiry + resend ───────────────────────────────── */
+.otp-expiry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.otp-expiry-text {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-500);
+}
+
+.otp-expiry-text strong {
+  color: var(--clr-primary);
+  font-variant-numeric: tabular-nums;
+  transition: color var(--transition);
+}
+
+/* Warnai countdown merah ketika ≤ 60 detik */
+.otp-expiry--expired .otp-expiry-text strong {
+  color: var(--clr-danger);
+}
+
+.otp-resend-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.btn-otp-resend {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--clr-primary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.btn-otp-resend:hover:not(:disabled) {
+  color: var(--clr-primary-dark);
+  background: var(--clr-primary-light);
+  text-decoration: none;
+}
+
+.btn-otp-resend:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 2px;
+}
+
+.btn-otp-resend:disabled {
+  color: var(--clr-gray-400);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.otp-resend-countdown {
+  font-size: var(--font-size-xs);
+  color: var(--clr-gray-400);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tombol Verifikasi Email ─────────────────────────────── */
+.btn--otp-verify {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 20px;
+  background: var(--clr-primary);
+  color: var(--clr-white);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  min-height: var(--touch-target);
+  letter-spacing: -0.01em;
+  box-shadow: var(--shadow-primary);
+  width: 100%;
+  justify-content: center;
+  margin-top: var(--space-1);
+}
+
+.btn--otp-verify:hover:not(:disabled) {
+  background: var(--clr-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(26, 68, 128, 0.35);
+}
+
+.btn--otp-verify:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 3px;
+}
+
+.btn--otp-verify:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── State: Email Terverifikasi ──────────────────────────── */
+.otp-state--verified {
+  animation: fadeIn 0.3s ease;
+}
+
+.otp-verified-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: var(--radius-xl);
+  transition: all var(--transition);
+}
+
+.otp-verified-badge__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #dcfce7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #16a34a;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.1);
+}
+
+.otp-verified-badge__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.otp-verified-badge__label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #15803d;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.otp-verified-badge__email {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #166534;
+  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tombol ganti email */
+.btn-otp-change {
+  background: none;
+  border: 1px solid #86efac;
+  padding: 5px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #16a34a;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  transition: all var(--transition);
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-height: 32px;
+}
+
+.btn-otp-change:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+  color: #15803d;
+}
+
+.btn-otp-change:focus-visible {
+  outline: 2px solid #16a34a;
+  outline-offset: 2px;
+}
+
+/* ── Animasi global (reuse) ──────────────────────────────── */
+/* fadeIn sudah ada di global.css — definisikan lokal jika belum */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive overrides ────────────────────────────────── */
+@media (min-width: 600px) {
+  /* Di grid 2 kolom, OTP section tetap span penuh */
+  .otp-section {
+    grid-column: 1 / -1;
+  }
+
+  .btn--otp-send,
+  .btn--otp-verify {
+    width: auto;
+    min-width: 200px;
+  }
+}
+
+@media (max-width: 360px) {
+  .otp-input {
+    font-size: 1.4rem !important;
+    letter-spacing: 0.25em !important;
+  }
+
+  .otp-verified-badge {
+    flex-wrap: wrap;
+  }
+}
