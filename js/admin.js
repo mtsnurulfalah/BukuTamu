@@ -1280,7 +1280,7 @@ function _pdfDrawRingkasan(doc, tamuList, exportData, pageW) {
   const stats = [
     { label: 'Total Kunjungan (Sesi)', value: String(totalSesi)  },
     { label: 'Total Individu (Orang)', value: String(totalInd)   },
-    { label: 'Rombongan (≥ 2 Orang)', value: String(totalRomb)  },
+    { label: 'Rombongan (>= 2 Orang)', value: String(totalRomb)  },
     { label: 'Masih Berada di Lokasi', value: String(masihHadir) },
   ];
 
