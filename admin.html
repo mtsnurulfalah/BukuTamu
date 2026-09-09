@@ -104,6 +104,15 @@
       >
         <i data-lucide="settings" style="width:0.85rem;height:0.85rem;"></i> Pengaturan
       </button>
+      <button
+        class="tab-btn"
+        id="tab-auditlog"
+        role="tab"
+        aria-selected="false"
+        aria-controls="pane-auditlog"
+      >
+        <i data-lucide="shield" style="width:0.85rem;height:0.85rem;"></i> Audit Log
+      </button>
     </div>
   </nav>
 
@@ -902,6 +911,62 @@
 
     </div>
     <!-- ── end pane-pengaturan ──────────────────────────────── -->
+
+    <!-- ── TAB: AUDIT LOG ──────────────────────────────────── -->
+    <div
+      class="tab-pane admin-section"
+      id="pane-auditlog"
+      role="tabpanel"
+      aria-labelledby="tab-auditlog"
+    >
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">
+            <i data-lucide="shield" style="width:1rem;height:1rem;"></i>
+            Audit Log Aktivitas
+          </h2>
+          <p class="section-desc" style="margin:0;font-size:0.82rem;color:var(--clr-gray-500);">
+            Catatan aktivitas kritis sistem — login, logout, tambah/ubah/hapus data, export, OTP.
+          </p>
+        </div>
+        <button class="btn btn--secondary btn--sm" id="btn-refresh-auditlog"
+          aria-label="Muat ulang audit log">
+          <i data-lucide="refresh-cw" style="width:0.85rem;height:0.85rem;"></i> Muat Ulang
+        </button>
+      </div>
+
+      <div style="margin-bottom:var(--space-3);font-size:0.82rem;color:var(--clr-gray-500);"
+           id="auditlog-count">Memuat...</div>
+
+      <div id="auditlog-empty" style="display:none;text-align:center;padding:var(--space-8);color:var(--clr-gray-400);">
+        Belum ada entri audit log.
+      </div>
+
+      <div id="auditlog-table-wrapper" style="overflow-x:auto;">
+        <table class="rekap-table" style="font-size:0.82rem;" role="grid" aria-label="Tabel Audit Log">
+          <thead>
+            <tr>
+              <th scope="col">Waktu</th>
+              <th scope="col">Username</th>
+              <th scope="col">Role</th>
+              <th scope="col">Aksi</th>
+              <th scope="col">Status</th>
+              <th scope="col">Detail</th>
+            </tr>
+          </thead>
+          <tbody id="auditlog-table-body">
+            <!-- Diisi oleh loadAuditLog() -->
+          </tbody>
+        </table>
+      </div>
+
+      <p style="margin-top:var(--space-4);font-size:0.75rem;color:var(--clr-gray-400);">
+        <i data-lucide="info" style="width:0.75rem;height:0.75rem;"></i>
+        Audit log hanya dapat dilihat oleh admin. Menampilkan 100 entri terbaru.
+        Data sensitif (password, OTP) tidak pernah dicatat.
+      </p>
+    </div>
+    <!-- ── end pane-auditlog ───────────────────────────────── -->
 
   </main>
 
