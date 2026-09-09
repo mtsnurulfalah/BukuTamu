@@ -1,9 +1,9 @@
 /**
- * admin.js — Dashboard Admin v2.1
+ * admin.js — Dashboard Admin v2.2
  * ─────────────────────────────────────────────────────────
  * Fitur:
- *   - Cek autentikasi (admin only)
- *   - Tab navigasi: Ringkasan / Rekap Tamu / Manajemen Staf / Siswa / Pengaturan
+ *   - Cek autentikasi (admin only) — validasi token ke server (auth.js v2.1)
+ *   - Tab navigasi: Ringkasan / Rekap Tamu / Manajemen Staf / Siswa / Pengaturan / Audit Log
  *   - Statistik cards: hari ini, aktif, bulan ini, terbanyak, total, rombongan
  *   - Chart.js: horizontal bar (jenis tamu) + line (tren 7 hari)
  *   - Rekap tamu: filter, pagination, modal detail
@@ -11,27 +11,56 @@
  *   - Manajemen staf & siswa: tambah, edit, toggle aktif
  *   - Pengaturan sekolah: identitas, logo sekolah, logo aplikasi
  *   - Polling notifikasi in-app tiap 60 detik
+ *   - ▶▶ SECURITY v2.2: tab Audit Log, token format check sebelum request
  *
- * CHANGELOG v2.1:
- *   - FIX A1: try/catch di loadRingkasan(), loadStaf(), loadSiswa()
- *   - FIX A2: showRekapSkeleton(false) sekarang idempotent — tbody bersih
- *   - FIX A3/A14: ganti confirm() native blocking → toast konfirmasi yang
- *                 tidak memblokir UI thread
- *   - FIX A4: _applyLogoPreview — cek img.complete sebelum appendChild
- *   - FIX A5: reset rekapData sebelum render saat error
- *   - FIX A8: renderBarChart/renderTrendChart tidak overwrite canvas dengan
- *             innerHTML agar reference chart tetap valid untuk destroy()
- *   - FIX A9: null guard di _updateNavbarLogo saat url kosong
- *   - FIX A10: try/catch di loadSchoolConfig()
- *   - FIX A11: null guard di handleExport sebelum setButtonLoading
- *   - FIX A12: bersihkan notifTimer saat page unload
- *   - FIX A13: _showSavedIndicator tidak membuat duplikat elemen
- *   - FIX A15: guard lucide.createIcons() (di HTML)
- *   - IMPROVE: isSubmitting guard per-form mencegah double-submit
- *   - IMPROVE: autocomplete off pada form staf/siswa agar tidak ada autofill
+ * CHANGELOG v2.2 (SECURITY):
+ *   - SECURITY S1: callGAS wrapper _callGASSecure() — tolak request jika token
+ *                  tidak valid format (48 hex chars) sebelum dikirim ke server
+ *   - SECURITY S2: Tab baru "Audit Log" — lihat aktivitas kritis
+ *   - SECURITY S3: handleExport tidak menyertakan user_id dari frontend
+ *   - SECURITY S4: request body tidak pernah menyertakan role/username sebagai
+ *                  bukti otorisasi — server yang memutuskan dari token
+ *   - SECURITY S5: token tidak pernah ada di URL/query string
  */
 
 'use strict';
+
+// ── SECURITY: Wrapper callGAS yang memvalidasi token sebelum request ──────────
+/**
+ * ▶▶ SECURITY S1: Wrapper aman untuk semua request ke GAS yang membutuhkan auth.
+ * Menolak request di sisi client jika token tidak ada atau formatnya salah,
+ * tanpa perlu round-trip ke server.
+ *
+ * Ini adalah defence-in-depth: server TETAP melakukan validasi sendiri.
+ * Fungsi ini hanya mencegah request yang pasti gagal dari dikirim.
+ *
+ * @param {string} action
+ * @param {Object} payload — JANGAN sertakan user_id/role/username sebagai
+ *                           bukti otorisasi — server tentukan dari token
+ * @returns {Promise<Object>}
+ */
+async function _callGASSecure(action, payload = {}) {
+  const token = getToken();
+
+  // ▶▶ SECURITY: Validasi format token sebelum kirim ke server
+  if (!token || !/^[a-f0-9]{48}$/.test(token)) {
+    // Token tidak ada atau format salah → redirect ke login
+    clearSession();
+    _redirectToLogin();
+    return { status: 'error', message: 'Sesi tidak valid. Silakan login kembali.' };
+  }
+
+  // ▶▶ SECURITY: Pastikan payload tidak menyertakan field otorisasi dari frontend
+  // Server tidak boleh mempercayai user_id/role/username dari body
+  const cleanPayload = { ...payload };
+  delete cleanPayload.user_id;
+  delete cleanPayload.userId;
+  delete cleanPayload.owner_id;
+  delete cleanPayload.ownerId;
+  // Catatan: token boleh ada karena itu cara GAS mengidentifikasi user
+
+  return callGAS(action, { token, ...cleanPayload });
+}
 
 // ── State ─────────────────────────────────────────────────────
 let session         = null;
@@ -144,6 +173,7 @@ async function switchTab(tabId) {
     if (tabId === 'staf')       await loadStaf();
     if (tabId === 'siswa')      await loadSiswa();
     if (tabId === 'pengaturan') await loadPengaturan();
+    if (tabId === 'auditlog')   await loadAuditLog();   // ▶▶ SECURITY
   } finally {
     _isTabSwitching = false;
   }
@@ -1297,6 +1327,14 @@ async function checkNotif() {
 function attachModalEvents() {
   document.getElementById('btn-close-detail')?.addEventListener('click', closeRekapDetail);
 
+  // ▶▶ SECURITY: tombol refresh audit log
+  document.getElementById('btn-refresh-auditlog')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-refresh-auditlog');
+    if (btn) setButtonLoading(btn);
+    await loadAuditLog();
+    if (btn) resetButtonLoading(btn, false);
+  });
+
   const modalDetail = document.getElementById('modal-detail');
   if (modalDetail) {
     modalDetail.addEventListener('click', e => {
@@ -2406,4 +2444,81 @@ function _prefillEmailInput(email) {
 
 function _isValidEmailFrontend(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((email || '').trim());
+}
+
+// ══════════════════════════════════════════════════════════════
+// ▶▶ SECURITY: TAB AUDIT LOG
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Muat dan tampilkan audit log aktivitas kritis.
+ * Hanya bisa diakses admin — server memverifikasi token.
+ * ▶▶ SECURITY: Token dikirim dari server session, bukan dari URL/body manual.
+ */
+async function loadAuditLog() {
+  const container = document.getElementById('auditlog-table-body');
+  const countEl   = document.getElementById('auditlog-count');
+  const emptyEl   = document.getElementById('auditlog-empty');
+  const tableEl   = document.getElementById('auditlog-table-wrapper');
+
+  if (!container) return;
+
+  // Tampilkan skeleton
+  container.innerHTML = Array(5).fill(`
+    <tr>${Array(6).fill('<td><div class="skeleton skeleton--text" style="height:0.85em;"></div></td>').join('')}</tr>
+  `).join('');
+  if (tableEl) tableEl.style.display = '';
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (countEl) countEl.textContent   = 'Memuat...';
+
+  let result;
+  try {
+    // ▶▶ SECURITY: Gunakan _callGASSecure — token diambil dari localStorage
+    // Server memverifikasi token dan memastikan hanya admin yang bisa akses
+    result = await _callGASSecure('getAuditLog', { limit: 100 });
+  } catch (_) {
+    result = { status: 'error', message: 'Koneksi gagal.' };
+  }
+
+  if (result.status !== 'ok') {
+    container.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding:var(--space-8);">
+      ${escapeHtml(result.message || 'Gagal memuat audit log.')}
+    </td></tr>`;
+    if (countEl) countEl.textContent = 'Gagal memuat.';
+    return;
+  }
+
+  const logs  = result.data?.logs || [];
+  const total = result.data?.total || 0;
+
+  if (countEl) countEl.textContent = `${total} entri audit log`;
+
+  if (logs.length === 0) {
+    container.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = '';
+    if (tableEl) tableEl.style.display = 'none';
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  const statusClass = { ok: 'badge--success', denied: 'badge--danger', error: 'badge--warning' };
+  const statusLabel = { ok: 'OK', denied: 'DITOLAK', error: 'ERROR' };
+
+  container.innerHTML = logs.map(log => {
+    const ts   = log.timestamp
+      ? new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })
+      : '—';
+    const sCls = statusClass[log.status] || 'badge--gray';
+    const sLbl = statusLabel[log.status] || escapeHtml(log.status);
+
+    return `<tr>
+      <td style="white-space:nowrap;font-size:0.78rem;color:var(--clr-gray-500);">${escapeHtml(ts)}</td>
+      <td style="font-weight:600;">${escapeHtml(log.username || 'public')}</td>
+      <td><span class="badge badge--primary" style="font-size:0.7rem;">${escapeHtml(log.role || '—')}</span></td>
+      <td><code style="font-size:0.78rem;">${escapeHtml(log.action || '—')}</code></td>
+      <td><span class="badge ${sCls}" style="font-size:0.7rem;">${sLbl}</span></td>
+      <td style="font-size:0.78rem;max-width:200px;white-space:normal;">${escapeHtml(log.detail || '—')}</td>
+    </tr>`;
+  }).join('');
 }
