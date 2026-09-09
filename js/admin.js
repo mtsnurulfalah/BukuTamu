@@ -506,6 +506,7 @@ function attachRekapEvents() {
   });
 
   document.getElementById('btn-export')?.addEventListener('click', handleExport);
+  document.getElementById('btn-export-pdf')?.addEventListener('click', handleExportPDF);
 
   document.getElementById('filter-search')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') { rekapPage = 1; loadRekap(); }
@@ -872,6 +873,702 @@ function downloadCSV(csvString, filename) {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// EKSPOR PDF — REKAP TAMU
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Handler tombol "Ekspor PDF" pada tab Rekap Tamu.
+ *
+ * Alur:
+ *  1. Baca filter aktif (dari, sampai, jenisTamu) — identik dengan handleExport CSV.
+ *  2. Panggil exportData via _callGASSecure → semua data terfilter, tanpa paginasi.
+ *  3. Ambil konfigurasi sekolah via getConfig (nama, alamat, kepala sekolah, logo).
+ *  4. Render PDF via generateRekapPDF().
+ *
+ * SECURITY:
+ *  - Menggunakan _callGASSecure() → token divalidasi format sebelum dikirim.
+ *  - Tidak menyertakan user_id/role di payload — server menentukan dari token.
+ *  - filter search tidak didukung exportData, digunakan dari/sampai/jenisTamu saja
+ *    (konsisten dengan handleExport CSV yang sudah ada).
+ *  - Proses ini bersifat read-only — tidak ada mutasi data.
+ */
+async function handleExportPDF() {
+  const btn = document.getElementById('btn-export-pdf');
+  if (!btn) return;
+
+  setButtonLoading(btn);
+
+  const dari   = document.getElementById('filter-dari')?.value   || '';
+  const sampai = document.getElementById('filter-sampai')?.value || '';
+  const jenis  = document.getElementById('filter-jenis')?.value  || '';
+
+  // Ambil semua data sesuai filter (tanpa paginasi) — sama seperti CSV export
+  let result;
+  try {
+    result = await _callGASSecure('exportData', { dari, sampai, jenisTamu: jenis });
+  } catch (_) {
+    result = { status: 'error', message: 'Koneksi gagal.' };
+  }
+
+  if (result.status !== 'ok') {
+    resetButtonLoading(btn, false);
+    showToast('Gagal membuat PDF: ' + (result.message || 'Error tidak diketahui.'), 'danger');
+    return;
+  }
+
+  const exportData = result.data || {};
+  const tamuList   = exportData.tamu || [];
+
+  if (tamuList.length === 0) {
+    resetButtonLoading(btn, false);
+    showToast('Tidak ada data yang dapat diekspor berdasarkan filter yang dipilih.', 'default');
+    return;
+  }
+
+  // Ambil konfigurasi sekolah — gunakan cache DOM jika tersedia, fallback ke API
+  let schoolConfig = {};
+  try {
+    const cfgResult = await callGAS('getConfig');
+    if (cfgResult?.status === 'ok' && cfgResult.data) {
+      schoolConfig = cfgResult.data;
+    }
+  } catch (_) {
+    // Gagal ambil config — tetap lanjut dengan fallback
+  }
+
+  try {
+    await generateRekapPDF(tamuList, exportData, schoolConfig, { dari, sampai, jenis });
+    showToast(
+      `${tamuList.length} sesi (${exportData.totalIndividu ?? tamuList.length} individu) berhasil diekspor ke PDF.`,
+      'success'
+    );
+  } catch (err) {
+    console.error('generateRekapPDF error:', err);
+    showToast('Gagal membuat PDF. Silakan coba lagi.', 'danger');
+  } finally {
+    resetButtonLoading(btn, false);
+  }
+}
+
+// ── PDF: Konstanta Warna & Tipografi ─────────────────────────
+// Cerminkan --clr-primary (#1a4480) dan palet aplikasi.
+// Semua warna tetap terbaca saat dicetak grayscale karena menggunakan
+// variasi gelap-terang yang berbeda cukup signifikan dalam luminansi.
+const _PDF = {
+  // Warna utama madrasah (sinkron dengan --clr-primary)
+  primaryDark  : [15,  42,  85],   // header kop, thead background
+  primary      : [26,  68,  128],  // aksen
+  primaryLight : [232, 241, 255],  // baris alternate
+  accent       : [192, 57,  43],   // label filter / highlight
+  white        : [255, 255, 255],
+  black        : [15,  23,  42],
+  gray900      : [30,  41,  59],
+  gray700      : [51,  65,  85],
+  gray500      : [100, 116, 139],
+  gray300      : [203, 213, 225],
+  gray100      : [241, 245, 249],
+  gray50       : [248, 250, 252],
+  successDark  : [21,  128, 61],
+  dangerDark   : [153, 27,  27],
+
+  // Tipografi
+  fontNormal   : 'helvetica',
+
+  // Ukuran kertas
+  pageW        : 297,  // A4 landscape mm
+  pageH        : 210,
+  marginL      : 14,
+  marginR      : 14,
+  marginT      : 14,
+  marginB      : 14,
+};
+
+// ── PDF: Nama bulan Indonesia ─────────────────────────────────
+const _PDF_BULAN = [
+  'Januari','Februari','Maret','April','Mei','Juni',
+  'Juli','Agustus','September','Oktober','November','Desember'
+];
+
+/**
+ * Format tanggal ISO (YYYY-MM-DD) ke "1 September 2026".
+ * Digunakan untuk header periode dan nama file PDF.
+ */
+function _pdfFormatTanggalPanjang(iso) {
+  if (!iso) return '';
+  const parts = String(iso).split('-');
+  if (parts.length < 3) return iso;
+  const d = parseInt(parts[2], 10);
+  const m = parseInt(parts[1], 10) - 1;
+  const y = parts[0];
+  return `${d} ${_PDF_BULAN[m] || ''} ${y}`;
+}
+
+/**
+ * Format tanggal ISO (YYYY-MM-DD) ke "01-09-2026" untuk nama file.
+ */
+function _pdfFormatTanggalFile(iso) {
+  if (!iso) return '';
+  const parts = String(iso).split('-');
+  if (parts.length < 3) return iso;
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
+/**
+ * Buat nama file PDF yang aman untuk semua OS.
+ * Contoh: "Rekap-Tamu-MTs-Nurul-Falah-01-09-2026_s.d_30-09-2026.pdf"
+ */
+function _pdfNamaFile(namaSekolah, dari, sampai) {
+  const slug = String(namaSekolah || 'Madrasah')
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+  const dariStr   = dari   ? _pdfFormatTanggalFile(dari)   : 'semua';
+  const sampaiStr = sampai ? _pdfFormatTanggalFile(sampai) : 'semua';
+  if (dari && sampai && dari !== sampai) {
+    return `Rekap-Tamu-${slug}-${dariStr}_s.d_${sampaiStr}.pdf`;
+  }
+  if (dari && dari === sampai) {
+    return `Rekap-Tamu-${slug}-${dariStr}.pdf`;
+  }
+  return `Rekap-Tamu-${slug}-${dariStr}-${sampaiStr}.pdf`;
+}
+
+/**
+ * Gambar kop/header dokumen pada koordinat Y saat ini.
+ * Mengembalikan Y baru setelah kop selesai digambar.
+ *
+ * @param {jsPDF}  doc
+ * @param {Object} school   - { nama_sekolah, alamat_sekolah, logo_url }
+ * @param {number} pageW
+ * @returns {number} Y berikutnya
+ */
+function _pdfDrawKop(doc, school, pageW) {
+  const ml = _PDF.marginL;
+  let   y  = _PDF.marginT;
+
+  const namaSekolah = school.nama_sekolah   || CONFIG.APP_NAME || 'Buku Tamu Digital';
+  const alamat      = school.alamat_sekolah || '';
+  const subTitle    = 'BUKU TAMU DIGITAL';
+
+  // ── Kotak latar kop ─────────────────────────────────────────
+  doc.setFillColor(..._PDF.primaryDark);
+  doc.rect(0, 0, pageW, 28, 'F');
+
+  // ── Garis aksen bawah kop ────────────────────────────────────
+  doc.setFillColor(..._PDF.accent);
+  doc.rect(0, 28, pageW, 1.5, 'F');
+
+  // ── Nama Sekolah ─────────────────────────────────────────────
+  doc.setTextColor(..._PDF.white);
+  doc.setFont(_PDF.fontNormal, 'bold');
+  doc.setFontSize(14);
+  doc.text(namaSekolah.toUpperCase(), pageW / 2, y + 8, { align: 'center' });
+
+  // ── Sub-judul ─────────────────────────────────────────────────
+  doc.setFont(_PDF.fontNormal, 'normal');
+  doc.setFontSize(8.5);
+  doc.text(subTitle, pageW / 2, y + 14, { align: 'center' });
+
+  // ── Alamat (jika ada, satu baris, truncate) ───────────────────
+  if (alamat) {
+    doc.setFontSize(7.5);
+    // Potong agar tidak melebihi lebar halaman
+    const maxW   = pageW - ml * 2;
+    const lines  = doc.splitTextToSize(alamat, maxW);
+    const alamatLine = lines[0] + (lines.length > 1 ? ' ...' : '');
+    doc.text(alamatLine, pageW / 2, y + 20, { align: 'center' });
+  }
+
+  // Reset warna teks ke default
+  doc.setTextColor(..._PDF.black);
+
+  return 30; // Y setelah kop
+}
+
+/**
+ * Gambar blok judul laporan + info periode + info filter.
+ * Mengembalikan Y baru.
+ */
+function _pdfDrawJudul(doc, filter, pageW) {
+  const ml = _PDF.marginL;
+  let   y  = 35;
+
+  // ── Judul Laporan ─────────────────────────────────────────────
+  doc.setFont(_PDF.fontNormal, 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(..._PDF.gray900);
+  doc.text('REKAPITULASI TAMU', pageW / 2, y, { align: 'center' });
+  y += 6;
+
+  // ── Garis bawah judul ─────────────────────────────────────────
+  const gW = 70;
+  doc.setDrawColor(..._PDF.accent);
+  doc.setLineWidth(0.6);
+  doc.line(pageW / 2 - gW / 2, y, pageW / 2 + gW / 2, y);
+  y += 5;
+
+  // ── Periode ───────────────────────────────────────────────────
+  let periodeTeks = 'Semua Periode';
+  if (filter.dari && filter.sampai) {
+    periodeTeks = `Periode: ${_pdfFormatTanggalPanjang(filter.dari)} s.d. ${_pdfFormatTanggalPanjang(filter.sampai)}`;
+  } else if (filter.dari) {
+    periodeTeks = `Mulai: ${_pdfFormatTanggalPanjang(filter.dari)}`;
+  } else if (filter.sampai) {
+    periodeTeks = `Sampai: ${_pdfFormatTanggalPanjang(filter.sampai)}`;
+  }
+
+  doc.setFont(_PDF.fontNormal, 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(..._PDF.gray700);
+  doc.text(periodeTeks, pageW / 2, y, { align: 'center' });
+  y += 5;
+
+  // ── Info filter tambahan (jenis tamu) ────────────────────────
+  if (filter.jenis) {
+    doc.setFontSize(8);
+    doc.setTextColor(..._PDF.gray500);
+    doc.text(`Jenis Tamu: ${filter.jenis}`, pageW / 2, y, { align: 'center' });
+    y += 4;
+  }
+
+  doc.setDrawColor(..._PDF.gray300);
+  doc.setLineWidth(0.3);
+  return y + 2;
+}
+
+/**
+ * Gambar kotak ringkasan statistik (4 box horizontal).
+ * Mengembalikan Y baru.
+ */
+function _pdfDrawRingkasan(doc, tamuList, exportData, pageW) {
+  const ml         = _PDF.marginL;
+  const mr         = _PDF.marginR;
+  const usableW    = pageW - ml - mr;
+  const totalSesi  = exportData.total        ?? tamuList.length;
+  const totalInd   = exportData.totalIndividu ?? tamuList.length;
+  const totalRomb  = tamuList.filter(t => t.isRombongan).length;
+  const masihHadir = tamuList.filter(t => t.status === 'Hadir').length;
+
+  const stats = [
+    { label: 'Total Kunjungan', value: String(totalSesi),  sub: 'sesi'      },
+    { label: 'Total Individu',  value: String(totalInd),   sub: 'orang'     },
+    { label: 'Rombongan',       value: String(totalRomb),  sub: 'sesi ≥ 2'  },
+    { label: 'Masih Hadir',     value: String(masihHadir), sub: 'belum pulang' },
+  ];
+
+  // Hitung posisi 4 box
+  const boxW   = (usableW - 9) / 4;   // 3 gap × 3mm
+  const boxH   = 20;
+  let   startY = _pdfCurrentY;         // ditetapkan sebelum pemanggilan
+
+  const boxGap = 3;
+  stats.forEach((s, i) => {
+    const x = ml + i * (boxW + boxGap);
+
+    // Background kotak
+    doc.setFillColor(..._PDF.primaryLight);
+    doc.setDrawColor(..._PDF.gray300);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, startY, boxW, boxH, 2, 2, 'FD');
+
+    // Garis kiri aksen
+    doc.setFillColor(..._PDF.primary);
+    doc.rect(x, startY, 2, boxH, 'F');
+
+    // Nilai (besar)
+    doc.setFont(_PDF.fontNormal, 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(..._PDF.primaryDark);
+    doc.text(s.value, x + boxW / 2, startY + 8, { align: 'center' });
+
+    // Label
+    doc.setFont(_PDF.fontNormal, 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(..._PDF.gray700);
+    doc.text(s.label.toUpperCase(), x + boxW / 2, startY + 13, { align: 'center' });
+
+    // Sub-label
+    doc.setFont(_PDF.fontNormal, 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(..._PDF.gray500);
+    doc.text(s.sub, x + boxW / 2, startY + 17.5, { align: 'center' });
+  });
+
+  return startY + boxH + 5;
+}
+
+/**
+ * Tambahkan header + footer ke setiap halaman (dipanggil setelah autoTable).
+ *
+ * @param {jsPDF}  doc
+ * @param {Object} school
+ * @param {Object} filter
+ * @param {string} eksporWaktu    - string waktu ekspor yang sudah diformat
+ */
+function _pdfAddHeaderFooterAllPages(doc, school, filter, eksporWaktu) {
+  const pageW   = _PDF.pageW;
+  const pageH   = _PDF.pageH;
+  const totalPg = doc.internal.getNumberOfPages();
+  const namaS   = school.nama_sekolah || CONFIG.APP_NAME || 'Buku Tamu Digital';
+
+  for (let pg = 1; pg <= totalPg; pg++) {
+    doc.setPage(pg);
+
+    // ── Header (hanya halaman > 1, halaman 1 sudah ada kop penuh) ──
+    if (pg > 1) {
+      // Latar mini-header
+      doc.setFillColor(..._PDF.primaryDark);
+      doc.rect(0, 0, pageW, 10, 'F');
+
+      doc.setFillColor(..._PDF.accent);
+      doc.rect(0, 10, pageW, 0.8, 'F');
+
+      doc.setFont(_PDF.fontNormal, 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(..._PDF.white);
+      doc.text(`${namaS.toUpperCase()} — REKAPITULASI TAMU`, _PDF.marginL, 6.5);
+
+      // Periode singkat di kanan header
+      let periodeShort = '';
+      if (filter.dari && filter.sampai) {
+        periodeShort = `${filter.dari} s.d. ${filter.sampai}`;
+      } else if (filter.dari || filter.sampai) {
+        periodeShort = filter.dari || filter.sampai;
+      }
+      if (periodeShort) {
+        doc.setFont(_PDF.fontNormal, 'normal');
+        doc.setFontSize(7);
+        doc.text(periodeShort, pageW - _PDF.marginR, 6.5, { align: 'right' });
+      }
+    }
+
+    // ── Footer setiap halaman ────────────────────────────────────
+    doc.setFillColor(..._PDF.gray100);
+    doc.rect(0, pageH - 9, pageW, 9, 'F');
+
+    doc.setDrawColor(..._PDF.gray300);
+    doc.setLineWidth(0.2);
+    doc.line(0, pageH - 9, pageW, pageH - 9);
+
+    // Teks kiri footer
+    doc.setFont(_PDF.fontNormal, 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(..._PDF.gray500);
+    doc.text(
+      `Buku Tamu Digital — ${namaS} | Diekspor: ${eksporWaktu}`,
+      _PDF.marginL, pageH - 3.5
+    );
+
+    // Nomor halaman (kanan footer)
+    doc.setFont(_PDF.fontNormal, 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(..._PDF.gray700);
+    doc.text(
+      `Halaman ${pg} dari ${totalPg}`,
+      pageW - _PDF.marginR, pageH - 3.5, { align: 'right' }
+    );
+  }
+}
+
+/**
+ * Gambar area tanda tangan pada halaman terakhir.
+ *
+ * @param {jsPDF}  doc
+ * @param {Object} school  - { kepala_sekolah }
+ * @param {number} startY  - posisi Y awal (setelah tabel autoTable selesai)
+ */
+function _pdfDrawTandaTangan(doc, school, startY) {
+  const pageW  = _PDF.pageW;
+  const ml     = _PDF.marginL;
+  const mr     = _PDF.marginR;
+  const pageH  = _PDF.pageH;
+  const usableW = pageW - ml - mr;
+  const footerH = 9;       // tinggi footer
+  const ttdH    = 40;      // tinggi blok tanda tangan
+
+  // Cek apakah cukup ruang di halaman terakhir; kalau tidak, tambah halaman baru
+  if (startY + ttdH > pageH - footerH - 5) {
+    doc.addPage();
+    startY = (pageW > pageH) ? _PDF.marginT + 15 : _PDF.marginT; // halaman baru: posisi awal
+  }
+
+  let y = startY + 6;
+
+  // ── Garis atas blok ──────────────────────────────────────────
+  doc.setDrawColor(..._PDF.gray300);
+  doc.setLineWidth(0.3);
+  doc.line(ml, y - 3, pageW - mr, y - 3);
+
+  // ── Teks heading ─────────────────────────────────────────────
+  doc.setFont(_PDF.fontNormal, 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(..._PDF.gray700);
+  doc.text('MENGETAHUI', pageW / 2, y, { align: 'center' });
+  y += 5;
+
+  // ── Dua kolom tanda tangan ────────────────────────────────────
+  const colW   = usableW / 2 - 10;
+  const col1X  = ml + 20;
+  const col2X  = pageW / 2 + 20;
+
+  const labels = [
+    { x: col1X, title: 'Kepala Madrasah', nama: school.kepala_sekolah || '' },
+    { x: col2X, title: 'Petugas / Admin',  nama: '' },
+  ];
+
+  labels.forEach(col => {
+    // Judul jabatan
+    doc.setFont(_PDF.fontNormal, 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(..._PDF.gray700);
+    doc.text(col.title, col.x, y, { align: 'center' });
+
+    // Kotak tanda tangan kosong
+    const boxX = col.x - 28;
+    const boxY = y + 2;
+    doc.setDrawColor(..._PDF.gray300);
+    doc.setFillColor(..._PDF.white);
+    doc.rect(boxX, boxY, 56, 18, 'FD');
+
+    // Nama (jika tersedia dari config)
+    if (col.nama) {
+      doc.setFont(_PDF.fontNormal, 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(..._PDF.gray900);
+      doc.text(`( ${col.nama} )`, col.x, boxY + 24, { align: 'center' });
+    } else {
+      // Garis nama kosong
+      doc.setDrawColor(..._PDF.gray300);
+      doc.setLineWidth(0.3);
+      doc.line(col.x - 25, boxY + 24, col.x + 25, boxY + 24);
+    }
+  });
+}
+
+// Variable sementara untuk pass Y ke fungsi ringkasan (closure workaround)
+let _pdfCurrentY = 0;
+
+/**
+ * Fungsi utama generator PDF rekap tamu.
+ *
+ * @param {Array}  tamuList    - Array objek tamu dari exportData
+ * @param {Object} exportData  - { total, totalIndividu, dari, sampai }
+ * @param {Object} school      - Konfigurasi sekolah dari getConfig
+ * @param {Object} filter      - { dari, sampai, jenis }
+ */
+async function generateRekapPDF(tamuList, exportData, school, filter) {
+  // Pastikan jsPDF tersedia
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    throw new Error('Library jsPDF belum dimuat. Periksa koneksi internet.');
+  }
+
+  const { jsPDF } = window.jspdf;
+
+  // ── Inisialisasi dokumen A4 Landscape ─────────────────────────
+  const doc = new jsPDF({
+    orientation : 'landscape',
+    unit        : 'mm',
+    format      : 'a4',
+    compress    : true,
+  });
+
+  const pageW = _PDF.pageW;
+  const pageH = _PDF.pageH;
+  const ml    = _PDF.marginL;
+  const mr    = _PDF.marginR;
+
+  // ── Metadata dokumen ──────────────────────────────────────────
+  const namaSekolah = school.nama_sekolah || CONFIG.APP_NAME || 'Buku Tamu Digital';
+  doc.setProperties({
+    title   : `Rekap Tamu — ${namaSekolah}`,
+    subject : 'Rekapitulasi Kunjungan Tamu',
+    author  : namaSekolah,
+    creator : 'Buku Tamu Digital',
+  });
+
+  // ── Waktu ekspor dalam WIB ────────────────────────────────────
+  const now       = new Date();
+  // Offset WIB = UTC+7
+  const wibOffset = 7 * 60;
+  const utcMs     = now.getTime() + now.getTimezoneOffset() * 60000;
+  const wibDate   = new Date(utcMs + wibOffset * 60000);
+  const dd        = String(wibDate.getDate()).padStart(2, '0');
+  const mm        = String(wibDate.getMonth() + 1).padStart(2, '0');
+  const yyyy      = wibDate.getFullYear();
+  const hh        = String(wibDate.getHours()).padStart(2, '0');
+  const min       = String(wibDate.getMinutes()).padStart(2, '0');
+  const eksporWaktu = `${dd} ${_PDF_BULAN[wibDate.getMonth()]} ${yyyy}, ${hh}:${min} WIB`;
+
+  // ── Halaman 1: Kop ────────────────────────────────────────────
+  let y = _pdfDrawKop(doc, school, pageW);
+
+  // ── Judul + Periode ───────────────────────────────────────────
+  y = _pdfDrawJudul(doc, filter, pageW);
+
+  // ── Ringkasan statistik ───────────────────────────────────────
+  _pdfCurrentY = y;
+  y = _pdfDrawRingkasan(doc, tamuList, exportData, pageW);
+
+  // ── Separator ─────────────────────────────────────────────────
+  doc.setDrawColor(..._PDF.gray300);
+  doc.setLineWidth(0.3);
+  doc.line(ml, y, pageW - mr, y);
+  y += 3;
+
+  // ── Filter aktif (block kecil di atas tabel) ──────────────────
+  doc.setFont(_PDF.fontNormal, 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(..._PDF.accent);
+  doc.text('FILTER AKTIF:', ml, y);
+  doc.setFont(_PDF.fontNormal, 'normal');
+  doc.setTextColor(..._PDF.gray700);
+
+  const filterParts = [];
+  if (filter.dari && filter.sampai) {
+    filterParts.push(`Periode: ${_pdfFormatTanggalPanjang(filter.dari)} s.d. ${_pdfFormatTanggalPanjang(filter.sampai)}`);
+  } else if (filter.dari) {
+    filterParts.push(`Dari: ${_pdfFormatTanggalPanjang(filter.dari)}`);
+  } else if (filter.sampai) {
+    filterParts.push(`Sampai: ${_pdfFormatTanggalPanjang(filter.sampai)}`);
+  } else {
+    filterParts.push('Periode: Semua');
+  }
+  filterParts.push(`Jenis Tamu: ${filter.jenis || 'Semua'}`);
+
+  doc.text(filterParts.join('   |   '), ml + 22, y);
+  y += 5;
+
+  // ── Persiapan baris tabel ─────────────────────────────────────
+  // Setiap SESI kunjungan = 1 baris utama.
+  // Anggota rombongan ditampilkan dalam sel multi-line pada kolom Tamu.
+  // Ini memastikan 1 sesi = 1 baris (tidak meledak menjadi N baris seperti CSV).
+  let nomor = 1;
+  const tableBody = tamuList.map(t => {
+    const anggota = Array.isArray(t.dataAnggota) && t.dataAnggota.length > 0
+      ? t.dataAnggota
+      : [{ namaLengkap: t.namaLengkap || '—', jabatan: '' }];
+
+    // Kolom Tamu: nama semua anggota dalam satu sel, dipisah newline
+    let namaCell;
+    if (t.isRombongan) {
+      const namaList = anggota.map((a, i) => {
+        const jabStr = a.jabatan ? ` (${a.jabatan})` : '';
+        return `${i + 1}. ${a.namaLengkap || '—'}${jabStr}`;
+      }).join('\n');
+      namaCell = `[Rombongan ${t.jumlahTamu} org]\n${namaList}`;
+    } else {
+      namaCell = anggota[0]?.namaLengkap || t.namaLengkap || '—';
+    }
+
+    // Helper: nilai kosong → '—'
+    const v = val => (val && String(val).trim()) ? String(val).trim() : '—';
+
+    return [
+      nomor++,
+      v(t.tanggal ? _pdfFormatTanggalPanjang(t.tanggal) : ''),
+      namaCell,
+      v(t.jenisTamu),
+      v(t.instansi),
+      v(t.keperluan),
+      v(t.bertemuDengan),
+      v(t.jamDatang),
+      t.jamPulang ? v(t.jamPulang) : '—',
+      t.status || '—',
+    ];
+  });
+
+  // ── Render tabel dengan autoTable ─────────────────────────────
+  doc.autoTable({
+    startY      : y,
+    margin      : { left: ml, right: mr, bottom: _PDF.marginB + 9 },
+    // ▶▶ Header tabel diulang di setiap halaman (tableWidth: 'auto')
+    showHead    : 'everyPage',
+    head        : [[
+      'No', 'Tanggal', 'Nama / Tamu', 'Jenis',
+      'Instansi / Asal', 'Keperluan', 'Bertemu',
+      'Datang', 'Pulang', 'Status',
+    ]],
+    body        : tableBody,
+    // ── Lebar kolom (total ≈ 269mm = 297 - 14 - 14) ─────────────
+    columnStyles: {
+      0 : { cellWidth: 8,  halign: 'center' },  // No
+      1 : { cellWidth: 26 },                    // Tanggal
+      2 : { cellWidth: 52 },                    // Nama/Tamu (terluas, multi-line)
+      3 : { cellWidth: 24 },                    // Jenis
+      4 : { cellWidth: 38 },                    // Instansi
+      5 : { cellWidth: 45 },                    // Keperluan
+      6 : { cellWidth: 34 },                    // Bertemu
+      7 : { cellWidth: 16, halign: 'center' },  // Datang
+      8 : { cellWidth: 16, halign: 'center' },  // Pulang
+      9 : { cellWidth: 18, halign: 'center' },  // Status
+    },
+    styles: {
+      font        : _PDF.fontNormal,
+      fontSize    : 8,
+      cellPadding : { top: 2.5, right: 3, bottom: 2.5, left: 3 },
+      textColor   : _PDF.gray900,
+      overflow    : 'linebreak',   // wrap teks panjang (nama, keperluan, instansi)
+      lineColor   : _PDF.gray300,
+      lineWidth   : 0.2,
+      minCellHeight: 8,
+    },
+    headStyles: {
+      fillColor   : _PDF.primaryDark,
+      textColor   : _PDF.white,
+      fontStyle   : 'bold',
+      fontSize    : 7.5,
+      cellPadding : { top: 3, right: 3, bottom: 3, left: 3 },
+      halign      : 'center',
+    },
+    alternateRowStyles: {
+      fillColor: _PDF.primaryLight,
+    },
+    bodyStyles: {
+      fillColor: _PDF.white,
+    },
+    // ── Warna status di kolom terakhir ─────────────────────────
+    didParseCell(data) {
+      // Kolom Status (index 9)
+      if (data.section === 'body' && data.column.index === 9) {
+        const val = String(data.cell.raw || '');
+        if (val === 'Hadir') {
+          data.cell.styles.textColor  = _PDF.successDark;
+          data.cell.styles.fontStyle  = 'bold';
+        } else if (val === 'Pulang') {
+          data.cell.styles.textColor  = _PDF.gray500;
+          data.cell.styles.fontStyle  = 'normal';
+        }
+      }
+      // Kolom Nama (index 2) — baris rombongan: warna sub-teks lebih terang
+      if (data.section === 'body' && data.column.index === 2) {
+        const val = String(data.cell.raw || '');
+        if (val.startsWith('[Rombongan')) {
+          data.cell.styles.fontSize = 7.5;
+        }
+      }
+    },
+    // ── Header di halaman lanjutan: gunakan top margin lebih kecil ─
+    didDrawPage(hookData) {
+      // Halaman pertama sudah punya kop penuh; halaman 2+ pakai mini-header
+      // (ditangani oleh _pdfAddHeaderFooterAllPages setelah autoTable selesai)
+    },
+  });
+
+  // Y akhir setelah autoTable selesai
+  const finalY = doc.lastAutoTable.finalY || pageH - _PDF.marginB - 12;
+
+  // ── Area tanda tangan ─────────────────────────────────────────
+  _pdfDrawTandaTangan(doc, school, finalY + 4);
+
+  // ── Tambahkan header/footer ke semua halaman ──────────────────
+  _pdfAddHeaderFooterAllPages(doc, school, filter, eksporWaktu);
+
+  // ── Simpan / download ─────────────────────────────────────────
+  const namaFile = _pdfNamaFile(namaSekolah, filter.dari, filter.sampai);
+  doc.save(namaFile);
 }
 
 // ══════════════════════════════════════════════════════════════
