@@ -1190,14 +1190,15 @@ function _pdfDrawJudul(doc, filter, pageW, nomorLaporan, eksporWaktu) {
   doc.text('REKAPITULASI DATA KUNJUNGAN TAMU', pageW / 2, y, { align: 'center' });
   y += 5.5;
 
-  // ── Nomor laporan + periode (under-judul, rata tengah) ────────
-  let periodeTeks = 'Periode: Semua Data';
+  // ── Periode — satu baris di bawah judul, rata tengah ─────────
+  // Hanya ditampilkan di sini; tidak diulang di baris metadata.
+  let periodeTeks = 'Semua Periode';
   if (filter.dari && filter.sampai) {
-    periodeTeks = `Periode: ${_pdfFormatTanggalPanjang(filter.dari)} s.d. ${_pdfFormatTanggalPanjang(filter.sampai)}`;
+    periodeTeks = `${_pdfFormatTanggalPanjang(filter.dari)} s.d. ${_pdfFormatTanggalPanjang(filter.sampai)}`;
   } else if (filter.dari) {
-    periodeTeks = `Periode: Mulai ${_pdfFormatTanggalPanjang(filter.dari)}`;
+    periodeTeks = `Mulai ${_pdfFormatTanggalPanjang(filter.dari)}`;
   } else if (filter.sampai) {
-    periodeTeks = `Periode: Sampai ${_pdfFormatTanggalPanjang(filter.sampai)}`;
+    periodeTeks = `Sampai ${_pdfFormatTanggalPanjang(filter.sampai)}`;
   }
 
   doc.setFont(_PDF.font, 'normal');
@@ -1217,24 +1218,15 @@ function _pdfDrawJudul(doc, filter, pageW, nomorLaporan, eksporWaktu) {
   doc.line(mL, y, pageW - mR, y);
   y += 3;
 
-  // ── Baris metadata filter (rata kiri, teks kecil) ─────────────
+  // ── Baris metadata filter — hanya info yang BELUM ada di atas ─
+  // Periode sudah tampil di atas; waktu cetak ada di footer setiap halaman.
+  // Di sini hanya tampilkan: Jenis Tamu (jika difilter).
   doc.setFont(_PDF.font, 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(..._PDF.abu500);
 
   const filterParts = [];
-  if (filter.dari && filter.sampai) {
-    filterParts.push(`Dari: ${_pdfFormatTanggalPanjang(filter.dari)}`);
-    filterParts.push(`Sampai: ${_pdfFormatTanggalPanjang(filter.sampai)}`);
-  } else if (filter.dari) {
-    filterParts.push(`Dari: ${_pdfFormatTanggalPanjang(filter.dari)}`);
-  } else if (filter.sampai) {
-    filterParts.push(`Sampai: ${_pdfFormatTanggalPanjang(filter.sampai)}`);
-  } else {
-    filterParts.push('Dari: Semua Tanggal');
-  }
   filterParts.push(`Jenis Tamu: ${filter.jenis || 'Semua Jenis'}`);
-  filterParts.push(`Dicetak: ${eksporWaktu}`);
 
   doc.text(filterParts.join('   \u2022   '), mL, y);
   y += 4.5;
@@ -1337,14 +1329,6 @@ function _pdfAddHeaderFooterAllPages(doc, school, filter, eksporWaktu, nomorLapo
   const mR      = _PDF.mR;
   const namaS   = school.nama_sekolah || CONFIG.APP_NAME || 'Buku Tamu Digital';
 
-  // Periode singkat untuk footer
-  let periodeShort = 'Semua Periode';
-  if (filter.dari && filter.sampai) {
-    periodeShort = `${_pdfFormatTanggalPanjang(filter.dari)} s.d. ${_pdfFormatTanggalPanjang(filter.sampai)}`;
-  } else if (filter.dari || filter.sampai) {
-    periodeShort = _pdfFormatTanggalPanjang(filter.dari || filter.sampai);
-  }
-
   for (let pg = 1; pg <= totalPg; pg++) {
     doc.setPage(pg);
 
@@ -1362,10 +1346,15 @@ function _pdfAddHeaderFooterAllPages(doc, school, filter, eksporWaktu, nomorLapo
       doc.setTextColor(..._PDF.tintaHitam);
       doc.text(namaS.toUpperCase(), mL, _PDF.mT + 7);
 
+      // Nomor laporan di kanan mini-header — tidak mengulang periode
+      // (periode sudah ada di halaman 1 pada bagian judul)
       doc.setFont(_PDF.font, 'normal');
       doc.setFontSize(7.5);
       doc.setTextColor(..._PDF.abu700);
-      doc.text('Rekapitulasi Data Kunjungan Tamu — ' + periodeShort, mL, _PDF.mT + 12);
+      doc.text(`No. Laporan: ${nomorLaporan}`, pageW - mR, _PDF.mT + 7, { align: 'right' });
+
+      doc.setFontSize(7.5);
+      doc.text('Rekapitulasi Data Kunjungan Tamu', mL, _PDF.mT + 12);
     }
 
     // ── Footer setiap halaman ─────────────────────────────────
