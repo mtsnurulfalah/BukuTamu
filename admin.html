@@ -15,6 +15,9 @@
   <link rel="stylesheet" href="/css/global.css" />
   <link rel="stylesheet" href="/css/admin.css" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <!-- jsPDF + autoTable untuk fitur Ekspor PDF Rekap Tamu -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body class="admin-page">
 
@@ -269,6 +272,10 @@
           <button class="btn export-btn btn--sm" id="btn-export">
             <span class="btn__spinner"></span>
             <span class="btn__text"><i data-lucide="download" style="width:0.85rem;height:0.85rem;"></i>Export CSV</span>
+          </button>
+          <button class="btn btn--pdf btn--sm" id="btn-export-pdf" aria-label="Ekspor rekap tamu ke PDF">
+            <span class="btn__spinner"></span>
+            <span class="btn__text"><i data-lucide="file-text" style="width:0.85rem;height:0.85rem;"></i> Ekspor PDF</span>
           </button>
         </div>
       </div>
