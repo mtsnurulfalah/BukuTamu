@@ -1803,6 +1803,15 @@ function _pageRange(current, total) {
 //   - FIX B9: otpAttemptsLeft default 5 ditampilkan sebagai hint dari awal
 // ──────────────────────────────────────────────────────────────
 
+// ── Email Notifikasi Admin — State & Konstanta ────────────────
+// FIX #3 : pendingEmail kini ditampilkan di panel-pending-change
+//          pada status pending_verification, bukan hanya verified.
+// FIX #1/#10 : tombol ghost di panel light bg tidak invisible lagi
+//              (diselesaikan di CSS — lihat admin.css).
+// FIX #11: label cooldown memakai "dtk" bukan "d".
+// FIX #13: aria-live="polite" ditambahkan ke status-bar di HTML.
+// FIX #15: konfirmasi sebelum kirim email uji.
+
 let _emailNotifState = {
   status          : 'unverified',
   email           : '',
@@ -1909,39 +1918,45 @@ function _applyEmailNotifState(data) {
   // ── Tampilkan panel sesuai status ─────────────────────────
   if (status === 'verified') {
     _showPanel('email-notif-panel-verified');
+    // Tampilkan panel pending jika ada email yang sedang menunggu verifikasi
     if (pendingEmail) {
-      const pendingPanel = document.getElementById('email-notif-panel-pending-change');
-      const pendingMsg   = document.getElementById('email-notif-pending-msg');
-      if (pendingPanel) pendingPanel.style.display = '';
-      if (pendingMsg) {
-        pendingMsg.innerHTML =
-          '<i data-lucide="alert-triangle" style="width:0.85rem;height:0.85rem;flex-shrink:0"></i>' +
-          '<span>Verifikasi email baru (<strong>' + escapeHtml(pendingEmail) + '</strong>) ' +
-          'sedang berlangsung. Email lama tetap aktif sampai verifikasi selesai.</span>';
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-      }
+      _showPendingEmailAlert(pendingEmail);
     }
 
   } else if (status === 'pending_verification') {
     _showPanel('email-notif-panel-otp');
     _updateOtpAttemptsHint(typeof otpAttemptsLeft === 'number' ? otpAttemptsLeft : 5);
+
+    // FIX #3: tampilkan alert pending juga saat pending_verification
+    // (terjadi ketika email lama sudah verified, lalu ganti email baru)
+    if (pendingEmail) {
+      _showPendingEmailAlert(pendingEmail);
+    }
+
     const otpInfo = document.getElementById('email-notif-otp-info');
     if (otpInfo) {
-      otpInfo.textContent = 'Kode OTP telah dikirim ke ' + (email || 'email Anda') +
+      // Tampilkan email yang relevan: pendingEmail (ganti email) atau email biasa
+      const emailDisplay = pendingEmail || email || 'email Anda';
+      otpInfo.textContent = 'Kode OTP telah dikirim ke ' + emailDisplay +
         '. Masukkan kode 6 digit di bawah.';
     }
+
     if (otpExpiresAt > Date.now()) {
       _startCountdown(otpExpiresAt);
     } else {
       // OTP sudah expired saat halaman dibuka kembali
       const hint = document.getElementById('otp-attempts-hint');
-      if (hint) hint.textContent = 'Kode OTP telah kedaluwarsa. Silakan kirim kode baru.';
+      if (hint) {
+        hint.textContent = 'Kode OTP telah kedaluwarsa. Silakan kirim kode baru.';
+        hint.style.color = 'var(--clr-danger,#dc2626)';
+      }
       const verifyBtn = document.getElementById('btn-verify-otp');
       if (verifyBtn) verifyBtn.disabled = true;
     }
     if (otpCooldownMs > 0) _startResendCooldown(otpCooldownMs);
 
   } else {
+    // unverified
     _showPanel('email-notif-panel-input');
     _prefillEmailInput(email);
     const hint = document.getElementById('hint-email-notif');
@@ -1949,6 +1964,23 @@ function _applyEmailNotifState(data) {
   }
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ── Helper: tampilkan alert panel-pending-change ──────────────
+// Dipakai oleh _applyEmailNotifState untuk status 'verified' DAN
+// 'pending_verification' (FIX #3).
+
+function _showPendingEmailAlert(pendingEmail) {
+  const pendingPanel = document.getElementById('email-notif-panel-pending-change');
+  const pendingMsg   = document.getElementById('email-notif-pending-msg');
+  if (pendingPanel) pendingPanel.style.display = '';
+  if (pendingMsg) {
+    pendingMsg.innerHTML =
+      '<i data-lucide="alert-triangle" style="width:0.85rem;height:0.85rem;flex-shrink:0;margin-top:1px;"></i>' +
+      '<span>Verifikasi email baru (<strong>' + escapeHtml(pendingEmail) + '</strong>) ' +
+      'sedang berlangsung. Email lama tetap aktif sampai verifikasi selesai.</span>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
 }
 
 // ── Sembunyikan semua panel sekaligus ─────────────────────────
@@ -2001,41 +2033,52 @@ function _initEmailNotifEvents() {
     ?.addEventListener('click', () => {
       _clearCountdown();
       _clearResendCooldown();
-      _showPanel('email-notif-panel-otp', false);  // eksplisit sembunyikan
 
+      // Bersihkan input OTP dan hint
+      const otpInput = document.getElementById('input-otp-code');
+      if (otpInput) otpInput.value = '';
+      const hint = document.getElementById('otp-attempts-hint');
+      if (hint) { hint.textContent = ''; hint.style.color = ''; }
+
+      // Kembali ke panel yang sesuai dengan status sebelum OTP
+      _hideAllEmailPanels();
       if (_emailNotifState.status === 'verified') {
         _showPanel('email-notif-panel-verified');
+        // FIX #3: tampilkan kembali alert pending jika masih ada
         if (_emailNotifState.pendingEmail) {
-          _showPanel('email-notif-panel-pending-change');
+          _showPendingEmailAlert(_emailNotifState.pendingEmail);
         }
       } else {
         _showPanel('email-notif-panel-input');
         _prefillEmailInput(_emailNotifState.email || '');
-        const hint = document.getElementById('hint-email-notif');
-        if (hint) hint.textContent = 'OTP akan dikirim ke alamat email ini untuk verifikasi.';
+        const inputHint = document.getElementById('hint-email-notif');
+        if (inputHint) inputHint.textContent = 'OTP akan dikirim ke alamat email ini untuk verifikasi.';
       }
-      // Bersihkan input OTP
-      const otpInput = document.getElementById('input-otp-code');
-      if (otpInput) { otpInput.value = ''; }
-      const hint = document.getElementById('otp-attempts-hint');
-      if (hint) { hint.textContent = ''; hint.style.color = ''; }
     });
 
   // FIX B3: Ubah Email — sembunyikan SEMUA panel dulu, termasuk pending-change
   document.getElementById('btn-ubah-email')
     ?.addEventListener('click', () => {
-      _hideAllEmailPanels();    // Bersihkan semua panel terlebih dahulu
+      _hideAllEmailPanels();
       _showPanel('email-notif-panel-input');
       _prefillEmailInput(_emailNotifState.email || '');
       const hint = document.getElementById('hint-email-notif');
-      if (hint) hint.textContent =
-        'Email lama (' + (_emailNotifState.email || '') + ') tetap aktif sampai email baru berhasil diverifikasi.';
+      if (hint) {
+        hint.textContent = _emailNotifState.email
+          ? 'Email lama (' + _emailNotifState.email + ') tetap aktif sampai email baru berhasil diverifikasi.'
+          : 'OTP akan dikirim ke alamat email ini untuk verifikasi.';
+      }
       document.getElementById('input-notif-email')?.focus();
     });
 
-  // Kirim Email Uji
+  // FIX #15: Kirim Email Uji — konfirmasi sebelum mengirim agar tidak terjadi
+  // pengiriman berulang yang tidak disengaja.
   document.getElementById('btn-test-notif')
     ?.addEventListener('click', async () => {
+      const email = _emailNotifState.email || '';
+      // Konfirmasi singkat — menggunakan confirm() native agar tidak perlu modal baru.
+      // Kompatibel dengan semua browser tanpa dependensi tambahan.
+      if (!confirm('Kirim email uji coba ke ' + email + '?')) return;
       await _handleTestNotif();
     });
 
@@ -2111,6 +2154,11 @@ async function _handleKirimOtp() {
   _hideAllEmailPanels();
   _showPanel('email-notif-panel-otp');
 
+  // FIX #3: jika ganti email (isChangingEmail), tampilkan alert pending
+  if (d.isChangingEmail && email) {
+    _showPendingEmailAlert(email);
+  }
+
   const otpInfo = document.getElementById('email-notif-otp-info');
   if (otpInfo) otpInfo.textContent =
     'Kode OTP telah dikirim ke ' + email + '. Masukkan kode 6 digit di bawah.';
@@ -2159,10 +2207,14 @@ async function _handleVerifyOtp() {
   if (result.status !== 'ok') {
     showToast(result.message || 'Verifikasi gagal.', 'danger');
 
-    // Parse sisa percobaan dari pesan backend
-    const msg = result.message || '';
-    const matchSisa  = msg.match(/sisa percobaan:\s*(\d+)/i);
-    const isBatas    = /batas percobaan/i.test(msg) || /habis/i.test(msg);
+    // FIX #2: parse sisa percobaan — pola regex diperkuat agar cocok dengan
+    // berbagai variasi format pesan backend (titik di akhir, dsb.)
+    const msg        = result.message || '';
+    // Cocokkan "Sisa percobaan: 3." atau "sisa percobaan: 3"
+    const matchSisa  = msg.match(/sisa percobaan[:\s]+(\d+)/i);
+    // Deteksi batas habis: pesan "batas percobaan" ATAU "habis"
+    // Pastikan TIDAK double-match dengan matchSisa
+    const isBatas    = !matchSisa && (/batas percobaan/i.test(msg) || /percobaan habis/i.test(msg));
     const isExpired  = /kedaluwarsa/i.test(msg);
 
     if (matchSisa) {
@@ -2202,6 +2254,7 @@ async function _handleVerifyOtp() {
 async function _handleResendOtp() {
   if (_isEmailNotifLoading) return;
 
+  // Gunakan pendingEmail (ganti email) atau email aktif
   const emailToUse = _emailNotifState.pendingEmail || _emailNotifState.email;
   if (!emailToUse) {
     showToast('Tidak ada email yang sedang diverifikasi.', 'danger');
@@ -2209,6 +2262,7 @@ async function _handleResendOtp() {
   }
 
   const btn = document.getElementById('btn-resend-otp');
+  // Nonaktifkan tombol segera untuk mencegah double-click
   if (btn) btn.disabled = true;
   _isEmailNotifLoading = true;
 
@@ -2223,6 +2277,7 @@ async function _handleResendOtp() {
 
   if (result.status !== 'ok') {
     showToast(result.message || 'Gagal mengirim ulang OTP.', 'danger');
+    // Re-aktifkan tombol hanya jika belum ada cooldown aktif dari server
     if (btn) btn.disabled = false;
     return;
   }
@@ -2282,16 +2337,21 @@ async function _handleShowLog() {
   if (!logWrap) return;
 
   // Toggle: tutup jika sudah tampil
-  if (logWrap.style.display !== 'none') {
+  if (logWrap.style.display !== 'none' && logWrap.style.display !== '') {
     logWrap.style.display = 'none';
     return;
   }
 
   logWrap.style.display = '';
   if (logList) {
-    logList.innerHTML =
-      '<div class="skeleton skeleton--text" style="height:0.85em;margin-bottom:8px;"></div>' +
-      '<div class="skeleton skeleton--text" style="height:0.85em;width:75%;"></div>';
+    // Skeleton 3 baris untuk UX yang lebih representatif
+    logList.innerHTML = Array(3).fill(
+      '<div class="email-notif-log-skeleton-row">' +
+      '<div class="skeleton skeleton--text" style="height:0.8em;width:60px;border-radius:10px;"></div>' +
+      '<div class="skeleton skeleton--text" style="height:0.8em;flex:1;"></div>' +
+      '<div class="skeleton skeleton--text" style="height:0.8em;width:80px;"></div>' +
+      '</div>'
+    ).join('');
   }
   if (logEmpty) logEmpty.style.display = 'none';
 
@@ -2304,8 +2364,8 @@ async function _handleShowLog() {
 
   if (result.status !== 'ok') {
     if (logList) logList.innerHTML =
-      '<div class="alert alert--danger" style="margin:var(--space-3);">Gagal memuat log: ' +
-      escapeHtml(result.message || 'Error') + '</div>';
+      '<div class="alert alert--danger" style="margin:var(--space-3) var(--space-4);">' +
+      'Gagal memuat log: ' + escapeHtml(result.message || 'Error') + '</div>';
     return;
   }
 
@@ -2320,22 +2380,37 @@ async function _handleShowLog() {
   if (logEmpty) logEmpty.style.display = 'none';
   if (logList) {
     logList.innerHTML = logs.map(log => {
-      const statusClass = { sent: 'log-status--sent', failed: 'log-status--failed',
-                             pending: 'log-status--pending' }[log.status] || '';
-      const statusLabel = { sent: 'Terkirim', failed: 'Gagal', pending: 'Menunggu' }[log.status]
-                         || log.status;
-      const waktu = log.sentAt
-        ? new Date(log.sentAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })
-        : (log.createdAt
-            ? new Date(log.createdAt).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })
-            : '—');
-      return `<div class="email-notif-log-item">
-        <span class="log-status ${statusClass}">${statusLabel}</span>
-        <span class="log-visit-id" title="${escapeHtml(log.visitId || '')}">${escapeHtml(log.visitId || '—')}</span>
-        <span class="log-email-to">${escapeHtml(log.emailTo || '—')}</span>
-        <span class="log-time">${waktu}</span>
-        ${log.errorMsg ? `<span class="log-error">${escapeHtml(log.errorMsg)}</span>` : ''}
-      </div>`;
+      const statusClass = {
+        sent    : 'log-status--sent',
+        failed  : 'log-status--failed',
+        pending : 'log-status--pending',
+      }[log.status] || '';
+      const statusLabel = {
+        sent    : 'Terkirim',
+        failed  : 'Gagal',
+        pending : 'Menunggu',
+      }[log.status] || escapeHtml(log.status || '—');
+
+      // Gunakan sentAt jika tersedia, fallback ke createdAt
+      const ts = log.sentAt || log.createdAt || 0;
+      const waktu = ts
+        ? new Date(ts).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
+
+      // FIX #4: log-error memakai class yang sudah ada di CSS (grid-column: 1/-1)
+      const errorHtml = log.errorMsg
+        ? `<span class="log-error" title="${escapeHtml(log.errorMsg)}">${escapeHtml(log.errorMsg)}</span>`
+        : '';
+
+      return `<div class="email-notif-log-item">` +
+        `<span class="log-status ${statusClass}">${statusLabel}</span>` +
+        `<span class="log-email-to">${escapeHtml(log.emailTo || '—')}</span>` +
+        `<span class="log-time">${waktu}</span>` +
+        `<span class="log-visit-id" title="${escapeHtml(log.visitId || '')}">` +
+          escapeHtml(log.visitId || '—') +
+        `</span>` +
+        errorHtml +
+        `</div>`;
     }).join('');
   }
 
@@ -2392,7 +2467,8 @@ function _startResendCooldown(cooldownMs) {
   function tick() {
     const remaining = Math.max(0, endAt - Date.now());
     const secs      = Math.ceil(remaining / 1000);
-    if (label) label.textContent = secs > 0 ? `Kirim Ulang (${secs}d)` : 'Kirim Ulang OTP';
+    // FIX #11: gunakan "dtk" sebagai singkatan detik yang lebih jelas daripada "d"
+    if (label) label.textContent = secs > 0 ? `Kirim Ulang (${secs} dtk)` : 'Kirim Ulang OTP';
     if (remaining <= 0) {
       _clearResendCooldown();
       btn.disabled = false;
@@ -2432,8 +2508,10 @@ function _updateOtpAttemptsHint(attemptsLeft) {
     hint.textContent = 'Perhatian: hanya tersisa ' + attemptsLeft + ' percobaan.';
     hint.style.color = 'var(--clr-warning,#d97706)';
   } else {
-    hint.textContent = 'Sisa percobaan: ' + attemptsLeft + ' kali.';
-    hint.style.color = 'var(--clr-gray-500,#6b7280)';
+    // Tampilkan info sisa percobaan secara netral — tidak perlu warna mencolok
+    // saat masih banyak sisa percobaan
+    hint.textContent = '';
+    hint.style.color = '';
   }
 }
 
