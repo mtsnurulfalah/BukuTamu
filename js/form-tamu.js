@@ -1,6 +1,6 @@
 /**
  * form-tamu.js — Halaman Form Tamu Publik
- * ▶▶ v2.1: Bug-fixed & UX-upgraded
+ * ▶▶ v2.2: OTP Email Verifikasi Tamu
  * ─────────────────────────────────────────────────────────
  * Alur:
  *   1. Load config sekolah + staf + siswa secara paralel dari GAS
@@ -8,25 +8,24 @@
  *   3. Set tanggal otomatis (live) + input jam datang (editable)
  *   4. Inisialisasi signature_pad (DPR-aware)
  *   5. ▶▶ Input jumlah tamu → repeater form dinamis per anggota
- *   6. ▶▶ Review screen sebelum simpan
- *   7. Submit → callGAS('addTamu') → success screen
+ *   6. ▶▶ OTP email verifikasi untuk Alumni/Dinas/Mitra/Vendor
+ *   7. ▶▶ Review screen sebelum simpan
+ *   8. Submit → callGAS('addTamu') → success screen
  *
+ * CHANGELOG v2.2:
+ *   - ADD OTP: Verifikasi email untuk jenis tamu wajib OTP
+ *              (Alumni, Dinas/Instansi, Mitra, Vendor/Penyedia).
+ *   - ADD: UI dinamis email OTP di card tamu pertama.
+ *   - ADD: State emailSessionId — sessionId dari server setelah OTP verified.
+ *   - ADD: isFormValid() & validateAllFields() cek emailVerified untuk jenis wajib.
+ *   - ADD: collectFormData() menyertakan emailSessionId untuk backend validation.
+ *   - ADD: resetForm() membersihkan state OTP.
+ *   - ADD: selectJenisTamu() me-reset state OTP saat ganti jenis.
  * CHANGELOG v2.1:
- *   - FIX B17: Signature canvas height — gunakan explicit height agar canvas
- *              tidak collapse di browser yang tidak resolve min-height untuk
- *              absolute children.
- *   - FIX B13/B20: Validasi No HP tamu pertama (wajib, format Indonesia).
- *   - FIX B14: Validasi format email untuk tamu ke-2+ jika field diisi.
- *   - FIX B24: Hapus role="status" dari toast individual (redundan dengan
- *              aria-live="polite" di container).
- *   - FIX U9: Auto-focus ke field nama pada anggota card baru yang ditambah.
- *   - FIX U10: Karakter counter di textarea keperluan.
- *   - FIX R1: flex-wrap di form-section__title agar badge rombongan tidak overflow.
- *   - FIX: isFormValid() tambahkan pengecekan noHp tamu pertama.
- *   - FIX: validateAllFields() tambahkan pengecekan noHp tamu pertama.
- *   - FIX: collectFormData() deep-copy anggotaData agar aman dari mutasi.
- *   - IMPROVE: Toast duration lebih konsisten (hapus element setelah animasi selesai).
- *   - IMPROVE: Signature canvas menggunakan ResizeObserver bila tersedia.
+ *   - FIX B17: Signature canvas height.
+ *   - FIX B13/B20: Validasi No HP tamu pertama.
+ *   - FIX B14: Validasi format email tamu ke-2+.
+ *   - FIX B24, FIX U9, FIX U10, FIX R1.
  */
 
 'use strict';
@@ -43,13 +42,30 @@ let siswaList      = [];
 let jumlahTamu     = 1;      // jumlah tamu dalam sesi ini
 let anggotaData    = [];     // [{namaLengkap, noHp, email, jabatan, jenisId, noId}]
 
+// ▶▶ OTP TAMU State
+let emailSessionId    = '';      // sessionId dari server setelah verifyTamuOtp berhasil
+let emailVerified     = false;   // true jika email tamu pertama sudah terverifikasi
+let otpVerifiedEmail  = '';      // email yang sudah terverifikasi (normalisasi lowercase)
+let otpResendTimer    = null;    // interval timer countdown resend
+let otpExpiryTimer   = null;    // interval timer countdown expiry OTP
+let isSendingOtp      = false;   // mencegah double-click kirim OTP
+let isVerifyingOtp    = false;   // mencegah double-click verifikasi OTP
+
 // ── Konstanta ─────────────────────────────────────────────────
-const EMAIL_REGEX  = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const PHONE_REGEX  = /^(\+62|62|0)[0-9]{8,13}$/;        // FIX B13: pola HP Indonesia
-const JENIS_ORTU   = 'Orang Tua/Wali Murid';
-const JENIS_ALUMNI = 'Alumni';
-const MAX_TAMU     = 50;   // batas wajar di form (backend max 100)
-const MAX_KEPERLUAN = 500; // karakter maksimum textarea keperluan (FIX U10)
+const EMAIL_REGEX   = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const PHONE_REGEX   = /^(\+62|62|0)[0-9]{8,13}$/;       // FIX B13: pola HP Indonesia
+const JENIS_ORTU    = 'Orang Tua/Wali Murid';
+const JENIS_ALUMNI  = 'Alumni';
+const MAX_TAMU      = 50;   // batas wajar di form (backend max 100)
+const MAX_KEPERLUAN = 500;  // karakter maksimum textarea keperluan (FIX U10)
+
+// Jenis tamu yang wajib verifikasi email OTP (harus sama dengan backend JENIS_WAJIB_OTP)
+const JENIS_WAJIB_OTP = ['Alumni', 'Dinas/Instansi', 'Mitra', 'Vendor/Penyedia'];
+
+/** Apakah jenis tamu yang dipilih memerlukan verifikasi OTP? */
+function jenisWajibOtp(jenis) {
+  return JENIS_WAJIB_OTP.includes(jenis);
+}
 
 // ═════════════════════════════════════════════════════════════
 // INISIALISASI
@@ -217,6 +233,7 @@ function renderJenisTamuPills() {
 }
 
 function selectJenisTamu(jenis) {
+  const prevJenis = selectedJenis;
   selectedJenis = jenis;
   document.querySelectorAll('.pill-selector__item').forEach(btn => {
     const sel = btn.dataset.value === jenis;
@@ -229,6 +246,16 @@ function selectJenisTamu(jenis) {
 
   // Orang Tua/Wali Murid tidak boleh rombongan — 1 ortu = 1 anak
   _applyRombonganLock(jenis === JENIS_ORTU);
+
+  // ▶▶ OTP: Reset state verifikasi jika jenis tamu berubah
+  // (baik dari wajib→tidak-wajib, tidak-wajib→wajib, maupun wajib→wajib-lain)
+  if (prevJenis !== jenis) {
+    _resetOtpState();
+    // Re-render card anggota pertama agar UI OTP muncul/hilang sesuai jenis baru
+    if (anggotaData.length > 0) {
+      renderAnggotaRepeater();
+    }
+  }
 
   hideFieldError('error-jenis-tamu');
   checkSubmitEligibility();
@@ -634,6 +661,11 @@ function _buildAnggotaCard(index, data) {
       <span class="form-error" id="error-anggota-email-${index}" role="alert"></span>
     </div>
   `;
+
+  // ▶▶ OTP: Sisipkan blok verifikasi email tepat setelah field email, hanya untuk tamu pertama
+  if (isFirst) {
+    body.innerHTML += _buildOtpVerificationBlock();
+  }
 
   // Jabatan/Status (opsional)
   body.innerHTML += `
@@ -1111,6 +1143,13 @@ function isFormValid() {
   const email0 = email0El ? email0El.value.trim() : '';
   if (!EMAIL_REGEX.test(email0)) return false;
 
+  // ▶▶ OTP: Jenis wajib OTP harus sudah terverifikasi
+  if (jenisWajibOtp(selectedJenis)) {
+    if (!emailVerified || !emailSessionId) return false;
+    // Email di field harus sama dengan email yang sudah terverifikasi
+    if (email0.toLowerCase() !== otpVerifiedEmail) return false;
+  }
+
   // FIX B14: Validasi email format untuk tamu ke-2+ jika diisi
   for (let i = 1; i < anggotaData.length; i++) {
     const emailElI = document.getElementById(`anggota-email-${i}`);
@@ -1270,6 +1309,22 @@ function validateAllFields() {
     }
   }
 
+  // ▶▶ OTP: Jenis wajib OTP harus sudah terverifikasi sebelum submit
+  if (jenisWajibOtp(selectedJenis)) {
+    const email0Val = (document.getElementById('anggota-email-0')?.value || '').trim().toLowerCase();
+    if (!emailVerified || !emailSessionId) {
+      showFieldError('error-otp-submit', 'Email belum diverifikasi. Silakan verifikasi email menggunakan kode OTP terlebih dahulu.');
+      const otpSection = document.getElementById('otp-verification-section');
+      if (!firstInvalid) firstInvalid = otpSection;
+    } else if (email0Val && email0Val !== otpVerifiedEmail) {
+      // Email di field diubah setelah OTP berhasil — perlu verifikasi ulang
+      showFieldError('error-otp-submit', 'Email telah diubah. Silakan verifikasi ulang email Anda.');
+      _resetOtpState();
+      renderAnggotaRepeater();
+      if (!firstInvalid) firstInvalid = document.getElementById('otp-verification-section');
+    }
+  }
+
   // Tanda tangan
   if (!signaturePad || signaturePad.isEmpty()) {
     showFieldError('error-ttd', 'Tanda tangan wajib diisi.');
@@ -1312,14 +1367,17 @@ function collectFormData() {
 
   // FIX: Deep-copy anggotaData agar payload tidak terpengaruh mutasi state setelah reset
   return {
-    tanggal      : tanggalEl.value,
-    jenisTamu    : selectedJenis,
-    jamDatang    : jamDatang,
-    instansi     : instansiVal,
-    keperluan    : keperluanEl.value.trim(),
-    bertemuDengan: bertemuEl.value,
-    tandaTangan  : ttdBase64,
-    anggota      : anggotaData.map(a => ({ ...a })),
+    tanggal       : tanggalEl.value,
+    jenisTamu     : selectedJenis,
+    jamDatang     : jamDatang,
+    instansi      : instansiVal,
+    keperluan     : keperluanEl.value.trim(),
+    bertemuDengan : bertemuEl.value,
+    tandaTangan   : ttdBase64,
+    anggota       : anggotaData.map(a => ({ ...a })),
+    // ▶▶ OTP: Sertakan sessionId untuk validasi server-side
+    // Backend akan menolak jika jenisTamu wajib OTP tapi sessionId kosong/tidak valid
+    emailSessionId: emailSessionId || '',
   };
 }
 
@@ -1429,6 +1487,9 @@ function resetForm() {
   jumlahTamu    = 1;
   anggotaData   = [_emptyAnggota()];
 
+  // ▶▶ OTP: Reset state verifikasi
+  _resetOtpState();
+
   _applyRombonganLock(false);
 
   const form = document.getElementById('form-tamu');
@@ -1504,4 +1565,531 @@ function showFormLoading(show) {
     if (loader)  loader.classList.remove('visible');
     if (wrapper) wrapper.style.display = '';
   }
+}
+
+// ═════════════════════════════════════════════════════════════
+// ▶▶ OTP TAMU: VERIFIKASI EMAIL
+// ═════════════════════════════════════════════════════════════
+
+/**
+ * Bangun HTML blok verifikasi OTP untuk card tamu pertama.
+ * Blok ini bersifat dinamis — ditampilkan/disembunyikan sesuai jenis tamu.
+ * Hanya di-inject untuk index === 0.
+ */
+function _buildOtpVerificationBlock() {
+  return `
+    <div id="otp-verification-section" class="otp-section" style="display:none;"
+         role="group" aria-labelledby="otp-section-label">
+
+      <!-- State 1: Sebelum kirim OTP — tombol Kirim OTP -->
+      <div id="otp-state-send" class="otp-state">
+        <div class="otp-hint">
+          <span class="otp-hint__icon" aria-hidden="true">📧</span>
+          <span>Verifikasi email diperlukan untuk jenis tamu ini.
+            Klik tombol di bawah untuk mengirim kode OTP ke email Anda.</span>
+        </div>
+        <button type="button" id="btn-send-otp" class="btn btn--otp-send"
+          aria-label="Kirim kode OTP ke email">
+          <span class="btn__icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </span>
+          <span class="btn__text">Kirim Kode OTP</span>
+        </button>
+        <span class="form-error" id="error-otp-send" role="alert"></span>
+      </div>
+
+      <!-- State 2: Setelah kirim OTP — form verifikasi -->
+      <div id="otp-state-verify" class="otp-state" style="display:none;">
+        <div class="otp-sent-info" id="otp-sent-info" aria-live="polite">
+          <span class="otp-sent-info__icon" aria-hidden="true">✉️</span>
+          <span>Kode OTP telah dikirim ke:
+            <strong id="otp-masked-email" class="otp-masked-email">—</strong>
+          </span>
+        </div>
+
+        <div class="form-group" style="margin-bottom:var(--space-3);">
+          <label class="form-label" for="otp-input" id="otp-input-label">
+            Kode OTP <span class="required">*</span>
+          </label>
+          <div class="otp-input-wrap">
+            <input type="text" id="otp-input" class="form-control otp-input"
+              placeholder="_ _ _ _ _ _"
+              inputmode="numeric" pattern="[0-9]{6}"
+              maxlength="6" autocomplete="one-time-code"
+              aria-labelledby="otp-input-label"
+              aria-describedby="otp-expiry-info" />
+          </div>
+          <div class="otp-expiry-row" id="otp-expiry-row">
+            <span class="otp-expiry-text" id="otp-expiry-info" aria-live="polite">
+              Kode berlaku <strong id="otp-countdown">5:00</strong>
+            </span>
+            <span class="otp-resend-wrap">
+              <button type="button" id="btn-resend-otp" class="btn-otp-resend" disabled
+                aria-label="Kirim ulang kode OTP">
+                Kirim ulang
+              </button>
+              <span id="otp-resend-countdown" class="otp-resend-countdown" aria-live="polite"></span>
+            </span>
+          </div>
+          <span class="form-error" id="error-otp-verify" role="alert"></span>
+        </div>
+
+        <button type="button" id="btn-verify-otp" class="btn btn--otp-verify"
+          aria-label="Verifikasi kode OTP">
+          <span class="btn__icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </span>
+          <span class="btn__text">Verifikasi Email</span>
+        </button>
+      </div>
+
+      <!-- State 3: Email terverifikasi -->
+      <div id="otp-state-verified" class="otp-state otp-state--verified" style="display:none;"
+           role="status" aria-live="polite">
+        <div class="otp-verified-badge">
+          <span class="otp-verified-badge__icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </span>
+          <div class="otp-verified-badge__text">
+            <span class="otp-verified-badge__label">Email Terverifikasi</span>
+            <span class="otp-verified-badge__email" id="otp-verified-email-display">—</span>
+          </div>
+          <button type="button" id="btn-change-email-otp" class="btn-otp-change"
+            aria-label="Ganti email dan verifikasi ulang" title="Ganti email">
+            Ganti
+          </button>
+        </div>
+      </div>
+
+      <!-- Error submit saat belum terverifikasi -->
+      <span class="form-error" id="error-otp-submit" role="alert"></span>
+    </div>
+  `;
+}
+
+/**
+ * Tampilkan/sembunyikan blok OTP berdasarkan jenis tamu yang dipilih.
+ * Dipanggil setelah renderAnggotaRepeater().
+ */
+function _updateOtpSectionVisibility() {
+  const section = document.getElementById('otp-verification-section');
+  if (!section) return;
+
+  const wajib = jenisWajibOtp(selectedJenis);
+  section.style.display = wajib ? '' : 'none';
+
+  if (!wajib) {
+    // Bersihkan error OTP jika jenis tidak wajib
+    hideFieldError('error-otp-submit');
+    return;
+  }
+
+  // Tampilkan state yang sesuai dengan emailVerified
+  _syncOtpStateUI();
+  // Pasang event listener OTP (idempoten — cek apakah sudah dipasang)
+  _attachOtpEvents();
+}
+
+/**
+ * Sinkronkan tampilan UI OTP dengan state saat ini.
+ */
+function _syncOtpStateUI() {
+  const stateSend     = document.getElementById('otp-state-send');
+  const stateVerify   = document.getElementById('otp-state-verify');
+  const stateVerified = document.getElementById('otp-state-verified');
+  if (!stateSend || !stateVerify || !stateVerified) return;
+
+  if (emailVerified && otpVerifiedEmail) {
+    stateSend.style.display     = 'none';
+    stateVerify.style.display   = 'none';
+    stateVerified.style.display = '';
+    const emailDisplay = document.getElementById('otp-verified-email-display');
+    if (emailDisplay) emailDisplay.textContent = otpVerifiedEmail;
+  } else {
+    stateSend.style.display     = '';
+    stateVerify.style.display   = 'none';
+    stateVerified.style.display = 'none';
+  }
+}
+
+/**
+ * Reset seluruh state OTP ke kondisi awal.
+ * Dipanggil saat: ganti jenis tamu, ganti email, resetForm.
+ */
+function _resetOtpState() {
+  emailSessionId   = '';
+  emailVerified    = false;
+  otpVerifiedEmail = '';
+
+  if (otpResendTimer)  { clearInterval(otpResendTimer);  otpResendTimer  = null; }
+  if (otpExpiryTimer) { clearInterval(otpExpiryTimer); otpExpiryTimer = null; }
+
+  isSendingOtp   = false;
+  isVerifyingOtp = false;
+
+  // Bersihkan error OTP
+  ['error-otp-send', 'error-otp-verify', 'error-otp-submit'].forEach(id => hideFieldError(id));
+
+  // Kembalikan state UI ke "send"
+  _syncOtpStateUI();
+}
+
+/** Flag agar _attachOtpEvents tidak duplikat */
+let _otpEventsAttached = false;
+
+/**
+ * Pasang event listener untuk tombol-tombol OTP.
+ * Idempoten — hanya dieksekusi sekali meskipun dipanggil berkali-kali.
+ */
+function _attachOtpEvents() {
+  // Gunakan event delegation dari main-content agar tidak perlu re-attach setelah re-render
+  const container = document.getElementById('main-content');
+  if (!container || _otpEventsAttached) return;
+  _otpEventsAttached = true;
+
+  container.addEventListener('click', async (e) => {
+    const target = e.target.closest('button');
+    if (!target) return;
+
+    switch (target.id) {
+      case 'btn-send-otp':
+        await _handleSendOtp();
+        break;
+      case 'btn-resend-otp':
+        await _handleSendOtp(true);
+        break;
+      case 'btn-verify-otp':
+        await _handleVerifyOtp();
+        break;
+      case 'btn-change-email-otp':
+        _handleChangeEmail();
+        break;
+    }
+  });
+
+  // Input OTP: hanya izinkan angka, auto-submit setelah 6 digit
+  container.addEventListener('input', (e) => {
+    const el = e.target;
+    if (el.id !== 'otp-input') return;
+    // Hapus non-digit
+    el.value = el.value.replace(/\D/g, '').substring(0, 6);
+    hideFieldError('error-otp-verify');
+    // Auto-submit jika sudah 6 digit
+    if (el.value.length === 6) {
+      const verifyBtn = document.getElementById('btn-verify-otp');
+      if (verifyBtn && !verifyBtn.disabled) {
+        _handleVerifyOtp();
+      }
+    }
+  });
+
+  // Prevent paste non-digit di input OTP
+  container.addEventListener('paste', (e) => {
+    const el = e.target;
+    if (el.id !== 'otp-input') return;
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text');
+    const digits = pasted.replace(/\D/g, '').substring(0, 6);
+    el.value = digits;
+    el.dispatchEvent(new Event('input'));
+  });
+}
+
+/**
+ * Handler tombol "Kirim Kode OTP" / "Kirim ulang".
+ */
+async function _handleSendOtp(isResend = false) {
+  if (isSendingOtp) return;
+
+  const emailEl = document.getElementById('anggota-email-0');
+  const email   = emailEl ? emailEl.value.trim().toLowerCase() : '';
+
+  // Validasi email
+  if (!email) {
+    showFieldError('error-otp-send', 'Masukkan alamat email terlebih dahulu.');
+    emailEl && emailEl.focus();
+    return;
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    showFieldError('error-otp-send', 'Format email tidak valid.');
+    emailEl && emailEl.focus();
+    return;
+  }
+
+  hideFieldError('error-otp-send');
+  hideFieldError('error-otp-verify');
+
+  const btnSend   = document.getElementById('btn-send-otp');
+  const btnResend = document.getElementById('btn-resend-otp');
+
+  isSendingOtp = true;
+  if (btnSend)   setButtonLoading(btnSend);
+  if (btnResend) { btnResend.disabled = true; btnResend.textContent = 'Mengirim...'; }
+
+  try {
+    const result = await callGAS('requestTamuOtp', {
+      email     : email,
+      jenisTamu : selectedJenis,
+      sessionId : emailSessionId || undefined,  // reuse jika ada
+    });
+
+    if (result.status === 'ok') {
+      // Simpan sessionId dari server
+      emailSessionId = result.data?.sessionId || emailSessionId;
+
+      const maskedEmail    = result.data?.maskedEmail || _maskEmailLocal(email);
+      const otpExpiresAt   = result.data?.otpExpiresAt  || 0;
+      const cooldownMs     = result.data?.cooldownMs    || 60000;
+
+      // Tampilkan state verifikasi
+      const stateSend   = document.getElementById('otp-state-send');
+      const stateVerify = document.getElementById('otp-state-verify');
+      if (stateSend)   stateSend.style.display   = 'none';
+      if (stateVerify) stateVerify.style.display = '';
+
+      const maskedEl = document.getElementById('otp-masked-email');
+      if (maskedEl) maskedEl.textContent = maskedEmail;
+
+      // Bersihkan input OTP
+      const otpInput = document.getElementById('otp-input');
+      if (otpInput) { otpInput.value = ''; otpInput.focus(); }
+
+      // Mulai countdown expiry
+      if (otpExpiresAt > 0) _startOtpExpiryCountdown(otpExpiresAt);
+
+      // Mulai cooldown resend
+      _startResendCooldown(cooldownMs);
+
+      if (!isResend) showToast('Kode OTP telah dikirim ke ' + maskedEmail, 'success', 4000);
+      else           showToast('Kode OTP baru telah dikirim.', 'success', 3500);
+
+    } else {
+      showFieldError(isResend ? 'error-otp-verify' : 'error-otp-send',
+        result.message || 'Gagal mengirim OTP. Silakan coba lagi.');
+    }
+
+  } catch (_err) {
+    showFieldError(isResend ? 'error-otp-verify' : 'error-otp-send',
+      'Koneksi gagal. Periksa internet dan coba lagi.');
+  } finally {
+    isSendingOtp = false;
+    if (btnSend)   resetButtonLoading(btnSend, false);
+    // Resend button akan di-enable oleh countdown selesai
+  }
+}
+
+/**
+ * Handler tombol "Verifikasi Email".
+ */
+async function _handleVerifyOtp() {
+  if (isVerifyingOtp) return;
+
+  const otpInput = document.getElementById('otp-input');
+  const otp      = otpInput ? otpInput.value.trim() : '';
+
+  if (!otp) {
+    showFieldError('error-otp-verify', 'Masukkan kode OTP terlebih dahulu.');
+    otpInput && otpInput.focus();
+    return;
+  }
+  if (!/^\d{6}$/.test(otp)) {
+    showFieldError('error-otp-verify', 'Kode OTP harus 6 digit angka.');
+    otpInput && otpInput.focus();
+    return;
+  }
+  if (!emailSessionId) {
+    showFieldError('error-otp-verify', 'Sesi verifikasi tidak ditemukan. Silakan kirim ulang OTP.');
+    return;
+  }
+
+  hideFieldError('error-otp-verify');
+
+  const email  = (document.getElementById('anggota-email-0')?.value || '').trim().toLowerCase();
+  const btnVerify = document.getElementById('btn-verify-otp');
+
+  isVerifyingOtp = true;
+  if (btnVerify) setButtonLoading(btnVerify);
+
+  try {
+    const result = await callGAS('verifyTamuOtp', {
+      sessionId: emailSessionId,
+      email    : email,
+      otp      : otp,
+    });
+
+    if (result.status === 'ok') {
+      // Berhasil terverifikasi
+      emailVerified    = true;
+      otpVerifiedEmail = email;
+      emailSessionId   = result.data?.sessionId || emailSessionId;
+
+      // Hentikan countdown
+      if (otpExpiryTimer) { clearInterval(otpExpiryTimer); otpExpiryTimer = null; }
+      if (otpResendTimer) { clearInterval(otpResendTimer); otpResendTimer = null; }
+
+      // Tampilkan state verified
+      const stateVerify   = document.getElementById('otp-state-verify');
+      const stateVerified = document.getElementById('otp-state-verified');
+      if (stateVerify)   stateVerify.style.display   = 'none';
+      if (stateVerified) stateVerified.style.display = '';
+
+      const emailDisplay = document.getElementById('otp-verified-email-display');
+      if (emailDisplay) emailDisplay.textContent = email;
+
+      hideFieldError('error-otp-submit');
+      showToast('✓ Email berhasil diverifikasi!', 'success', 4000);
+      checkSubmitEligibility();
+
+    } else {
+      showFieldError('error-otp-verify', result.message || 'Kode OTP tidak valid. Coba lagi.');
+      if (otpInput) { otpInput.value = ''; otpInput.focus(); }
+    }
+
+  } catch (_err) {
+    showFieldError('error-otp-verify', 'Koneksi gagal. Periksa internet dan coba lagi.');
+  } finally {
+    isVerifyingOtp = false;
+    if (btnVerify) resetButtonLoading(btnVerify, false);
+  }
+}
+
+/**
+ * Handler tombol "Ganti email" — reset OTP dan kembali ke state awal.
+ */
+function _handleChangeEmail() {
+  _resetOtpState();
+
+  // Kembali ke state send
+  const stateSend     = document.getElementById('otp-state-send');
+  const stateVerify   = document.getElementById('otp-state-verify');
+  const stateVerified = document.getElementById('otp-state-verified');
+  if (stateSend)     stateSend.style.display     = '';
+  if (stateVerify)   stateVerify.style.display   = 'none';
+  if (stateVerified) stateVerified.style.display = 'none';
+
+  // Focus ke field email
+  const emailEl = document.getElementById('anggota-email-0');
+  if (emailEl) {
+    emailEl.classList.remove('is-valid', 'is-invalid');
+    setTimeout(() => emailEl.focus(), 100);
+  }
+
+  checkSubmitEligibility();
+}
+
+/**
+ * Mulai countdown expiry OTP.
+ * @param {number} expiresAt - Unix ms
+ */
+function _startOtpExpiryCountdown(expiresAt) {
+  if (otpExpiryTimer) clearInterval(otpExpiryTimer);
+
+  const countdownEl = document.getElementById('otp-countdown');
+  const expiryRow   = document.getElementById('otp-expiry-row');
+
+  function tick() {
+    const remaining = expiresAt - Date.now();
+    if (!countdownEl) return;
+
+    if (remaining <= 0) {
+      clearInterval(otpExpiryTimer);
+      otpExpiryTimer = null;
+      countdownEl.textContent = '0:00';
+      countdownEl.style.color = 'var(--clr-danger, #dc2626)';
+      if (expiryRow) expiryRow.classList.add('otp-expiry--expired');
+      showFieldError('error-otp-verify', 'Kode OTP telah kedaluwarsa. Silakan kirim ulang kode.');
+      // Disable tombol verify
+      const verifyBtn = document.getElementById('btn-verify-otp');
+      if (verifyBtn) verifyBtn.disabled = true;
+      return;
+    }
+
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    countdownEl.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+
+    // Warnai merah di 60 detik terakhir
+    if (remaining <= 60000) {
+      countdownEl.style.color = 'var(--clr-danger, #dc2626)';
+    }
+  }
+
+  tick();
+  otpExpiryTimer = setInterval(tick, 1000);
+}
+
+/**
+ * Mulai countdown cooldown resend.
+ * @param {number} cooldownMs - ms cooldown
+ */
+function _startResendCooldown(cooldownMs) {
+  if (otpResendTimer) clearInterval(otpResendTimer);
+
+  const btnResend     = document.getElementById('btn-resend-otp');
+  const countdownEl   = document.getElementById('otp-resend-countdown');
+
+  if (btnResend) btnResend.disabled = true;
+
+  const endsAt = Date.now() + cooldownMs;
+
+  function tick() {
+    const remaining = endsAt - Date.now();
+    if (remaining <= 0) {
+      clearInterval(otpResendTimer);
+      otpResendTimer = null;
+      if (btnResend)   { btnResend.disabled = false; btnResend.textContent = 'Kirim ulang'; }
+      if (countdownEl) countdownEl.textContent = '';
+      return;
+    }
+    const secs = Math.ceil(remaining / 1000);
+    if (btnResend)   btnResend.textContent = `Kirim ulang`;
+    if (countdownEl) countdownEl.textContent = `(${secs}d)`;
+  }
+
+  tick();
+  otpResendTimer = setInterval(tick, 1000);
+}
+
+/**
+ * Mask email di sisi frontend (fallback jika server tidak kembalikan maskedEmail).
+ * @param {string} email
+ * @returns {string}
+ */
+function _maskEmailLocal(email) {
+  if (!email || !email.includes('@')) return email;
+  const [local, domain] = email.split('@');
+  if (local.length <= 2) return local + '@' + domain;
+  return local[0] + '***' + local[local.length - 1] + '@' + domain;
+}
+
+// ── Override renderAnggotaRepeater untuk update OTP section ──
+
+const _origRenderAnggotaRepeater = renderAnggotaRepeater;
+
+// Monkey-patch renderAnggotaRepeater agar setiap re-render
+// juga mengupdate visibilitas blok OTP
+// (Pendekatan ini non-invasif — tidak mengubah logika render asli)
+const _renderAnggotaRepeaterBase = renderAnggotaRepeater;
+// (Re-assign tidak perlu karena kita panggil _updateOtpSectionVisibility
+//  langsung setelah render selesai di fungsi yang memanggil renderAnggotaRepeater)
+
+// Wrap renderAnggotaRepeater agar selalu sinkronkan OTP visibility
+{
+  const _orig = renderAnggotaRepeater;
+  renderAnggotaRepeater = function() {
+    _orig();
+    // Setelah DOM terender, update OTP section visibility
+    _updateOtpSectionVisibility();
+  };
 }
