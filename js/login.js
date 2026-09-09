@@ -175,7 +175,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             redirectTarget.startsWith('/') &&           // harus path relatif
             !redirectTarget.startsWith('//')            // cegah protocol-relative URL
           ) {
-            window.location.href = redirectTarget;
+            // ▶▶ SECURITY: Pastikan redirect target sesuai dengan role yang baru login
+            // User tidak boleh diarahkan ke halaman yang bukan milik role mereka
+            const isTargetAllowed =
+              (role === ROLES.ADMIN  && redirectTarget.startsWith('/admin')) ||
+              (role === ROLES.SATPAM && redirectTarget.startsWith('/satpam'));
+
+            if (isTargetAllowed) {
+              window.location.href = redirectTarget;
+            } else {
+              _redirectByRole(role);
+            }
           } else {
             _redirectByRole(role);
           }
