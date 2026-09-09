@@ -1409,3 +1409,34 @@
   .email-notif-verified-actions .btn,
   .email-notif-otp-actions .btn { width: 100%; justify-content: center; }
 }
+
+
+/* ── Tombol Ekspor PDF ──────────────────────────────────────────
+   .btn--pdf — warna merah-burgundy yang kontras dengan tombol CSV
+   (yang menggunakan .export-btn / --clr-success). Tetap terbaca
+   saat dicetak grayscale karena border tetap ada.
+   ─────────────────────────────────────────────────────────────── */
+.btn--pdf {
+  background: #c0392b;
+  color: #ffffff;
+  border-color: #a93226;
+}
+.btn--pdf:hover:not(:disabled) {
+  background: #a93226;
+  border-color: #922b21;
+  color: #ffffff;
+}
+.btn--pdf:focus-visible {
+  outline: 2px solid #c0392b;
+  outline-offset: 2px;
+}
+.btn--pdf:disabled,
+.btn--pdf.loading {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Pastikan filter-actions bisa wrap di mobile sempit */
+.filter-actions {
+  flex-wrap: wrap;
+}
