@@ -138,14 +138,17 @@ async function checkAuth(requiredRole) {
   }
 
   // ▶▶ SECURITY: Cek role dari localStorage sebagai pre-filter UX
-  // (bukan sebagai penjaga keamanan — server yang memutuskan)
-  const hasAccess =
-    session.role === ROLES.ADMIN ||
-    session.role === requiredRole;
+  // Role harus TEPAT SAMA dengan requiredRole — tidak ada "admin bypass semua halaman"
+  // Setiap halaman hanya untuk role yang spesifik:
+  //   - /satpam  → hanya role 'satpam'
+  //   - /admin   → hanya role 'admin'
+  // Admin yang mencoba buka /satpam akan ditolak dan sebaliknya.
+  const hasAccess = session.role === requiredRole;
 
   if (!hasAccess) {
-    clearSession();
-    _redirectToLogin();
+    // Jangan hapus session — user masih login, hanya salah halaman
+    // Redirect ke halaman yang sesuai dengan role mereka
+    _redirectToRolePage(session.role);
     return null;
   }
 
@@ -165,26 +168,28 @@ async function checkAuth(requiredRole) {
         return null;
       }
 
-      // ▶▶ SECURITY: Pastikan role yang dikembalikan server sesuai
-      // (mencegah manipulasi localStorage role)
+      // ▶▶ SECURITY: Pastikan role yang dikembalikan server sesuai dengan halaman ini
+      // Server adalah sumber kebenaran — localStorage role tidak bisa dipercaya penuh
       const serverRole = result.data?.role || '';
       if (serverRole && serverRole !== session.role) {
-        // Role di localStorage berbeda dari server — update atau tolak
-        // Update role dari server (server adalah sumber kebenaran)
+        // Role di localStorage berbeda dari server — perbarui dari server
         localStorage.setItem(SESSION_KEYS.ROLE,     serverRole);
         localStorage.setItem(SESSION_KEYS.NAMA,     result.data?.nama     || session.nama);
         localStorage.setItem(SESSION_KEYS.USERNAME, result.data?.username || session.username);
 
         // Re-cek akses dengan role yang benar dari server
-        const serverHasAccess =
-          serverRole === ROLES.ADMIN ||
-          serverRole === requiredRole;
+        // Role harus TEPAT SAMA — tidak ada bypass
+        const serverHasAccess = serverRole === requiredRole;
 
         if (!serverHasAccess) {
-          clearSession();
-          _redirectToLogin();
+          // Jangan hapus session — redirect ke halaman yang sesuai role mereka
+          _redirectToRolePage(serverRole);
           return null;
         }
+      } else if (serverRole && serverRole !== requiredRole) {
+        // Role dari server valid tapi salah halaman — redirect
+        _redirectToRolePage(serverRole);
+        return null;
       }
 
       // Perbarui timestamp validasi
@@ -302,6 +307,26 @@ function _redirectToLogin() {
     sessionStorage.setItem('btamu_redirect', current);
   }
   window.location.href = '/login';
+}
+
+/**
+ * ▶▶ SECURITY: Redirect user ke halaman yang sesuai dengan role mereka.
+ * Dipanggil ketika user mencoba buka halaman yang bukan miliknya.
+ * Contoh: admin buka /satpam → diarahkan ke /admin
+ *         satpam buka /admin → diarahkan ke /satpam
+ *
+ * @param {string} role - Role user yang sedang login
+ */
+function _redirectToRolePage(role) {
+  if (role === ROLES.ADMIN) {
+    window.location.href = '/admin';
+  } else if (role === ROLES.SATPAM) {
+    window.location.href = '/satpam';
+  } else {
+    // Role tidak dikenal — logout
+    clearSession();
+    window.location.href = '/login';
+  }
 }
 
 // ── Event Listeners Modal Logout ─────────────────────────────
