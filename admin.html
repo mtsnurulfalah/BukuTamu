@@ -731,13 +731,15 @@
         <div class="settings-card__body" id="email-notif-body">
 
           <!-- ── Loading skeleton ─────────────────────────── -->
-          <div id="email-notif-loading" class="email-notif-skeleton">
+          <div id="email-notif-loading" class="email-notif-skeleton" aria-busy="true" aria-label="Memuat status email notifikasi">
             <div class="skeleton skeleton--text" style="width:55%;height:1em;"></div>
             <div class="skeleton skeleton--text" style="width:35%;height:0.85em;margin-top:8px;"></div>
           </div>
 
           <!-- ── Status bar (muncul setelah data dimuat) ──── -->
-          <div id="email-notif-status-bar" class="email-notif-status-bar" style="display:none;">
+          <!-- FIX #13: aria-live="polite" agar perubahan status dibacakan screen reader -->
+          <div id="email-notif-status-bar" class="email-notif-status-bar" style="display:none;"
+               aria-live="polite" aria-atomic="true">
             <div class="email-notif-status-bar__left">
               <span id="email-notif-status-icon" class="email-notif-dot" aria-hidden="true"></span>
               <div>
@@ -745,8 +747,8 @@
                 <div id="email-notif-status-label" class="email-notif-status-label">Memuat…</div>
               </div>
             </div>
-            <!-- Stat notif (sent/failed/pending) -->
-            <div id="email-notif-stats" class="email-notif-stats" style="display:none;">
+            <!-- Stat notif (sent/failed) -->
+            <div id="email-notif-stats" class="email-notif-stats" style="display:none;" aria-label="Statistik notifikasi">
               <span class="email-notif-stat email-notif-stat--sent"   id="stat-notif-sent">0 terkirim</span>
               <span class="email-notif-stat email-notif-stat--failed" id="stat-notif-failed">0 gagal</span>
             </div>
@@ -757,7 +759,7 @@
             <form id="form-email-notif" novalidate autocomplete="off">
               <div class="form-group">
                 <label class="form-label" for="input-notif-email">
-                  Alamat Email <span class="required">*</span>
+                  Alamat Email <span class="required" aria-hidden="true">*</span>
                 </label>
                 <div class="email-notif-input-row">
                   <input
@@ -766,13 +768,15 @@
                     class="form-control"
                     placeholder="contoh@domain.com"
                     maxlength="150"
-                    autocomplete="off"
+                    autocomplete="email"
                     required
+                    aria-required="true"
+                    aria-describedby="hint-email-notif"
                   />
                   <button type="submit" class="btn btn--primary btn--sm" id="btn-kirim-otp">
-                    <span class="btn__spinner"></span>
+                    <span class="btn__spinner" aria-hidden="true"></span>
                     <span class="btn__text">
-                      <i data-lucide="send" style="width:0.85rem;height:0.85rem;"></i>Kirim OTP
+                      <i data-lucide="send" style="width:0.85rem;height:0.85rem;" aria-hidden="true"></i>Kirim OTP
                     </span>
                   </button>
                 </div>
@@ -790,9 +794,9 @@
             </p>
 
             <!-- Countdown timer -->
-            <div class="email-notif-timer-row">
-              <i data-lucide="clock" style="width:0.85rem;height:0.85rem;color:var(--clr-warning);"></i>
-              <span id="email-notif-countdown" class="email-notif-countdown">05:00</span>
+            <div class="email-notif-timer-row" aria-label="Sisa waktu OTP">
+              <i data-lucide="clock" style="width:0.85rem;height:0.85rem;color:var(--clr-warning);" aria-hidden="true"></i>
+              <span id="email-notif-countdown" class="email-notif-countdown" aria-live="off">05:00</span>
               <span class="text-xs text-muted">tersisa</span>
             </div>
 
@@ -800,34 +804,39 @@
               <div class="form-group">
                 <label class="form-label" for="input-otp-code">Kode OTP</label>
                 <div class="email-notif-otp-row">
+                  <!-- FIX #8: placeholder "000000" lebih konsisten dengan letter-spacing monospace -->
                   <input
                     type="text"
                     id="input-otp-code"
                     class="form-control email-notif-otp-input"
-                    placeholder="_ _ _ _ _ _"
+                    placeholder="000000"
                     maxlength="6"
                     inputmode="numeric"
                     pattern="\d{6}"
                     autocomplete="one-time-code"
                     aria-describedby="otp-attempts-hint"
+                    aria-required="true"
                   />
                   <button type="submit" class="btn btn--primary btn--sm" id="btn-verify-otp">
-                    <span class="btn__spinner"></span>
+                    <span class="btn__spinner" aria-hidden="true"></span>
                     <span class="btn__text">
-                      <i data-lucide="check-circle" style="width:0.85rem;height:0.85rem;"></i>Verifikasi
+                      <i data-lucide="check-circle" style="width:0.85rem;height:0.85rem;" aria-hidden="true"></i>Verifikasi
                     </span>
                   </button>
                 </div>
-                <p class="form-hint" id="otp-attempts-hint" aria-live="polite"></p>
+                <!-- aria-live="polite" agar perubahan hint dibacakan screen reader -->
+                <p class="form-hint" id="otp-attempts-hint" aria-live="polite" role="status"></p>
               </div>
             </form>
 
             <div class="email-notif-otp-actions">
-              <button type="button" class="btn btn--ghost btn--sm" id="btn-resend-otp" disabled>
-                <i data-lucide="refresh-cw" style="width:0.85rem;height:0.85rem;"></i>
+              <button type="button" class="btn btn--ghost btn--sm" id="btn-resend-otp" disabled
+                aria-label="Kirim ulang kode OTP">
+                <i data-lucide="refresh-cw" style="width:0.85rem;height:0.85rem;" aria-hidden="true"></i>
                 <span id="btn-resend-otp-label">Kirim Ulang OTP</span>
               </button>
-              <button type="button" class="btn btn--ghost btn--sm" id="btn-cancel-otp">
+              <button type="button" class="btn btn--ghost btn--sm" id="btn-cancel-otp"
+                aria-label="Batalkan verifikasi OTP">
                 Batalkan
               </button>
             </div>
@@ -836,47 +845,55 @@
           <!-- ── Panel: Aksi setelah verified ─────────────── -->
           <div id="email-notif-panel-verified" class="email-notif-panel" style="display:none;">
             <div class="email-notif-verified-actions">
-              <button type="button" class="btn btn--soft btn--sm" id="btn-ubah-email">
-                <i data-lucide="pencil" style="width:0.85rem;height:0.85rem;"></i>
+              <button type="button" class="btn btn--soft btn--sm" id="btn-ubah-email"
+                aria-label="Ubah alamat email notifikasi">
+                <i data-lucide="pencil" style="width:0.85rem;height:0.85rem;" aria-hidden="true"></i>
                 Ubah Email
               </button>
-              <button type="button" class="btn btn--soft btn--sm" id="btn-test-notif">
-                <span class="btn__spinner"></span>
+              <!-- FIX #15: konfirmasi ditangani oleh JS via confirm() sebelum memanggil handler -->
+              <button type="button" class="btn btn--soft btn--sm" id="btn-test-notif"
+                aria-label="Kirim email uji coba ke email yang terdaftar">
+                <span class="btn__spinner" aria-hidden="true"></span>
                 <span class="btn__text">
-                  <i data-lucide="mail" style="width:0.85rem;height:0.85rem;"></i>Kirim Email Uji
+                  <i data-lucide="mail" style="width:0.85rem;height:0.85rem;" aria-hidden="true"></i>Kirim Email Uji
                 </span>
               </button>
-              <button type="button" class="btn btn--ghost btn--sm" id="btn-lihat-log">
-                <i data-lucide="list" style="width:0.85rem;height:0.85rem;"></i>
+              <button type="button" class="btn btn--ghost btn--sm" id="btn-lihat-log"
+                aria-label="Lihat atau tutup riwayat pengiriman notifikasi"
+                aria-expanded="false">
+                <i data-lucide="list" style="width:0.85rem;height:0.85rem;" aria-hidden="true"></i>
                 Riwayat Notifikasi
               </button>
             </div>
           </div>
 
           <!-- ── Panel: Email pending (ganti email sedang diverifikasi) -->
-          <div id="email-notif-panel-pending-change" class="email-notif-panel" style="display:none;">
+          <div id="email-notif-panel-pending-change" class="email-notif-panel" style="display:none;"
+               role="status" aria-live="polite">
             <div class="alert alert--warning" id="email-notif-pending-msg">
-              <i data-lucide="alert-triangle" style="width:0.9rem;height:0.9rem;"></i>
+              <i data-lucide="alert-triangle" style="width:0.9rem;height:0.9rem;" aria-hidden="true"></i>
               <span>Email lama tetap aktif sampai email baru berhasil diverifikasi.</span>
             </div>
           </div>
 
           <!-- ── Log Notifikasi (collapsible) ──────────────── -->
-          <div id="email-notif-log-wrap" class="email-notif-log-wrap" style="display:none;">
+          <div id="email-notif-log-wrap" class="email-notif-log-wrap" style="display:none;"
+               role="region" aria-label="Riwayat pengiriman notifikasi">
             <div class="email-notif-log-header">
-              <span class="settings-card__title" style="font-size:0.875rem;">
-                <i data-lucide="list" style="width:0.85rem;height:0.85rem;"></i>
+              <!-- FIX #14: ganti span.settings-card__title → p.email-notif-log-title (semantik tepat) -->
+              <p class="email-notif-log-title">
+                <i data-lucide="list" style="width:0.85rem;height:0.85rem;" aria-hidden="true"></i>
                 Riwayat Notifikasi
-              </span>
+              </p>
               <button type="button" class="btn btn--ghost btn--sm" id="btn-tutup-log"
-                aria-label="Tutup riwayat">
-                <i data-lucide="x" style="width:0.85rem;height:0.85rem;"></i>
+                aria-label="Tutup riwayat notifikasi">
+                <i data-lucide="x" style="width:0.85rem;height:0.85rem;" aria-hidden="true"></i>
               </button>
             </div>
-            <div id="email-notif-log-list" class="email-notif-log-list">
+            <div id="email-notif-log-list" class="email-notif-log-list" role="list">
               <!-- Diisi oleh JS -->
             </div>
-            <div id="email-notif-log-empty" class="empty-state" style="display:none;">
+            <div id="email-notif-log-empty" class="empty-state" style="display:none;" aria-live="polite">
               <div class="empty-state__title" style="font-size:0.85rem;">Belum ada riwayat notifikasi.</div>
             </div>
           </div>
