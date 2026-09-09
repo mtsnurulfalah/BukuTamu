@@ -309,8 +309,12 @@
           </p>
 
           <!-- Container card anggota tunggal — diisi oleh JS -->
+          <!-- ▶▶ OTP: Untuk jenis tamu Alumni/Dinas/Mitra/Vendor, JS akan menyisipkan
+               blok verifikasi email OTP di dalam card tamu pertama (#otp-verification-section).
+               Elemen ini di-inject dinamis oleh _buildAnggotaCard() di form-tamu.js. -->
           <div id="anggota-repeater-tunggal" role="list" aria-label="Data tamu">
-            <!-- Diisi oleh JS saat jumlahTamu = 1 -->
+            <!-- Diisi oleh JS saat jumlahTamu = 1
+                 (termasuk blok OTP untuk jenis tamu yang memerlukan verifikasi) -->
           </div>
         </div>
 
