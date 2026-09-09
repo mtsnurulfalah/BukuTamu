@@ -1037,57 +1037,126 @@ function _pdfNomorLaporan(wibDate) {
   return `RT-${yyyy}-${mo}-${ms4}`;
 }
 
+/**
+ * Muat gambar dari URL dan konversi ke base64 data URL.
+ * Menggunakan HTMLImageElement + OffscreenCanvas / regular Canvas.
+ * Mengembalikan null jika gagal (CORS, timeout, format tidak didukung).
+ *
+ * @param {string} url
+ * @param {number} [timeoutMs=5000]
+ * @returns {Promise<string|null>} base64 data URL atau null
+ */
+async function _pdfLoadImageAsBase64(url, timeoutMs = 5000) {
+  if (!url) return null;
+  try {
+    return await Promise.race([
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            // Skala ke maks 200x200 untuk mengurangi ukuran PDF
+            const MAX = 200;
+            const scale = Math.min(1, MAX / Math.max(img.width || 1, img.height || 1));
+            canvas.width  = Math.round((img.width  || 1) * scale);
+            canvas.height = Math.round((img.height || 1) * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/png'));
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = () => reject(new Error('Gagal memuat gambar: ' + url));
+        img.src = url;
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout memuat gambar')), timeoutMs)
+      ),
+    ]);
+  } catch (_) {
+    return null;   // Gagal — kop tetap tampil tanpa logo
+  }
+}
+
 // ── Gambar Kop Surat Resmi Indonesia ─────────────────────────
 /**
- * Kop mengikuti standar surat dinas Indonesia:
- *  - Logo di kiri (jika tersedia)
- *  - Nama instansi (bold, kapital) di tengah
- *  - Sub-identitas (jenis madrasah / buku tamu digital) di bawahnya
- *  - Alamat lengkap
- *  - Garis penutup kop: garis tebal + tipis sejajar (bukan blok warna)
+ * Gambar kop surat resmi Indonesia dengan dua logo simetris.
  *
- * @param {jsPDF}  doc
- * @param {Object} school  — { nama_sekolah, alamat_sekolah, logo_url }
- * @param {number} pageW
- * @returns {number} Y setelah kop (posisi untuk konten berikutnya)
+ * Layout:
+ *   [Logo App]   NAMA SEKOLAH (bold, kapital)   [Logo Sekolah]
+ *                Madrasah Tsanawiyah
+ *                Alamat
+ *   ═══════════════════════════════ (garis tebal)
+ *   ─────────────────────────────── (garis tipis)
+ *
+ * Logo kiri  = logo aplikasi  (logo_app_url dari config)
+ * Logo kanan = logo sekolah   (logo_url dari config)
+ *
+ * @param {jsPDF}        doc
+ * @param {Object}       school        — { nama_sekolah, alamat_sekolah }
+ * @param {number}       pageW
+ * @param {string|null}  logoAppB64    — base64 PNG logo aplikasi atau null
+ * @param {string|null}  logoSekolahB64 — base64 PNG logo sekolah atau null
+ * @returns {number} Y setelah garis kop
  */
-function _pdfDrawKop(doc, school, pageW) {
+function _pdfDrawKop(doc, school, pageW, logoAppB64, logoSekolahB64) {
   const mL = _PDF.mL;
   const mR = _PDF.mR;
   const namaSekolah = school.nama_sekolah   || CONFIG.APP_NAME || 'Buku Tamu Digital';
   const alamat      = school.alamat_sekolah || '';
-  const subNama     = 'Madrasah Tsanawiyah';   // label jenis institusi di bawah nama
+  const subNama     = 'Madrasah Tsanawiyah';
 
-  // Lebar kolom teks (tanpa logo untuk saat ini — logo hanya dimuat
-  // jika benar-benar sudah di-embed; jsPDF memerlukan base64/URL CORS-bebas)
-  const textX    = pageW / 2;
-  let   y        = _PDF.mT;
+  // ── Ukuran logo ───────────────────────────────────────────────
+  const logoH   = 18;                        // tinggi logo mm
+  const logoY   = _PDF.mT;                   // posisi Y logo
 
-  // ── Nama instansi — baris 1 (huruf besar, bold, ukuran besar) ──
+  // ── Logo kiri — logo aplikasi ─────────────────────────────────
+  if (logoAppB64) {
+    try {
+      doc.addImage(logoAppB64, 'PNG', mL, logoY, logoH, logoH, undefined, 'FAST');
+    } catch (_) { /* gagal — lanjut tanpa logo */ }
+  }
+
+  // ── Logo kanan — logo sekolah ─────────────────────────────────
+  if (logoSekolahB64) {
+    try {
+      doc.addImage(logoSekolahB64, 'PNG', pageW - mR - logoH, logoY, logoH, logoH, undefined, 'FAST');
+    } catch (_) { /* gagal — lanjut tanpa logo */ }
+  }
+
+  // ── Area teks — di antara dua logo ───────────────────────────
+  const gapLogo  = 4;   // jarak teks dari tepi logo
+  const textPadL = (logoAppB64    ? mL + logoH + gapLogo : mL);
+  const textPadR = (logoSekolahB64 ? mR + logoH + gapLogo : mR);
+  const textX    = (textPadL + (pageW - textPadR)) / 2;
+  const textMaxW = (pageW - textPadR) - textPadL;
+
+  let y = _PDF.mT;
+
+  // ── Nama instansi ──────────────────────────────────────────────
   doc.setFont(_PDF.font, 'bold');
   doc.setFontSize(14);
   doc.setTextColor(..._PDF.tintaHitam);
-  doc.text(namaSekolah.toUpperCase(), textX, y + 6, { align: 'center' });
+  doc.text(namaSekolah.toUpperCase(), textX, y + 6, { align: 'center', maxWidth: textMaxW });
 
-  // ── Sub-nama institusi — baris 2 ─────────────────────────────
+  // ── Sub-nama institusi ─────────────────────────────────────────
   doc.setFont(_PDF.font, 'normal');
   doc.setFontSize(10);
   doc.text(subNama, textX, y + 12, { align: 'center' });
 
-  // ── Alamat — baris 3 ─────────────────────────────────────────
+  // ── Alamat ─────────────────────────────────────────────────────
   if (alamat) {
     doc.setFontSize(8);
     doc.setTextColor(..._PDF.abu700);
-    const maxW = pageW - mL - mR;
-    const baris = doc.splitTextToSize(alamat, maxW);
-    // Maks 2 baris alamat agar kop tidak terlalu tinggi
+    const baris = doc.splitTextToSize(alamat, textMaxW);
     const alamatTeks = baris.slice(0, 2).join('\n') + (baris.length > 2 ? ' ...' : '');
     doc.text(alamatTeks, textX, y + 18, { align: 'center', lineHeightFactor: 1.4 });
   }
   doc.setTextColor(..._PDF.tintaHitam);
 
-  // ── Garis kop: tebal (3 pt) + tipis (1 pt) sejajar ──────────
-  // Standar surat dinas Indonesia menggunakan dua garis horizontal
+  // ── Garis kop: tebal + tipis sejajar ─────────────────────────
   const garisY = alamat ? y + 25 : y + 19;
   doc.setDrawColor(..._PDF.tintaHitam);
   doc.setLineWidth(1.0);
@@ -1095,7 +1164,7 @@ function _pdfDrawKop(doc, school, pageW) {
   doc.setLineWidth(0.3);
   doc.line(mL, garisY + 1.5, pageW - mR, garisY + 1.5);
 
-  return garisY + 4;   // Y setelah garis kop
+  return garisY + 4;
 }
 
 /**
@@ -1487,8 +1556,17 @@ async function generateRekapPDF(tamuList, exportData, school, filter) {
   const eksporWaktu   = `${parseInt(dd,10)} ${_PDF_BULAN[wibDate.getMonth()]} ${wibDate.getFullYear()}, ${hh}:${mn} WIB`;
   const nomorLaporan  = _pdfNomorLaporan(wibDate);
 
+  // ── Muat logo secara paralel (timeout 5 detik masing-masing) ──
+  // logo_app_url = logo aplikasi (kiri kop)
+  // logo_url     = logo sekolah  (kanan kop)
+  // Kedua proses dijalankan bersamaan; jika gagal nilai null = kop tanpa logo.
+  const [logoAppB64, logoSekolahB64] = await Promise.all([
+    _pdfLoadImageAsBase64(school.logo_app_url || ''),
+    _pdfLoadImageAsBase64(school.logo_url     || ''),
+  ]);
+
   // ── 1. Kop surat ──────────────────────────────────────────
-  let y = _pdfDrawKop(doc, school, pageW);
+  let y = _pdfDrawKop(doc, school, pageW, logoAppB64, logoSekolahB64);
   y += 3;
 
   // ── 2. Judul + ringkasan metadata ─────────────────────────
@@ -1544,20 +1622,22 @@ async function generateRekapPDF(tamuList, exportData, school, filter) {
     showHead    : 'everyPage',
     head        : [[
       'No.', 'Tanggal', 'Nama / Tamu', 'Jenis Tamu',
-      'Instansi / Asal', 'Keperluan', 'Bertemu Dengan',
-      'Jam Datang', 'Jam Pulang', 'Status',
+      'Instansi / Asal /\nTahun Lulus', 'Keperluan', 'Bertemu Dengan',
+      'Jam\nDatang', 'Jam\nPulang', 'Status',
     ]],
     body        : tableBody,
+    // ── Lebar kolom — total harus ≤ usableW (pageW 297 - mL 20 - mR 15 = 262 mm)
+    // Pembagian: 8+26+48+24+34+42+32+14+14+18 = 260 mm (sisa 2 mm untuk padding)
     columnStyles: {
       0 : { cellWidth: 8,  halign: 'center' },   // No.
-      1 : { cellWidth: 28 },                     // Tanggal
-      2 : { cellWidth: 50 },                     // Nama (multi-line rombongan)
-      3 : { cellWidth: 26 },                     // Jenis
-      4 : { cellWidth: 38 },                     // Instansi
-      5 : { cellWidth: 44 },                     // Keperluan
-      6 : { cellWidth: 34 },                     // Bertemu
-      7 : { cellWidth: 16, halign: 'center' },   // Jam Datang
-      8 : { cellWidth: 16, halign: 'center' },   // Jam Pulang
+      1 : { cellWidth: 26 },                     // Tanggal
+      2 : { cellWidth: 48 },                     // Nama (multi-line rombongan)
+      3 : { cellWidth: 24 },                     // Jenis Tamu
+      4 : { cellWidth: 34 },                     // Instansi / Asal / Tahun Lulus
+      5 : { cellWidth: 42 },                     // Keperluan
+      6 : { cellWidth: 32 },                     // Bertemu Dengan
+      7 : { cellWidth: 14, halign: 'center' },   // Jam Datang
+      8 : { cellWidth: 14, halign: 'center' },   // Jam Pulang
       9 : { cellWidth: 18, halign: 'center' },   // Status
     },
     styles: {
