@@ -828,7 +828,12 @@ function _updateEditAnggotaCount() {
 }
 
 // FIX S6: try/catch di _submitEditForm
+// FIX S7: guard double-submit — cegah pengiriman ganda saat tombol diklik cepat
+let _isEditSubmitting = false;
+
 async function _submitEditForm(tamuId) {
+  if (_isEditSubmitting) return;
+
   const modal   = document.getElementById('modal-edit');
   const btnSave = modal?.querySelector('#btn-edit-simpan');
   if (!modal) return;
@@ -863,6 +868,7 @@ async function _submitEditForm(tamuId) {
   };
 
   if (btnSave) setButtonLoading(btnSave);
+  _isEditSubmitting = true;
 
   let result;
   try {
@@ -872,11 +878,13 @@ async function _submitEditForm(tamuId) {
   }
 
   if (result.status === 'ok') {
+    _isEditSubmitting = false;
     closeEditModal();
     showToast('Data kunjungan berhasil diperbarui.', 'success');
     await loadTamuAktif(true);
   } else {
     showToast(result.message || 'Gagal menyimpan perubahan.', 'danger');
+    _isEditSubmitting = false;
     if (btnSave) resetButtonLoading(btnSave, false);
   }
 }
@@ -887,6 +895,7 @@ function closeEditModal() {
   unlockScroll();
   editTamuData = null;
   _pendingHapusAnggota.clear();
+  _isEditSubmitting = false;
 }
 
 // ── Notifikasi ────────────────────────────────────────────────
