@@ -1187,6 +1187,7 @@ async function handleSubmit(e) {
 }
 
 async function submitFromReview() {
+  if (isSubmitting) return;
   syncAnggotaFromDOM();
   await _doSubmit();
 }
